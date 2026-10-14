@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KlipRun desktop screenshot with synthetic terminal</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { width: 1440px; height: 900px; margin: 0; overflow: hidden; background: #0d1117; }
+    .board { height: 570px; background: url("kanban-details.png") top left / 1440px 900px no-repeat; }
+    .resize-handle { height: 10px; display: grid; place-items: center; background: #0d1117; }
+    .resize-handle span { width: 34px; height: 2px; border-radius: 2px; background: #30363d; }
+    .terminal { height: 320px; background: #0d1117; color: #e6edf3; }
+    .toolbar { height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: #161b22; font-size: 11px; }
+    .terminal-icon { color: #58a6ff; font-size: 15px; }
+    .tab { height: 25px; display: flex; align-items: center; gap: 6px; padding: 0 9px; border-radius: 5px; color: #e6edf3; background: #30363d; }
+    .tab:not(.selected) { color: #8b949e; background: rgb(255 255 255 / 3%); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #3fb950; }
+    .spacer { flex: 1; }
+    .button { color: #8b949e; font-size: 14px; padding: 0 5px; }
+    .divider { height: 1px; background: #30363d; }
+    .screen { padding: 15px 18px; font: 13px/1.65 SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre; }
+    .command { color: #e6edf3; }
+    .path { color: #79c0ff; }
+    .muted { color: #8b949e; }
+    .agent { color: #3fb950; }
+    .prompt { color: #58a6ff; }
+  </style>
+</head>
+<body>
+  <main aria-label="KlipRun desktop demo">
+    <section class="board" aria-label="Fictional Kanban board"></section>
+    <div class="resize-handle" aria-hidden="true"><span></span></div>
+    <section class="terminal" aria-label="Synthetic OpenCode terminal">
+      <header class="toolbar">
+        <span class="terminal-icon" aria-hidden="true">▣</span>
+        <div class="tab selected"><span class="dot"></span>OpenCode · atlas</div>
+        <div class="tab"><span class="dot"></span>Codex · aurora</div>
+        <span class="spacer"></span>
+        <span class="button" aria-hidden="true">＋</span>
+        <span class="button" aria-hidden="true">⤢</span>
+        <span class="button" aria-hidden="true">⌄</span>
+      </header>
+      <div class="divider"></div>
+      <div class="screen"><span class="command">$ pwd</span>
+<span class="path">/Users/demo/Projects/atlas</span>
+<span class="command">$ opencode</span>
+<span class="muted">OpenCode · glm-5.3 · demo session</span>
+<span class="muted">Working on: Implement search API</span>
+<span class="prompt">›</span> Checking route handlers and request validation…
+<span class="agent">•</span> Read <span class="path">src/routes/search.ts</span>
+<span class="agent">•</span> Found a missing empty-query check; reviewing the response shape.</div>
+    </section>
+  </main>
+</body>
+</html>

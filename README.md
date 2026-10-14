@@ -27,6 +27,10 @@ KlipRun reads existing OpenCode and Codex session data without changing their st
 
 All sessions, project paths, and usage numbers shown below are fictional examples. [See the screenshot fixture and more views](docs/screenshots/README.md).
 
+### Board and terminal
+
+![KlipRun desktop with a synthetic OpenCode session visible in the embedded terminal](docs/screenshots/desktop-terminal.png)
+
 ### Kanban and session details
 
 ![Kanban board and session details with fictional agents](docs/screenshots/kanban-details.png)
