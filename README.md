@@ -23,6 +23,22 @@ Install and sign in to [OpenCode](https://opencode.ai/) or [Codex CLI](https://g
 
 KlipRun reads existing OpenCode and Codex session data without changing their stores. Its bundled engine runs on a random local loopback port and requires an app-generated token. App preferences and its own state live in `~/Library/Application Support/KlipRun Desktop`.
 
+## Screenshots
+
+All sessions, project paths, and usage numbers shown below are fictional examples. [See the screenshot fixture and more views](docs/screenshots/README.md).
+
+### Kanban and session details
+
+![Kanban board and session details with fictional agents](docs/screenshots/kanban-details.png)
+
+### Office
+
+![Office view with fictional coworkers](docs/screenshots/office.png)
+
+### Statistics
+
+![Statistics view with fictional usage data](docs/screenshots/statistics.png)
+
 ## Build from source
 
 You need macOS, a **Swift 6 toolchain** (Xcode or Command Line Tools), and [Bun](https://bun.sh/) 1.4 or newer. The script detects your installed macOS SDK and Bun executable.
@@ -42,3 +58,5 @@ cd engine && bun run test
 ```
 
 The app uses SwiftUI, AppKit, WebKit, a local Bun engine, and a vendored copy of SwiftTerm. The application is MIT licensed; see [LICENSE](LICENSE) and [SwiftTerm's license](vendor/SwiftTerm/LICENSE). The engine and web UI are based on the original [KlipRun](https://github.com/klipbn/kliprun) project.
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.

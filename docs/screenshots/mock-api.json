@@ -1,0 +1,1249 @@
+{
+  "board": {
+    "columns": {
+      "attention": {
+        "title": "Needs attention",
+        "count": 1,
+        "cards": [
+          {
+            "source": "opencode",
+            "session_id": "ses_demo_review",
+            "directory": "/Users/demo/Projects/aurora",
+            "directory_name": "aurora",
+            "title": "Review database migration",
+            "prompt_snippet": "Continue the example task.",
+            "parent_id": null,
+            "agent": {
+              "name": "review"
+            },
+            "column": "attention",
+            "stage": "Waiting for approval",
+            "stage_since": 1791978840000,
+            "running_since": null,
+            "last_event_at": 1791979155000,
+            "reason": "Waiting for a review decision",
+            "error": null,
+            "last_tool": null,
+            "message_count": 8,
+            "finished_at": null,
+            "tokens_total": 31000,
+            "model_ref": "gpt-6.1-sol",
+            "context": {
+              "model": "gpt-6.1-sol",
+              "percent": 18,
+              "used": 18000,
+              "limit": 100000
+            },
+            "branch": "feature/demo-ui",
+            "mrs": [],
+            "subagent_count": 0,
+            "subagent_active": 0,
+            "subagent_errors": 0,
+            "subagent_error_notes": [],
+            "children": []
+          }
+        ]
+      },
+      "running": {
+        "title": "Running",
+        "count": 2,
+        "cards": [
+          {
+            "source": "opencode",
+            "session_id": "ses_demo_search",
+            "directory": "/Users/demo/Projects/atlas",
+            "directory_name": "atlas",
+            "title": "Implement search API",
+            "prompt_snippet": "Continue the example task.",
+            "parent_id": null,
+            "agent": {
+              "name": "build"
+            },
+            "column": "running",
+            "stage": "Generating response",
+            "stage_since": 1791976680000,
+            "running_since": 1791976680000,
+            "last_event_at": 1791979155000,
+            "reason": null,
+            "error": null,
+            "last_tool": "bash",
+            "message_count": 8,
+            "finished_at": null,
+            "tokens_total": 82000,
+            "model_ref": "glm-5.3",
+            "context": {
+              "model": "glm-5.3",
+              "percent": 42,
+              "used": 42000,
+              "limit": 100000
+            },
+            "branch": "feature/demo-api",
+            "mrs": [],
+            "subagent_count": 1,
+            "subagent_active": 1,
+            "subagent_errors": 0,
+            "subagent_error_notes": [],
+            "children": [
+              {
+                "source": "opencode",
+                "session_id": "ses_demo_checks",
+                "directory": "/Users/demo/Projects/atlas",
+                "directory_name": "atlas",
+                "title": "Run integration checks",
+                "prompt_snippet": "Continue the example task.",
+                "parent_id": "ses_demo_search",
+                "agent": {
+                  "name": "test"
+                },
+                "column": "running",
+                "stage": "Testing",
+                "stage_since": 1791978720000,
+                "running_since": 1791978720000,
+                "last_event_at": 1791979155000,
+                "reason": null,
+                "error": null,
+                "last_tool": "bash",
+                "message_count": 8,
+                "finished_at": null,
+                "tokens_total": 82000,
+                "model_ref": "glm-5.3",
+                "context": {
+                  "model": "glm-5.3",
+                  "percent": 42,
+                  "used": 42000,
+                  "limit": 100000
+                },
+                "branch": "feature/demo-api",
+                "mrs": [],
+                "subagent_count": 0,
+                "subagent_active": 0,
+                "subagent_errors": 0,
+                "subagent_error_notes": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "source": "codex",
+            "session_id": "codex:00000000-0000-4000-8000-000000000001",
+            "directory": "/Users/demo/Projects/aurora",
+            "directory_name": "aurora",
+            "title": "Refine onboarding UI",
+            "prompt_snippet": "Continue the example task.",
+            "parent_id": null,
+            "agent": {
+              "name": "Codex"
+            },
+            "column": "running",
+            "stage": "Working",
+            "stage_since": 1791977760000,
+            "running_since": 1791977760000,
+            "last_event_at": 1791979155000,
+            "reason": null,
+            "error": null,
+            "last_tool": "bash",
+            "message_count": 8,
+            "finished_at": null,
+            "tokens_total": 82000,
+            "model_ref": "gpt-6.1-sol",
+            "context": {
+              "model": "gpt-6.1-sol",
+              "percent": 42,
+              "used": 42000,
+              "limit": 100000
+            },
+            "branch": "feature/demo-ui",
+            "mrs": [],
+            "subagent_count": 0,
+            "subagent_active": 0,
+            "subagent_errors": 0,
+            "subagent_error_notes": [],
+            "children": []
+          }
+        ]
+      },
+      "idle": {
+        "title": "IDLE",
+        "count": 2,
+        "cards": [
+          {
+            "source": "opencode",
+            "session_id": "ses_demo_release",
+            "directory": "/Users/demo/Projects/aurora",
+            "directory_name": "aurora",
+            "title": "Draft release notes",
+            "prompt_snippet": "Continue the example task.",
+            "parent_id": null,
+            "agent": {
+              "name": "plan"
+            },
+            "column": "idle",
+            "stage": "Finished",
+            "stage_since": 1791978360000,
+            "running_since": null,
+            "last_event_at": 1791979155000,
+            "reason": null,
+            "error": null,
+            "last_tool": null,
+            "message_count": 8,
+            "finished_at": 1791978360000,
+            "tokens_total": 31000,
+            "model_ref": "glm-5.3",
+            "context": {
+              "model": "glm-5.3",
+              "percent": 18,
+              "used": 18000,
+              "limit": 100000
+            },
+            "branch": "feature/demo-ui",
+            "mrs": [],
+            "subagent_count": 0,
+            "subagent_active": 0,
+            "subagent_errors": 0,
+            "subagent_error_notes": [],
+            "children": []
+          },
+          {
+            "source": "codex",
+            "session_id": "codex:00000000-0000-4000-8000-000000000002",
+            "directory": "/Users/demo/Projects/atlas",
+            "directory_name": "atlas",
+            "title": "Fix cache keys",
+            "prompt_snippet": "Continue the example task.",
+            "parent_id": null,
+            "agent": {
+              "name": "Codex"
+            },
+            "column": "idle",
+            "stage": "Finished",
+            "stage_since": 1791977580000,
+            "running_since": null,
+            "last_event_at": 1791979155000,
+            "reason": null,
+            "error": null,
+            "last_tool": null,
+            "message_count": 8,
+            "finished_at": 1791977580000,
+            "tokens_total": 31000,
+            "model_ref": "gpt-6.1-sol",
+            "context": {
+              "model": "gpt-6.1-sol",
+              "percent": 18,
+              "used": 18000,
+              "limit": 100000
+            },
+            "branch": "feature/demo-api",
+            "mrs": [],
+            "subagent_count": 0,
+            "subagent_active": 0,
+            "subagent_errors": 0,
+            "subagent_error_notes": [],
+            "children": []
+          }
+        ]
+      }
+    },
+    "agents": [
+      {
+        "name": "build",
+        "working": true,
+        "on_board": true
+      },
+      {
+        "name": "test",
+        "working": true,
+        "on_board": true
+      },
+      {
+        "name": "Codex",
+        "working": true,
+        "on_board": true
+      },
+      {
+        "name": "review",
+        "working": false,
+        "on_board": true
+      }
+    ],
+    "agent_stats": {
+      "working": 3,
+      "resting": 2
+    },
+    "project_count": 2,
+    "generated_at": 1791979200000
+  },
+  "office_usage": {
+    "rows": [
+      {
+        "session_id": "ses_demo_review",
+        "tokens": 92000,
+        "incomplete": false
+      },
+      {
+        "session_id": "ses_demo_search",
+        "tokens": 265000,
+        "incomplete": false
+      },
+      {
+        "session_id": "ses_demo_checks",
+        "tokens": 34000,
+        "incomplete": false
+      },
+      {
+        "session_id": "codex:00000000-0000-4000-8000-000000000001",
+        "tokens": 213000,
+        "incomplete": false
+      },
+      {
+        "session_id": "ses_demo_release",
+        "tokens": 64000,
+        "incomplete": false
+      },
+      {
+        "session_id": "codex:00000000-0000-4000-8000-000000000002",
+        "tokens": 48000,
+        "incomplete": false
+      }
+    ]
+  },
+  "stats": {
+    "filters": {
+      "from": 1791374400000,
+      "to": 1792065600000,
+      "timezone": "UTC",
+      "sources": [],
+      "agents": [],
+      "models": [],
+      "projects": [],
+      "role": "all",
+      "granularity": "day",
+      "period": "7"
+    },
+    "summary": {
+      "tokens": {
+        "total": 2780000,
+        "input": 972999,
+        "cache_read": 500400,
+        "cache_write": 139000,
+        "output": 444800,
+        "reasoning": 556000,
+        "other": 166801
+      },
+      "running_ms": 230400000,
+      "active_ms": 147600000,
+      "tasks": 18,
+      "calls": 134,
+      "turns": 96,
+      "active_days": 7,
+      "cost": null,
+      "cost_calls": 0,
+      "incomplete": false
+    },
+    "previous": {
+      "tokens": {
+        "total": 1910000,
+        "input": 668500,
+        "cache_read": 343800,
+        "cache_write": 95500,
+        "output": 305600,
+        "reasoning": 382000,
+        "other": 114600
+      },
+      "running_ms": 172800000,
+      "active_ms": 126000000,
+      "tasks": 15,
+      "calls": 108,
+      "turns": 74,
+      "active_days": 7,
+      "cost": null,
+      "cost_calls": 0,
+      "incomplete": false
+    },
+    "series": [
+      {
+        "key": "0",
+        "label": "Day 1",
+        "from": 1791460800000,
+        "to": 1791547200000,
+        "tokens": {
+          "total": 210000,
+          "input": 73500,
+          "cache_read": 37800,
+          "cache_write": 10500,
+          "output": 33600,
+          "reasoning": 42000,
+          "other": 12600
+        },
+        "running_ms": 18000000,
+        "active_ms": 11600000,
+        "tasks": 2,
+        "calls": 12,
+        "turns": 8,
+        "active_days": 1,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      },
+      {
+        "key": "1",
+        "label": "Day 2",
+        "from": 1791547200000,
+        "to": 1791633600000,
+        "tokens": {
+          "total": 290000,
+          "input": 101500,
+          "cache_read": 52200,
+          "cache_write": 14500,
+          "output": 46400,
+          "reasoning": 58000,
+          "other": 17400
+        },
+        "running_ms": 21600000,
+        "active_ms": 14500000,
+        "tasks": 3,
+        "calls": 14,
+        "turns": 9,
+        "active_days": 1,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      },
+      {
+        "key": "2",
+        "label": "Day 3",
+        "from": 1791633600000,
+        "to": 1791720000000,
+        "tokens": {
+          "total": 420000,
+          "input": 147000,
+          "cache_read": 75600,
+          "cache_write": 21000,
+          "output": 67200,
+          "reasoning": 84000,
+          "other": 25200
+        },
+        "running_ms": 25200000,
+        "active_ms": 17400000,
+        "tasks": 4,
+        "calls": 16,
+        "turns": 10,
+        "active_days": 1,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      },
+      {
+        "key": "3",
+        "label": "Day 4",
+        "from": 1791720000000,
+        "to": 1791806400000,
+        "tokens": {
+          "total": 320000,
+          "input": 112000,
+          "cache_read": 57600,
+          "cache_write": 16000,
+          "output": 51200,
+          "reasoning": 64000,
+          "other": 19200
+        },
+        "running_ms": 28800000,
+        "active_ms": 20300000,
+        "tasks": 5,
+        "calls": 18,
+        "turns": 11,
+        "active_days": 1,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      },
+      {
+        "key": "4",
+        "label": "Day 5",
+        "from": 1791806400000,
+        "to": 1791892800000,
+        "tokens": {
+          "total": 510000,
+          "input": 178500,
+          "cache_read": 91800,
+          "cache_write": 25500,
+          "output": 81600,
+          "reasoning": 102000,
+          "other": 30600
+        },
+        "running_ms": 32400000,
+        "active_ms": 23200000,
+        "tasks": 6,
+        "calls": 20,
+        "turns": 12,
+        "active_days": 1,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      },
+      {
+        "key": "5",
+        "label": "Day 6",
+        "from": 1791892800000,
+        "to": 1791979200000,
+        "tokens": {
+          "total": 380000,
+          "input": 133000,
+          "cache_read": 68400,
+          "cache_write": 19000,
+          "output": 60800,
+          "reasoning": 76000,
+          "other": 22800
+        },
+        "running_ms": 36000000,
+        "active_ms": 26100000,
+        "tasks": 7,
+        "calls": 22,
+        "turns": 13,
+        "active_days": 1,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      },
+      {
+        "key": "6",
+        "label": "Day 7",
+        "from": 1791979200000,
+        "to": 1792065600000,
+        "tokens": {
+          "total": 650000,
+          "input": 227500,
+          "cache_read": 117000,
+          "cache_write": 32500,
+          "output": 104000,
+          "reasoning": 130000,
+          "other": 39000
+        },
+        "running_ms": 39600000,
+        "active_ms": 29000000,
+        "tasks": 8,
+        "calls": 24,
+        "turns": 14,
+        "active_days": 1,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      }
+    ],
+    "breakdowns": {
+      "source": [
+        {
+          "key": "opencode",
+          "label": "OpenCode",
+          "tokens": {
+            "total": 1690000,
+            "input": 591500,
+            "cache_read": 304200,
+            "cache_write": 84500,
+            "output": 270400,
+            "reasoning": 338000,
+            "other": 101400
+          },
+          "running_ms": 144000000,
+          "active_ms": 100800000.0,
+          "tasks": 12,
+          "calls": 96,
+          "turns": 60,
+          "active_days": 5,
+          "cost": null,
+          "cost_calls": 0,
+          "incomplete": false
+        },
+        {
+          "key": "codex",
+          "label": "Codex CLI",
+          "tokens": {
+            "total": 1090000,
+            "input": 381500,
+            "cache_read": 196200,
+            "cache_write": 54500,
+            "output": 174400,
+            "reasoning": 218000,
+            "other": 65400
+          },
+          "running_ms": 86400000,
+          "active_ms": 60479999.99999999,
+          "tasks": 6,
+          "calls": 48,
+          "turns": 30,
+          "active_days": 5,
+          "cost": null,
+          "cost_calls": 0,
+          "incomplete": false
+        }
+      ],
+      "agent": [
+        {
+          "key": "build",
+          "label": "build",
+          "tokens": {
+            "total": 1210000,
+            "input": 423500,
+            "cache_read": 217800,
+            "cache_write": 60500,
+            "output": 193600,
+            "reasoning": 242000,
+            "other": 72600
+          },
+          "running_ms": 111600000,
+          "active_ms": 78120000.0,
+          "tasks": 8,
+          "calls": 64,
+          "turns": 40,
+          "active_days": 5,
+          "cost": null,
+          "cost_calls": 0,
+          "incomplete": false
+        },
+        {
+          "key": "Codex",
+          "label": "Codex",
+          "tokens": {
+            "total": 1090000,
+            "input": 381500,
+            "cache_read": 196200,
+            "cache_write": 54500,
+            "output": 174400,
+            "reasoning": 218000,
+            "other": 65400
+          },
+          "running_ms": 86400000,
+          "active_ms": 60479999.99999999,
+          "tasks": 6,
+          "calls": 48,
+          "turns": 30,
+          "active_days": 5,
+          "cost": null,
+          "cost_calls": 0,
+          "incomplete": false
+        },
+        {
+          "key": "review",
+          "label": "review",
+          "tokens": {
+            "total": 480000,
+            "input": 168000,
+            "cache_read": 86400,
+            "cache_write": 24000,
+            "output": 76800,
+            "reasoning": 96000,
+            "other": 28800
+          },
+          "running_ms": 32400000,
+          "active_ms": 22680000.0,
+          "tasks": 4,
+          "calls": 32,
+          "turns": 20,
+          "active_days": 5,
+          "cost": null,
+          "cost_calls": 0,
+          "incomplete": false
+        }
+      ],
+      "model": [
+        {
+          "key": "gpt-6.1-sol",
+          "label": "gpt-6.1-sol",
+          "tokens": {
+            "total": 1570000,
+            "input": 549500,
+            "cache_read": 282600,
+            "cache_write": 78500,
+            "output": 251200,
+            "reasoning": 314000,
+            "other": 94200
+          },
+          "running_ms": 126000000,
+          "active_ms": 88200000.0,
+          "tasks": 10,
+          "calls": 80,
+          "turns": 50,
+          "active_days": 5,
+          "cost": null,
+          "cost_calls": 0,
+          "incomplete": false
+        },
+        {
+          "key": "glm-5.3",
+          "label": "glm-5.3",
+          "tokens": {
+            "total": 1210000,
+            "input": 423500,
+            "cache_read": 217800,
+            "cache_write": 60500,
+            "output": 193600,
+            "reasoning": 242000,
+            "other": 72600
+          },
+          "running_ms": 104400000,
+          "active_ms": 73080000.0,
+          "tasks": 8,
+          "calls": 64,
+          "turns": 40,
+          "active_days": 5,
+          "cost": null,
+          "cost_calls": 0,
+          "incomplete": false
+        }
+      ],
+      "project": [
+        {
+          "key": "/Users/demo/Projects/aurora",
+          "label": "/Users/demo/Projects/aurora",
+          "tokens": {
+            "total": 1510000,
+            "input": 528500,
+            "cache_read": 271800,
+            "cache_write": 75500,
+            "output": 241600,
+            "reasoning": 302000,
+            "other": 90600
+          },
+          "running_ms": 122400000,
+          "active_ms": 85680000.0,
+          "tasks": 10,
+          "calls": 80,
+          "turns": 50,
+          "active_days": 5,
+          "cost": null,
+          "cost_calls": 0,
+          "incomplete": false
+        },
+        {
+          "key": "/Users/demo/Projects/atlas",
+          "label": "/Users/demo/Projects/atlas",
+          "tokens": {
+            "total": 1270000,
+            "input": 444500,
+            "cache_read": 228600,
+            "cache_write": 63500,
+            "output": 203200,
+            "reasoning": 254000,
+            "other": 76200
+          },
+          "running_ms": 108000000,
+          "active_ms": 75600000.0,
+          "tasks": 8,
+          "calls": 64,
+          "turns": 40,
+          "active_days": 5,
+          "cost": null,
+          "cost_calls": 0,
+          "incomplete": false
+        }
+      ]
+    },
+    "facets": {
+      "sources": [
+        "opencode",
+        "codex"
+      ],
+      "agents": [
+        "build",
+        "test",
+        "review",
+        "Codex"
+      ],
+      "models": [
+        "glm-5.3",
+        "gpt-6.1-sol"
+      ],
+      "projects": [
+        "/Users/demo/Projects/aurora",
+        "/Users/demo/Projects/atlas"
+      ]
+    },
+    "heatmap": [
+      {
+        "weekday": 0,
+        "hour": 9,
+        "running_ms": 1500000,
+        "active_ms": 360000
+      },
+      {
+        "weekday": 0,
+        "hour": 10,
+        "running_ms": 300000,
+        "active_ms": 540000
+      },
+      {
+        "weekday": 0,
+        "hour": 11,
+        "running_ms": 600000,
+        "active_ms": 720000
+      },
+      {
+        "weekday": 0,
+        "hour": 13,
+        "running_ms": 1200000,
+        "active_ms": 360000
+      },
+      {
+        "weekday": 0,
+        "hour": 14,
+        "running_ms": 1500000,
+        "active_ms": 540000
+      },
+      {
+        "weekday": 0,
+        "hour": 15,
+        "running_ms": 300000,
+        "active_ms": 720000
+      },
+      {
+        "weekday": 0,
+        "hour": 16,
+        "running_ms": 600000,
+        "active_ms": 180000
+      },
+      {
+        "weekday": 1,
+        "hour": 9,
+        "running_ms": 1800000,
+        "active_ms": 540000
+      },
+      {
+        "weekday": 1,
+        "hour": 10,
+        "running_ms": 600000,
+        "active_ms": 720000
+      },
+      {
+        "weekday": 1,
+        "hour": 11,
+        "running_ms": 900000,
+        "active_ms": 900000
+      },
+      {
+        "weekday": 1,
+        "hour": 13,
+        "running_ms": 1500000,
+        "active_ms": 540000
+      },
+      {
+        "weekday": 1,
+        "hour": 14,
+        "running_ms": 1800000,
+        "active_ms": 720000
+      },
+      {
+        "weekday": 1,
+        "hour": 15,
+        "running_ms": 600000,
+        "active_ms": 900000
+      },
+      {
+        "weekday": 1,
+        "hour": 16,
+        "running_ms": 900000,
+        "active_ms": 360000
+      },
+      {
+        "weekday": 2,
+        "hour": 9,
+        "running_ms": 2100000,
+        "active_ms": 720000
+      },
+      {
+        "weekday": 2,
+        "hour": 10,
+        "running_ms": 900000,
+        "active_ms": 900000
+      },
+      {
+        "weekday": 2,
+        "hour": 11,
+        "running_ms": 1200000,
+        "active_ms": 1080000
+      },
+      {
+        "weekday": 2,
+        "hour": 13,
+        "running_ms": 1800000,
+        "active_ms": 720000
+      },
+      {
+        "weekday": 2,
+        "hour": 14,
+        "running_ms": 2100000,
+        "active_ms": 900000
+      },
+      {
+        "weekday": 2,
+        "hour": 15,
+        "running_ms": 900000,
+        "active_ms": 1080000
+      },
+      {
+        "weekday": 2,
+        "hour": 16,
+        "running_ms": 1200000,
+        "active_ms": 540000
+      },
+      {
+        "weekday": 3,
+        "hour": 9,
+        "running_ms": 2400000,
+        "active_ms": 900000
+      },
+      {
+        "weekday": 3,
+        "hour": 10,
+        "running_ms": 1200000,
+        "active_ms": 1080000
+      },
+      {
+        "weekday": 3,
+        "hour": 11,
+        "running_ms": 1500000,
+        "active_ms": 1260000
+      },
+      {
+        "weekday": 3,
+        "hour": 13,
+        "running_ms": 2100000,
+        "active_ms": 900000
+      },
+      {
+        "weekday": 3,
+        "hour": 14,
+        "running_ms": 2400000,
+        "active_ms": 1080000
+      },
+      {
+        "weekday": 3,
+        "hour": 15,
+        "running_ms": 1200000,
+        "active_ms": 1260000
+      },
+      {
+        "weekday": 3,
+        "hour": 16,
+        "running_ms": 1500000,
+        "active_ms": 720000
+      },
+      {
+        "weekday": 4,
+        "hour": 9,
+        "running_ms": 2700000,
+        "active_ms": 1080000
+      },
+      {
+        "weekday": 4,
+        "hour": 10,
+        "running_ms": 1500000,
+        "active_ms": 1260000
+      },
+      {
+        "weekday": 4,
+        "hour": 11,
+        "running_ms": 1800000,
+        "active_ms": 1440000
+      },
+      {
+        "weekday": 4,
+        "hour": 13,
+        "running_ms": 2400000,
+        "active_ms": 1080000
+      },
+      {
+        "weekday": 4,
+        "hour": 14,
+        "running_ms": 2700000,
+        "active_ms": 1260000
+      },
+      {
+        "weekday": 4,
+        "hour": 15,
+        "running_ms": 1500000,
+        "active_ms": 1440000
+      },
+      {
+        "weekday": 4,
+        "hour": 16,
+        "running_ms": 1800000,
+        "active_ms": 900000
+      }
+    ],
+    "scatter": [
+      {
+        "id": "ses_demo_search",
+        "source": "opencode",
+        "title": "Implement search API",
+        "directory": "/Users/demo/Projects/atlas",
+        "agents": [
+          "build",
+          "test"
+        ],
+        "models": [
+          "glm-5.3"
+        ],
+        "subagents": 1,
+        "last_at": 1791979155000,
+        "tokens": {
+          "total": 760000,
+          "input": 266000,
+          "cache_read": 136800,
+          "cache_write": 38000,
+          "output": 121600,
+          "reasoning": 152000,
+          "other": 45600
+        },
+        "running_ms": 64800000,
+        "active_ms": 46800000,
+        "tasks": 1,
+        "calls": 35,
+        "turns": 26,
+        "active_days": 4,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      },
+      {
+        "id": "codex:00000000-0000-4000-8000-000000000001",
+        "source": "codex",
+        "title": "Refine onboarding UI",
+        "directory": "/Users/demo/Projects/aurora",
+        "agents": [
+          "Codex"
+        ],
+        "models": [
+          "gpt-6.1-sol"
+        ],
+        "subagents": 0,
+        "last_at": 1791979155000,
+        "tokens": {
+          "total": 610000,
+          "input": 213500,
+          "cache_read": 109800,
+          "cache_write": 30500,
+          "output": 97600,
+          "reasoning": 122000,
+          "other": 36600
+        },
+        "running_ms": 54000000,
+        "active_ms": 39600000,
+        "tasks": 1,
+        "calls": 29,
+        "turns": 20,
+        "active_days": 3,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      },
+      {
+        "id": "ses_demo_review",
+        "source": "opencode",
+        "title": "Review database migration",
+        "directory": "/Users/demo/Projects/aurora",
+        "agents": [
+          "review"
+        ],
+        "models": [
+          "gpt-6.1-sol"
+        ],
+        "subagents": 0,
+        "last_at": 1791979155000,
+        "tokens": {
+          "total": 420000,
+          "input": 147000,
+          "cache_read": 75600,
+          "cache_write": 21000,
+          "output": 67200,
+          "reasoning": 84000,
+          "other": 25200
+        },
+        "running_ms": 32400000,
+        "active_ms": 25200000,
+        "tasks": 1,
+        "calls": 20,
+        "turns": 14,
+        "active_days": 2,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      }
+    ],
+    "observation_since": 1791374400000,
+    "undated_calls": 0,
+    "sources": [
+      {
+        "source": "opencode",
+        "state": "ready",
+        "indexed": 12,
+        "total": 12,
+        "updated_at": 1791979200000,
+        "skipped": 0,
+        "message": null
+      },
+      {
+        "source": "codex",
+        "state": "ready",
+        "indexed": 6,
+        "total": 6,
+        "updated_at": 1791979200000,
+        "skipped": 0,
+        "message": null
+      }
+    ],
+    "generated_at": 1791979200000
+  },
+  "stats_sessions": {
+    "rows": [
+      {
+        "id": "ses_demo_search",
+        "source": "opencode",
+        "title": "Implement search API",
+        "directory": "/Users/demo/Projects/atlas",
+        "agents": [
+          "build",
+          "test"
+        ],
+        "models": [
+          "glm-5.3"
+        ],
+        "subagents": 1,
+        "last_at": 1791979155000,
+        "tokens": {
+          "total": 760000,
+          "input": 266000,
+          "cache_read": 136800,
+          "cache_write": 38000,
+          "output": 121600,
+          "reasoning": 152000,
+          "other": 45600
+        },
+        "running_ms": 64800000,
+        "active_ms": 46800000,
+        "tasks": 1,
+        "calls": 35,
+        "turns": 26,
+        "active_days": 4,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      },
+      {
+        "id": "codex:00000000-0000-4000-8000-000000000001",
+        "source": "codex",
+        "title": "Refine onboarding UI",
+        "directory": "/Users/demo/Projects/aurora",
+        "agents": [
+          "Codex"
+        ],
+        "models": [
+          "gpt-6.1-sol"
+        ],
+        "subagents": 0,
+        "last_at": 1791979155000,
+        "tokens": {
+          "total": 610000,
+          "input": 213500,
+          "cache_read": 109800,
+          "cache_write": 30500,
+          "output": 97600,
+          "reasoning": 122000,
+          "other": 36600
+        },
+        "running_ms": 54000000,
+        "active_ms": 39600000,
+        "tasks": 1,
+        "calls": 29,
+        "turns": 20,
+        "active_days": 3,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      },
+      {
+        "id": "ses_demo_review",
+        "source": "opencode",
+        "title": "Review database migration",
+        "directory": "/Users/demo/Projects/aurora",
+        "agents": [
+          "review"
+        ],
+        "models": [
+          "gpt-6.1-sol"
+        ],
+        "subagents": 0,
+        "last_at": 1791979155000,
+        "tokens": {
+          "total": 420000,
+          "input": 147000,
+          "cache_read": 75600,
+          "cache_write": 21000,
+          "output": 67200,
+          "reasoning": 84000,
+          "other": 25200
+        },
+        "running_ms": 32400000,
+        "active_ms": 25200000,
+        "tasks": 1,
+        "calls": 20,
+        "turns": 14,
+        "active_days": 2,
+        "cost": null,
+        "cost_calls": 0,
+        "incomplete": false
+      }
+    ],
+    "total": 3,
+    "page": 1,
+    "limit": 50
+  },
+  "details": {
+    "source": "opencode",
+    "session_id": "ses_demo_search",
+    "title": "Implement search API",
+    "directory": "/Users/demo/Projects/atlas",
+    "branch": "feature/demo-api",
+    "mrs": [],
+    "messages": [
+      {
+        "role": "user",
+        "agent": null,
+        "created": 1791978780000,
+        "started": null,
+        "completed": null,
+        "duration_ms": null,
+        "model": null,
+        "cost": null,
+        "usage": null,
+        "text": "Please implement the example search endpoint.",
+        "tools": [],
+        "error": null
+      },
+      {
+        "role": "assistant",
+        "agent": "build",
+        "created": 1791978840000,
+        "started": 1791978840000,
+        "completed": 1791979140000,
+        "duration_ms": 300000,
+        "model": "glm-5.3",
+        "cost": null,
+        "usage": null,
+        "text": "The endpoint is ready. I am checking pagination and error handling.",
+        "tools": [
+          {
+            "tool": "bash",
+            "status": "completed",
+            "started": 1791979020000,
+            "ended": 1791979080000,
+            "duration_ms": 60000,
+            "skill_name": null
+          }
+        ],
+        "error": null
+      }
+    ],
+    "models": [],
+    "kanban_history": [],
+    "exists": true
+  }
+}
