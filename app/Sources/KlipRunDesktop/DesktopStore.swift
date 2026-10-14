@@ -1,0 +1,354 @@
+import AppKit
+import Foundation
+import KlipRunCore
+import WebKit
+
+@MainActor
+final class DesktopStore: ObservableObject {
+    @Published private(set) var board: DesktopBoard?
+    @Published var selectedID: String?
+    @Published private(set) var terminalDock = TerminalDockState() {
+        didSet { publishTerminalSelection() }
+    }
+    var selectedTerminalID: Int? { terminalDock.visibleID }
+    @Published var terminalExpanded = false
+    @Published private(set) var interfaceZoom = InterfaceZoom(percent: UserDefaults.standard.integer(forKey: "interface.zoom"))
+    @Published var showingNotificationSettings = false
+    @Published var terminals: [TerminalSession] = []
+    @Published var error: String?
+    let runtime = EngineRuntime()
+    weak var webView: WKWebView?
+
+    private var links: [String: Int32] = [:]
+    private var tracker = NotificationTracker()
+    let notifications = PopupNotifications()
+    private var loop: Task<Void, Never>?
+    private var nextTerminalID = 1
+    private var pendingWebSessionID: String?
+    private var pendingWebPage: String?
+    private var webReady = false
+    private var publishedTerminalSessionID: String?
+    private var terminalSelectionPublished = false
+    private var projectPanel: NSOpenPanel?
+
+    func start() {
+        runtime.start()
+        loop = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.refresh()
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
+    }
+
+    func stop() {
+        loop?.cancel(); loop = nil
+        terminals.forEach { $0.terminate() }
+        runtime.stop()
+    }
+
+    private func refresh() async {
+        guard let baseURL = runtime.baseURL else { error = runtime.error; return }
+        let api = DesktopAPI(baseURL: baseURL, token: runtime.token)
+        do {
+            let (snapshot, notificationSnapshot) = try await api.board()
+            board = snapshot
+            error = nil
+            let linkPayload: TerminalLinks = try await api.get("api/terminal-links")
+            links = Dictionary(uniqueKeysWithValues: linkPayload.links.map { ($0.session_id, $0.pid) })
+            let parents = terminals.contains(where: \.isRunning) ? processParents() : [:]
+            for terminal in terminals where terminal.isRunning {
+                terminal.sessionID = linkPayload.links.first(where: {
+                    ProcessTree.owns(pid: $0.pid, terminalPID: terminal.pid, parents: parents)
+                })?.session_id
+            }
+            publishTerminalSelection()
+            if let selectedID, let terminalID = ownedTerminals()[selectedID] {
+                var dock = terminalDock
+                dock.selectCard(terminalID)
+                if dock != terminalDock { terminalDock = dock }
+            }
+            if NSRunningApplication.runningApplications(withBundleIdentifier: "local.kliprun.notifications").isEmpty {
+                for event in tracker.observe(notificationSnapshot.cards) {
+                    notifications.show(event) { [weak self] in self?.openNotification(event) }
+                }
+            } else { _ = tracker.observe(notificationSnapshot.cards) }
+        } catch {
+            self.error = error.localizedDescription
+            tracker = NotificationTracker()
+        }
+    }
+
+    func selectWebSession(_ id: String?) {
+        selectedID = id
+        guard let id else { return }
+        switch NotificationRoute.resolve(sessionID: id, owned: ownedTerminals()) {
+        case .terminal(_, let terminalID):
+            var dock = terminalDock
+            dock.selectCard(terminalID)
+            terminalDock = dock
+        case .activity: break
+        }
+    }
+
+    func openNotification(_ event: AgentNotification) {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.windows.first(where: { $0.canBecomeKey })?.makeKeyAndOrderFront(nil)
+        selectWebSession(event.sessionID)
+        if let terminalID = ownedTerminals()[event.sessionID] { selectTerminalTab(terminalID) }
+        openInWeb(event.sessionID)
+    }
+
+    func openInWeb(_ id: String) {
+        guard webReady, let webView, let literal = try? String(data: JSONEncoder().encode(id), encoding: .utf8) else {
+            pendingWebSessionID = id; return
+        }
+        let script = "window.history.pushState(null, '', '/?session=' + encodeURIComponent(\(literal))); window.dispatchEvent(new PopStateEvent('popstate'));"
+        webView.evaluateJavaScript(script)
+    }
+
+    func webDidStartLoading() { webReady = false; terminalSelectionPublished = false }
+    func webDidFinishLoading() {
+        webReady = true
+        publishTerminalSelection()
+        if let pendingWebPage { self.pendingWebPage = nil; showPage(pendingWebPage) }
+        if let pendingWebSessionID { self.pendingWebSessionID = nil; openInWeb(pendingWebSessionID) }
+    }
+
+    func showPage(_ path: String) {
+        guard ["/", "/stats", "/office"].contains(path) else { return }
+        terminalExpanded = false
+        guard webReady, let webView else { pendingWebPage = path; return }
+        webView.evaluateJavaScript("window.kliprunPendingNavigation = '\(path)'; window.dispatchEvent(new CustomEvent('kliprun:navigate', { detail: '\(path)' }));")
+    }
+
+    private func publishTerminalSelection() {
+        guard webReady, let webView else { return }
+        let id = terminal(for: selectedTerminalID)?.sessionID
+        guard !terminalSelectionPublished || publishedTerminalSessionID != id else { return }
+        let literal = id.flatMap { try? String(data: JSONEncoder().encode($0), encoding: .utf8) } ?? "null"
+        webView.evaluateJavaScript("window.kliprunTerminalSessionId = \(literal); window.dispatchEvent(new CustomEvent('kliprun:terminal-selection', { detail: \(literal) }));")
+        publishedTerminalSessionID = id
+        terminalSelectionPublished = true
+    }
+
+    func terminal(for id: Int?) -> TerminalSession? { terminals.first { $0.id == id } }
+    var activeTerminalCount: Int { max(terminals.filter(\.isRunning).count, attachedTerminalChildCount()) }
+
+    func launch(source: String) {
+        guard projectPanel == nil, source == "opencode" || source == "codex" else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true; panel.canChooseFiles = false
+        panel.prompt = "Open Project"
+        projectPanel = panel
+        NSApp.activate(ignoringOtherApps: true)
+        let completion: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            Task { @MainActor in
+                guard let self else { return }
+                self.projectPanel = nil
+                guard response == .OK, let directory = panel.url?.path else { return }
+                self.startTerminal(source: source, directory: directory)
+            }
+        }
+        if let window = NSApp.keyWindow ?? NSApp.mainWindow {
+            panel.beginSheetModal(for: window, completionHandler: completion)
+        } else {
+            panel.begin(completionHandler: completion)
+        }
+    }
+
+    func newTerminal() {
+        let directory = terminal(for: terminalDock.preferredID)?.directory ?? FileManager.default.homeDirectoryForCurrentUser.path
+        startTerminal(source: "terminal", directory: directory)
+    }
+
+    func chooseNewTerminal() {
+        guard projectPanel == nil else { return }
+        let alert = NSAlert()
+        alert.messageText = "New Terminal"
+        alert.informativeText = "Choose what to open."
+        alert.addButton(withTitle: "OpenCode")
+        alert.addButton(withTitle: "Codex")
+        alert.addButton(withTitle: "Terminal")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: launch(source: "opencode")
+        case .alertSecondButtonReturn: launch(source: "codex")
+        case .alertThirdButtonReturn: newTerminal()
+        default: break
+        }
+    }
+
+    private func startTerminal(source: String, directory: String) {
+        guard let terminal = TerminalSession(id: nextTerminalID, source: source, directory: directory) else { return }
+        terminal.setZoom(interfaceZoom.factor)
+        nextTerminalID += 1
+        terminals.append(terminal)
+        selectedID = nil
+        var dock = terminalDock
+        dock.show(terminal.id)
+        terminalDock = dock
+    }
+
+    func closeTerminal(_ id: Int) {
+        guard let terminal = terminal(for: id) else { return }
+        if terminal.isRunning {
+            let alert = NSAlert()
+            alert.messageText = "End this agent session?"
+            alert.informativeText = "Closing this tab ends its running process."
+            alert.addButton(withTitle: "End Session"); alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            terminal.terminate()
+        }
+        terminals.removeAll { $0.id == id }
+        var dock = terminalDock
+        dock.remove(id, availableIDs: terminals.map(\.id))
+        terminalDock = dock
+        if terminals.isEmpty { terminalExpanded = false }
+    }
+
+    func selectTerminalTab(_ id: Int) {
+        guard let terminal = terminal(for: id) else { return }
+        var dock = terminalDock
+        dock.show(id)
+        terminalDock = dock
+        selectedID = terminal.sessionID
+    }
+
+    func selectTerminalTab(number: Int) {
+        guard (1...9).contains(number), terminals.count >= number else { return }
+        selectTerminalTab(terminals[number - 1].id)
+    }
+
+    func renameSelectedTerminal() {
+        guard let terminal = terminal(for: selectedTerminalID) else { return }
+        let alert = NSAlert()
+        alert.messageText = "Rename Terminal Tab"
+        alert.informativeText = "Leave the name empty to use the agent's title."
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        field.stringValue = terminal.title
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Rename")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        terminal.rename(field.stringValue)
+    }
+
+    func hideTerminal() {
+        var dock = terminalDock
+        dock.hide()
+        terminalDock = dock
+        terminalExpanded = false
+    }
+
+    func toggleTerminal() {
+        var dock = terminalDock
+        if dock.toggle(availableIDs: terminals.map(\.id)) {
+            terminalDock = dock
+            if dock.visibleID == nil { terminalExpanded = false }
+            return
+        }
+        chooseNewTerminal()
+    }
+
+    func toggleTerminalExpanded() {
+        if selectedTerminalID == nil {
+            var dock = terminalDock
+            guard dock.toggle(availableIDs: terminals.map(\.id)) else { return }
+            terminalDock = dock
+            terminalExpanded = true
+        } else {
+            terminalExpanded.toggle()
+        }
+    }
+
+    func zoomIn() { var zoom = interfaceZoom; zoom.increase(); setZoom(zoom) }
+    func zoomOut() { var zoom = interfaceZoom; zoom.decrease(); setZoom(zoom) }
+    func resetZoom() { var zoom = interfaceZoom; zoom.reset(); setZoom(zoom) }
+
+    private func setZoom(_ zoom: InterfaceZoom) {
+        guard zoom != interfaceZoom else { return }
+        interfaceZoom = zoom
+        UserDefaults.standard.set(zoom.percent, forKey: "interface.zoom")
+        webView?.pageZoom = CGFloat(zoom.factor)
+        terminals.forEach { $0.setZoom(zoom.factor) }
+    }
+
+    func showNotificationSettings() {
+        NSApp.activate(ignoringOtherApps: true)
+        showingNotificationSettings = true
+    }
+
+    func previewNotification() {
+        notifications.preview { [weak self] in
+            self?.showingNotificationSettings = false
+            NSApp.activate(ignoringOtherApps: true)
+            self?.webView?.evaluateJavaScript("window.history.pushState(null, '', '/'); window.dispatchEvent(new PopStateEvent('popstate'));")
+        }
+    }
+
+    func openSelectedInITerm() {
+        guard let selectedID else { return }
+        if let message = ExternalTerminal.open(pid: terminalPID(for: selectedID)) {
+            let alert = NSAlert(); alert.messageText = message; alert.runModal()
+        }
+    }
+
+    private func terminalPID(for sessionID: String) -> Int32? {
+        var id: String? = sessionID
+        while let current = id {
+            if let pid = links[current] { return pid }
+            id = board?.card(current)?.parentID
+        }
+        return nil
+    }
+
+    private func ownedTerminals() -> [String: Int] {
+        var direct: [String: Int] = [:]
+        for terminal in terminals where terminal.isRunning {
+            if let sessionID = terminal.sessionID, direct[sessionID] == nil { direct[sessionID] = terminal.id }
+        }
+        var result = direct
+        for card in board?.cards ?? [] {
+            var ancestor = card.parentID
+            while let id = ancestor {
+                if let terminalID = direct[id] { result[card.id] = terminalID; break }
+                ancestor = board?.card(id)?.parentID
+            }
+        }
+        return result
+    }
+
+    private func processParents() -> [Int32: Int32] {
+        let command = Process()
+        command.executableURL = URL(fileURLWithPath: "/bin/ps")
+        command.arguments = ["-axo", "pid=,ppid="]
+        let pipe = Pipe()
+        command.standardOutput = pipe
+        command.standardError = FileHandle.nullDevice
+        do {
+            try command.run()
+            let output = pipe.fileHandleForReading.readDataToEndOfFile()
+            command.waitUntilExit()
+            return ProcessTree.parents(from: String(decoding: output, as: UTF8.self))
+        } catch { return [:] }
+    }
+
+    private func attachedTerminalChildCount() -> Int {
+        let command = Process()
+        command.executableURL = URL(fileURLWithPath: "/bin/ps")
+        command.arguments = ["-axo", "pid=,ppid=,tty=,command="]
+        let pipe = Pipe()
+        command.standardOutput = pipe
+        command.standardError = FileHandle.nullDevice
+        do {
+            try command.run()
+            let output = pipe.fileHandleForReading.readDataToEndOfFile()
+            command.waitUntilExit()
+            return ProcessTree.terminalChildren(of: ProcessInfo.processInfo.processIdentifier,
+                                                in: String(decoding: output, as: UTF8.self))
+        } catch { return 0 }
+    }
+}
