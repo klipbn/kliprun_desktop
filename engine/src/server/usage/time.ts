@@ -14,7 +14,7 @@ export function dayKey(at: number, timezone: string): string {
   const p = localParts(at, timezone);
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
-function localMidnight(date: Date, timezone: string): number {
+export function localMidnight(date: Date, timezone: string): number {
   const wanted = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
   // Some zones skip midnight. Find the first real instant of the calendar
   // date rather than oscillating between yesterday 23:00 and today 01:00.
@@ -89,7 +89,7 @@ export function parseStatsFilters(url: URL, now = Date.now()): StatsFilters {
   const role = q.get("role") ?? "all";
   const granularity = q.get("granularity") ?? "day";
   const period = q.get("period");
-  if (period && !["today", "yesterday", "7", "30", "month", "all", "custom"].includes(period)) throw new Error("invalid statistics period");
+  if (period && !["today", "yesterday", "7", "30", "90", "month", "all", "custom"].includes(period)) throw new Error("invalid statistics period");
   if (!["all", "roots", "children"].includes(role) || !["day", "week", "month"].includes(granularity)) throw new Error("invalid statistics filter");
   const list = (key: string) => [...new Set(q.getAll(key))].filter(Boolean);
   const sources = list("source");

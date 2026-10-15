@@ -4,11 +4,11 @@ import KlipRunCore
 struct ContentView: View {
     @ObservedObject var store: DesktopStore
     @ObservedObject var runtime: EngineRuntime
-    @State private var preferredTerminalHeight: Double = {
-        let saved = UserDefaults.standard.double(forKey: "terminal.height")
-        return saved > 0 ? saved : 330
-    }()
-    @State private var dragStartHeight: Double?
+    @AppStorage("terminal.position") private var terminalPosition = "bottom"
+    @AppStorage("terminal.height") private var preferredTerminalHeight = 330.0
+    @AppStorage("terminal.width") private var preferredTerminalWidth = 460.0
+    @State private var dragStartExtent: Double?
+    private var terminalOnLeft: Bool { terminalPosition == "left" }
 
     init(store: DesktopStore) {
         self.store = store
@@ -17,19 +17,33 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let dockHeight = store.selectedTerminalID == nil ? 0
-                : TerminalPaneLayout.height(preferred: preferredTerminalHeight,
-                                            available: Double(geometry.size.height), expanded: store.terminalExpanded)
-            VStack(spacing: 0) {
+            let visible = store.selectedTerminalID != nil
+            let dockExtent = visible ? (terminalOnLeft
+                ? TerminalPaneLayout.width(preferred: preferredTerminalWidth, available: geometry.size.width, expanded: store.terminalExpanded)
+                : TerminalPaneLayout.height(preferred: preferredTerminalHeight, available: geometry.size.height, expanded: store.terminalExpanded)) : 0
+            let divider = visible && !store.terminalExpanded ? 10.0 : 0
+            // Keep both hosted views in the same hierarchy when the dock moves.
+            ZStack(alignment: .topLeading) {
                 if runtime.baseURL != nil {
                     KlipRunWebView(store: store, runtime: runtime)
-                        .frame(height: max(0, geometry.size.height - CGFloat(dockHeight)))
+                        .frame(width: max(0, geometry.size.width - (terminalOnLeft ? dockExtent : 0)),
+                               height: max(0, geometry.size.height - (terminalOnLeft ? 0 : dockExtent)))
+                        .offset(x: terminalOnLeft ? dockExtent : 0)
                         .opacity(store.terminalExpanded ? 0 : 1)
                         .allowsHitTesting(!store.terminalExpanded)
                         .accessibilityHidden(store.terminalExpanded)
-                    if store.selectedTerminalID != nil {
-                        if !store.terminalExpanded { resizeHandle(available: Double(geometry.size.height)) }
-                        terminalDock.frame(height: CGFloat(dockHeight) - (store.terminalExpanded ? 0 : 10))
+                    if visible {
+                        terminalDock
+                            .frame(width: terminalOnLeft ? max(0, dockExtent - divider) : geometry.size.width,
+                                   height: terminalOnLeft ? geometry.size.height : max(0, dockExtent - divider))
+                            .offset(y: terminalOnLeft ? 0 : geometry.size.height - dockExtent + divider)
+                        if !store.terminalExpanded {
+                            resizeHandle(available: terminalOnLeft ? geometry.size.width : geometry.size.height)
+                                .frame(width: terminalOnLeft ? divider : geometry.size.width,
+                                       height: terminalOnLeft ? geometry.size.height : divider)
+                                .offset(x: terminalOnLeft ? dockExtent - divider : 0,
+                                        y: terminalOnLeft ? 0 : geometry.size.height - dockExtent)
+                        }
                     }
                 } else {
                     VStack(spacing: 10) {
@@ -38,28 +52,37 @@ struct ContentView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-            }
+            }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
         }
         .frame(minWidth: 980, minHeight: 660)
         .background(Color(red: 13 / 255, green: 17 / 255, blue: 23 / 255))
         .preferredColorScheme(.dark)
+        .onChange(of: terminalPosition) { _ in
+            dragStartExtent = nil
+            store.terminalExpanded = false
+        }
         .sheet(isPresented: $store.showingNotificationSettings) {
             NotificationSettingsView(store: store, notifications: store.notifications)
         }
     }
 
     private func resizeHandle(available: Double) -> some View {
-        TerminalResizeHandle(onDrag: { delta in
-            if dragStartHeight == nil { dragStartHeight = preferredTerminalHeight }
-            preferredTerminalHeight = TerminalPaneLayout.height(
-                preferred: (dragStartHeight ?? preferredTerminalHeight) + Double(delta),
-                available: available, expanded: false)
+        TerminalResizeHandle(axis: terminalOnLeft ? .horizontal : .vertical, onDrag: { delta in
+            if dragStartExtent == nil {
+                dragStartExtent = terminalOnLeft
+                    ? TerminalPaneLayout.width(preferred: preferredTerminalWidth, available: available, expanded: false)
+                    : TerminalPaneLayout.height(preferred: preferredTerminalHeight, available: available, expanded: false)
+            }
+            let preferred = (dragStartExtent ?? 0) + Double(delta)
+            if terminalOnLeft {
+                preferredTerminalWidth = TerminalPaneLayout.width(preferred: preferred, available: available, expanded: false)
+            } else {
+                preferredTerminalHeight = TerminalPaneLayout.height(preferred: preferred, available: available, expanded: false)
+            }
         }, onEnd: {
-            dragStartHeight = nil
-            UserDefaults.standard.set(preferredTerminalHeight, forKey: "terminal.height")
+            dragStartExtent = nil
         })
-            .frame(height: 10)
-            .accessibilityLabel("Resize terminal panel")
+            .accessibilityLabel(terminalOnLeft ? "Resize terminal width" : "Resize terminal height")
     }
 
     private var terminalDock: some View {
@@ -84,15 +107,32 @@ struct ContentView: View {
                     Button("New Codex") { store.launch(source: "codex") }
                 } label: {
                     Image(systemName: "plus").frame(width: 22, height: 22)
-                }.menuStyle(.borderlessButton).help("New terminal tab")
-                Button { store.toggleTerminalExpanded() } label: {
-                    Label(store.terminalExpanded ? "Restore" : "Expand",
-                          systemImage: store.terminalExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .frame(width: 28)
+                .help("New terminal tab")
+                Button { terminalPosition = terminalOnLeft ? "bottom" : "left" } label: {
+                    Image(systemName: terminalOnLeft ? "rectangle.bottomthird.inset.filled" : "sidebar.left")
+                        .frame(width: 22, height: 22)
                 }
                 .buttonStyle(.plain)
-                .help(store.terminalExpanded ? "Show the board above the terminal (⌘↩)" : "Fill the window with the terminal (⌘↩)")
+                .accessibilityIdentifier("terminal-position-toggle")
+                .accessibilityLabel(terminalOnLeft ? "Move terminal to bottom" : "Move terminal to left")
+                .help(terminalOnLeft ? "Move terminal to bottom" : "Move terminal to left")
+                Button { store.toggleTerminalExpanded() } label: {
+                    if terminalOnLeft {
+                        Image(systemName: store.terminalExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    } else {
+                        Label(store.terminalExpanded ? "Restore" : "Expand",
+                          systemImage: store.terminalExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(store.terminalExpanded ? "Restore terminal" : "Expand terminal")
+                .help(store.terminalExpanded ? "Restore terminal panel (⌘↩)" : "Fill the window with the terminal (⌘↩)")
                 Button { store.hideTerminal() } label: {
-                    Image(systemName: "chevron.down")
+                    Image(systemName: terminalOnLeft ? "chevron.left" : "chevron.down")
                 }.buttonStyle(.plain).help("Hide terminal")
             }
             .font(.system(size: CGFloat(11 * store.interfaceZoom.factor)))

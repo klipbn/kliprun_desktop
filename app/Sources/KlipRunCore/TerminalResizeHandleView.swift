@@ -1,9 +1,18 @@
 import AppKit
 
 @MainActor public final class TerminalResizeHandleView: NSView {
+    public enum Axis { case horizontal, vertical }
+    public var axis: Axis = .vertical {
+        didSet {
+            guard axis != oldValue else { return }
+            startScreenPoint = nil
+            window?.invalidateCursorRects(for: self)
+            needsDisplay = true
+        }
+    }
     public var onDrag: (CGFloat) -> Void = { _ in }
     public var onEnd: () -> Void = {}
-    private var startScreenY: CGFloat?
+    private var startScreenPoint: NSPoint?
     private var hovered = false
     private var tracking: NSTrackingArea?
 
@@ -11,7 +20,7 @@ import AppKit
     public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     public override func resetCursorRects() {
-        addCursorRect(bounds, cursor: .resizeUpDown)
+        addCursorRect(bounds, cursor: axis == .horizontal ? .resizeLeftRight : .resizeUpDown)
     }
 
     public override func updateTrackingAreas() {
@@ -27,29 +36,34 @@ import AppKit
 
     public override func mouseDown(with event: NSEvent) {
         guard let window else { return }
-        startScreenY = window.convertPoint(toScreen: event.locationInWindow).y
+        startScreenPoint = window.convertPoint(toScreen: event.locationInWindow)
         needsDisplay = true
     }
 
     public override func mouseDragged(with event: NSEvent) {
-        guard let window, let startScreenY else { return }
-        onDrag(window.convertPoint(toScreen: event.locationInWindow).y - startScreenY)
+        guard let window, let startScreenPoint else { return }
+        let point = window.convertPoint(toScreen: event.locationInWindow)
+        onDrag(axis == .horizontal ? point.x - startScreenPoint.x : point.y - startScreenPoint.y)
     }
 
     public override func mouseUp(with event: NSEvent) {
-        guard startScreenY != nil else { return }
-        startScreenY = nil
+        guard startScreenPoint != nil else { return }
+        startScreenPoint = nil
         needsDisplay = true
         onEnd()
     }
 
     public override func draw(_ dirtyRect: NSRect) {
-        let active = hovered || startScreenY != nil
+        let active = hovered || startScreenPoint != nil
         if active {
             NSColor.controlAccentColor.withAlphaComponent(0.10).setFill()
             bounds.fill()
         }
         (active ? NSColor.controlAccentColor : NSColor(srgbRed: 48 / 255, green: 54 / 255, blue: 61 / 255, alpha: 1)).setFill()
-        NSRect(x: 0, y: (bounds.height - 2) / 2, width: bounds.width, height: 2).fill()
+        if axis == .horizontal {
+            NSRect(x: (bounds.width - 2) / 2, y: 0, width: 2, height: bounds.height).fill()
+        } else {
+            NSRect(x: 0, y: (bounds.height - 2) / 2, width: bounds.width, height: 2).fill()
+        }
     }
 }

@@ -1,5 +1,5 @@
 import type { StatsDashboardPayload, StatsFilters, StatsSessionPayload, StatsSessionRow, StatsSessionsPayload, UsageAttribution, UsageEvent, UsageImportStatus, UsageInterval, UsageMetrics, UsageSession, UsageTokens } from "@shared/usage";
-import { bucketBoundaries, dayKey, localParts, previousPeriod } from "./time";
+import { bucketBoundaries, dayKey, localMidnight, localParts, previousPeriod } from "./time";
 
 export interface UsageDataset {
   sessions: UsageSession[];
@@ -136,6 +136,27 @@ export function rankSessions(data: UsageDataset, filters: StatsFilters, sort: st
   rows.sort((a, b) => (sort === "tokens" ? b.tokens.total - a.tokens.total : sort === "turns" ? b.turns - a.turns : (b.running_ms ?? -1) - (a.running_ms ?? -1)) || b.tokens.total - a.tokens.total || a.id.localeCompare(b.id));
   return { rows: rows.slice((page - 1) * limit, page * limit), total: rows.length, page, limit };
 }
+function tokenBuckets(items: Contribution[], from: number, to: number, timezone: string, granularity: "day" | "week", now: number) {
+  const buckets = bucketBoundaries(from, to, timezone, granularity).map(bound => {
+    const date = new Date(`${bound.key}T00:00:00Z`);
+    const start = localMidnight(date, timezone);
+    date.setUTCDate(date.getUTCDate() + (granularity === "week" ? 7 : 1));
+    const end = localMidnight(date, timezone);
+    return { key: bound.key, from: bound.from, to: bound.to, tokens: emptyTokens(), calls: 0, incomplete: false,
+      partial: bound.from > start || bound.to < end || now < bound.to };
+  });
+  for (const { event } of items) {
+    if (!event || event.kind !== "usage" || event.at === null) continue;
+    let lo = 0, hi = buckets.length;
+    while (lo < hi) { const mid = (lo + hi) >>> 1; if (buckets[mid].to <= event.at) lo = mid + 1; else hi = mid; }
+    const bucket = buckets[lo];
+    if (!bucket || event.at < bucket.from) continue;
+    bucket.calls++;
+    bucket.incomplete ||= event.incomplete || event.tokens === null;
+    if (event.tokens) for (const key of Object.keys(bucket.tokens) as Array<keyof UsageTokens>) bucket.tokens[key] += event.tokens[key];
+  }
+  return buckets;
+}
 export function buildDashboard(data: UsageDataset, filters: StatsFilters, now = Date.now()): StatsDashboardPayload {
   const items = contributions(data, filters);
   const previous = contributions(data, { ...filters, ...previousPeriod(filters, now) });
@@ -181,6 +202,8 @@ export function buildDashboard(data: UsageDataset, filters: StatsFilters, now = 
     breakdowns: { source: groups(items, "source", filters.timezone), agent: groups(items, "agent", filters.timezone), model: groups(items, "model", filters.timezone), project: groups(items, "project", filters.timezone) },
     facets: { sources: unique(data.sessions.map(s => s.source)), agents: unique(allItems.map(i => i.agent ?? UNKNOWN)), models: unique(allItems.map(i => i.model ?? UNKNOWN)), projects: unique(data.sessions.map(s => s.directory)) },
     heatmap: heat.map(({ ranges, ...cell }) => ({ ...cell, active_ms: unionDuration(ranges) })),
+    token_activity: { daily: tokenBuckets(items, extentFrom, filters.to, filters.timezone, "day", now),
+      weekly: tokenBuckets(items, extentFrom, filters.to, filters.timezone, "week", now) },
     scatter: sessionRows(data, items, filters.timezone).filter(r => r.running_ms !== null).sort((a, b) => b.tokens.total - a.tokens.total).slice(0, 200),
     observation_since: observationSince, undated_calls: items.filter(i => i.event?.kind === "usage" && i.event.at === null).length,
     sources: data.sources, generated_at: now,

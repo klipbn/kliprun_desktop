@@ -60,7 +60,7 @@ export interface StatsFilters {
   projects: string[];
   role: "all" | "roots" | "children";
   granularity: "day" | "week" | "month";
-  period?: "today" | "yesterday" | "7" | "30" | "month" | "all" | "custom";
+  period?: "today" | "yesterday" | "7" | "30" | "90" | "month" | "all" | "custom";
 }
 export interface UsageMetrics {
   tokens: UsageTokens;
@@ -87,6 +87,15 @@ export interface StatsSessionRow extends UsageMetrics {
 export interface StatsBreakdown extends UsageMetrics { key: string; label: string }
 export interface StatsBucket extends UsageMetrics { key: string; label: string; from: number; to: number }
 export interface StatsHeatCell { weekday: number; hour: number; running_ms: number; active_ms: number }
+export interface StatsTokenBucket {
+  key: string;
+  from: number;
+  to: number;
+  tokens: UsageTokens;
+  calls: number;
+  incomplete: boolean;
+  partial: boolean;
+}
 export interface UsageImportStatus {
   source: SessionSource;
   state: "loading" | "ready" | "unavailable";
@@ -104,6 +113,7 @@ export interface StatsDashboardPayload {
   breakdowns: Record<"source" | "agent" | "model" | "project", StatsBreakdown[]>;
   facets: Record<"sources" | "agents" | "models" | "projects", string[]>;
   heatmap: StatsHeatCell[];
+  token_activity: { daily: StatsTokenBucket[]; weekly: StatsTokenBucket[] };
   scatter: StatsSessionRow[];
   observation_since: number | null;
   undated_calls: number;

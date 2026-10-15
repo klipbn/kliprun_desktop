@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 import WebKit
+import UniformTypeIdentifiers
+import KlipRunCore
 
 struct KlipRunWebView: NSViewRepresentable {
     let store: DesktopStore
@@ -17,6 +19,7 @@ struct KlipRunWebView: NSViewRepresentable {
         let collapsed = UserDefaults.standard.bool(forKey: "recentSessions.collapsed")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.kliprunRecentSessionsCollapsed = \(collapsed);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "desktopAction")
+        configuration.userContentController.add(context.coordinator, name: "exportStatistics")
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
@@ -42,6 +45,7 @@ struct KlipRunWebView: NSViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "sessionResume")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "recentSessionsCollapsed")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "desktopAction")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "exportStatistics")
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
     }
@@ -49,11 +53,20 @@ struct KlipRunWebView: NSViewRepresentable {
     @MainActor final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         let store: DesktopStore
         var loadedBaseURL: URL?
+        private var exportPanel: NSSavePanel?
 
         init(store: DesktopStore) { self.store = store }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            if message.name == "sessionSelected" {
+            if message.name == "exportStatistics",
+               message.frameInfo.isMainFrame,
+               message.frameInfo.securityOrigin.host == "127.0.0.1",
+               message.frameInfo.securityOrigin.port == loadedBaseURL?.port,
+               let body = message.body as? [String: String],
+               let filename = body["filename"], let content = body["content"],
+               let request = StatisticsExport(filename: filename, content: content) {
+                saveStatistics(request, webView: message.webView)
+            } else if message.name == "sessionSelected" {
                 store.selectWebSession(message.body as? String)
             } else if message.name == "sessionResume", let id = message.body as? String {
                 store.resumeSession(id)
@@ -69,6 +82,23 @@ struct KlipRunWebView: NSViewRepresentable {
                 default: break
                 }
             }
+        }
+
+        private func saveStatistics(_ request: StatisticsExport, webView: WKWebView?) {
+            guard exportPanel == nil else { return }
+            let panel = NSSavePanel()
+            panel.nameFieldStringValue = request.filename
+            panel.allowedContentTypes = [.commaSeparatedText]
+            panel.message = "Save daily token usage for the selected filters."
+            exportPanel = panel
+            let completion: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+                self?.exportPanel = nil
+                guard response == .OK, let url = panel.url else { return }
+                do { try request.data.write(to: url, options: .atomic) }
+                catch { NSAlert(error: error).runModal() }
+            }
+            if let window = webView?.window { panel.beginSheetModal(for: window, completionHandler: completion) }
+            else { panel.begin(completionHandler: completion) }
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

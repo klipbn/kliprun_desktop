@@ -13,6 +13,7 @@ import { availableLoopbackPort } from "./desktopPort";
 import { closeAllSSEConnections, registerStreamRoute } from "./routes/stream";
 import { checkDbExists, getDbPath } from "./storage/db";
 import { StatsService, registerStatsRoutes } from "./usage/service";
+import { QuotaService, registerQuotaRoutes } from "./quota";
 
 function resolvePort(args: string[]): number {
   const flagIndex = args.indexOf("--port");
@@ -56,6 +57,7 @@ registerSessionRoute(app, service);
 registerTerminalLinksRoute(app, service);
 registerStreamRoute(app, watcher, service);
 registerStatsRoutes(app, statistics);
+registerQuotaRoutes(app, new QuotaService());
 
 app.use("*", serveStatic({ root: "./src/client/dist" }));
 app.use("*", serveStatic({ path: "./src/client/dist/index.html" }));

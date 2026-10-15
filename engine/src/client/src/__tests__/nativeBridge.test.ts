@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection } from "../nativeBridge";
+import { exportStatisticsCSV, notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection } from "../nativeBridge";
 
 test("reports the exact selected session to the desktop shell", () => {
   const received: Array<string | null> = [];
@@ -11,6 +11,16 @@ test("reports closing the session details", () => {
   const received: Array<string | null> = [];
   notifyNativeSelection(null, { webkit: { messageHandlers: { sessionSelected: { postMessage: value => received.push(value) } } } });
   expect(received).toEqual([null]);
+});
+
+test("CSV export sends exact contents to the native save dialog and falls back in a browser", () => {
+  const received: unknown[] = [];
+  const content = "date,total\r\n2026-10-15,1234567\r\n";
+  expect(exportStatisticsCSV("kliprun-tokens-demo.csv", content, { webkit: { messageHandlers: {
+    exportStatistics: { postMessage: value => received.push(value) },
+  } } })).toBe(true);
+  expect(received).toEqual([{ filename: "kliprun-tokens-demo.csv", content }]);
+  expect(exportStatisticsCSV("kliprun-tokens-demo.csv", content, {})).toBe(false);
 });
 
 test("tracks the terminal selected by the native dock independently of details", () => {

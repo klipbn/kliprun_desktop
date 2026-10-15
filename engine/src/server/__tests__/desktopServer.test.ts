@@ -29,6 +29,11 @@ for (const { name, root, binary } of variants) test(`${name} desktop server requ
       throw new Error(`Server did not start (exit ${child.exitCode}): stdout=${await new Response(child.stdout).text()} stderr=${await new Response(child.stderr).text()}`);
     }
     expect(response?.status).toBe(401);
+    const quotaURL = `http://127.0.0.1:${port}/api/quota/codex`;
+    expect((await fetch(quotaURL)).status).toBe(401);
+    const quota = await fetch(quotaURL, { headers: { Authorization: "Bearer testtoken" } });
+    expect(quota.headers.get("content-type")).toContain("application/json");
+    expect(await quota.json()).toMatchObject({ provider: "codex", status: "not_configured", limits: [] });
     const board = await fetch(url, { headers: { Authorization: "Bearer testtoken" } });
     expect(board.status).toBe(200);
     expect((await board.json() as { columns: unknown }).columns).toBeDefined();
@@ -36,7 +41,10 @@ for (const { name, root, binary } of variants) test(`${name} desktop server requ
     expect(links.status).toBe(200);
     const stats = await fetch(`http://127.0.0.1:${port}/api/stats?from=1&to=2&timezone=UTC&period=custom`, { headers: { Authorization: "Bearer testtoken" } });
     expect(stats.status).toBe(200);
-    expect((await stats.json() as { summary: unknown }).summary).toBeDefined();
+    const statsPayload = await stats.json() as { summary: unknown; token_activity: { daily: unknown[]; weekly: unknown[] } };
+    expect(statsPayload.summary).toBeDefined();
+    expect(statsPayload.token_activity.daily).toHaveLength(1);
+    expect(statsPayload.token_activity.weekly).toHaveLength(1);
     const login = await fetch(`http://127.0.0.1:${port}/_desktop/auth?token=testtoken`, { redirect: "manual" });
     expect(login.status).toBe(302);
     const cookie = login.headers.get("set-cookie")?.split(";")[0];

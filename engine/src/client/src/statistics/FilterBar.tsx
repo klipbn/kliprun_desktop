@@ -5,7 +5,7 @@ import { calendarPeriod, dateRange, dateText, toggleValue, type Preset } from ".
 import { projectName, readable, sourceName } from "./format";
 
 export const PRESETS: Array<{ key: Preset; label: string }> = [
-  { key: "today", label: "Today" }, { key: "yesterday", label: "Yesterday" }, { key: "7", label: "Last 7 days" }, { key: "30", label: "Last 30 days" }, { key: "month", label: "This month" }, { key: "all", label: "All time" }, { key: "custom", label: "Custom range" },
+  { key: "today", label: "Today" }, { key: "yesterday", label: "Yesterday" }, { key: "7", label: "Last 7 days" }, { key: "30", label: "Last 30 days" }, { key: "90", label: "Last 90 days" }, { key: "month", label: "This month" }, { key: "all", label: "All time" }, { key: "custom", label: "Custom range" },
 ];
 function FacetPicker({ label, options, selected, onChange, display = readable }: { label: string; options: string[]; selected: string[]; onChange: (values: string[]) => void; display?: (value: string) => string }) {
   const [search, setSearch] = useState("");

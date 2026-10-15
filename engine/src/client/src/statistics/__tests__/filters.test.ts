@@ -2,6 +2,13 @@ import { describe, expect, test } from "bun:test";
 import { calendarPeriod, dateRange, parseFilters, refreshRelativeFilters, serializeFilters } from "../filters";
 
 describe("statistics calendar periods", () => {
+  test("ninety days includes today and survives a saved relative URL", () => {
+    const now = Date.parse("2026-10-07T10:00:00Z");
+    expect(calendarPeriod("90", now, "UTC")).toEqual({ from: Date.parse("2026-07-10T00:00:00Z"), to: Date.parse("2026-10-08T00:00:00Z") });
+    const parsed = parseFilters("?period=90&timezone=UTC&model=openai%2Fa", now);
+    expect(parsed.from).toBe(Date.parse("2026-07-10T00:00:00Z"));
+    expect(parsed.models).toEqual(["openai/a"]);
+  });
   test("seven days includes today and uses calendar boundaries across DST", () => {
     const range = calendarPeriod("7", Date.parse("2026-11-03T18:00:00Z"), "America/New_York");
     expect(range.from).toBe(Date.parse("2026-10-28T04:00:00Z"));
@@ -38,7 +45,7 @@ describe("statistics URL filters", () => {
   });
   test("invalid ranges and enums fall back without retaining invalid selections", () => {
     const filters = parseFilters("?from=Infinity&to=-1&role=admin&source=codex&source=other&granularity=year", Date.parse("2026-10-07T10:00:00Z"), "Europe/Moscow");
-    expect(filters.from).toBe(Date.parse("2026-09-30T21:00:00Z"));
+    expect(filters.from).toBe(Date.parse("2026-09-07T21:00:00Z"));
     expect(filters.to).toBe(Date.parse("2026-10-07T21:00:00Z"));
     expect(filters.role).toBe("all");
     expect(filters.granularity).toBe("day");

@@ -4,8 +4,26 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-10-15
+
+### Added
+
+- Terminal toolbar button to dock the panel on the left or bottom, with a draggable divider and independently remembered width and height. Moving the panel preserves the terminal and web view.
+- Expanded Statistics with Daily/Weekly token heatmaps, token-type switching, token composition and cache ratio, peak-day and leading-model/project highlights, drill-down with return to the previous range, section navigation, and a 90-day period.
+- Daily statistics CSV export through a native macOS save dialog, including exact token components and data-quality flags. Statistics now opens on 30 days and ranks tasks by tokens, with model calls and tokens per call shown in the table.
+- Kanban navigation button next to Statistics and active-terminal highlighting for Office coworkers.
+- Usage tab next to Office with Control+4, remaining subscription limits for OpenAI via OpenCode and Codex, Z.ai, and Kimi, provider availability, low-balance indicators, and upcoming resets.
+- Read-only provider quota requests using existing local agent sign-ins, independent loading, automatic refresh, and explicitly marked cached balances when a provider is unavailable.
+
+### Fixed
+
+- Keep the terminal panel's new-tab menu in the right-hand control group instead of stretching its plus button into the middle.
+- Start divider drags from the visible panel edge after the window is narrowed.
+
 ### Documentation
 
+- Document subscription limits, expanded statistics, and left/bottom terminal docking.
+- Add Daily/Weekly Statistics and Usage screenshots generated from fictional data.
 - Show the Recent Sessions sidebar and session continuation controls in the README with a screenshot generated from fictional data.
 
 ## [0.0.2] - 2026-10-15
@@ -55,4 +73,5 @@ First public macOS release.
 
 [0.0.1]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.1
 [0.0.2]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.2
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.2...main
+[0.0.3]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.3
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.3...main
