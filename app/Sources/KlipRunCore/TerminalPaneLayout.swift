@@ -1,4 +1,12 @@
 public enum TerminalPaneLayout {
+    public static func width(preferred: Double, available: Double, expanded: Bool) -> Double {
+        let space = max(0, available)
+        if expanded { return space }
+        let minimum = min(360, space)
+        let maximum = max(minimum, space - 520)
+        return min(max(preferred.isFinite ? preferred : 460, minimum), maximum)
+    }
+
     public static func height(preferred: Double, available: Double, expanded: Bool) -> Double {
         let space = max(0, available)
         if expanded { return space }

@@ -29,3 +29,29 @@ import Testing
     #expect(abs(lastDelta - 100) < 1)
     window.orderOut(nil)
 }
+
+@MainActor @Test func leftTerminalDividerTracksHorizontalDragsWithoutAccumulatingMovement() {
+    let window = NSPanel(contentRect: NSRect(x: 100, y: 100, width: 600, height: 400),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
+    let handle = TerminalResizeHandleView(frame: NSRect(x: 200, y: 0, width: 10, height: 400))
+    handle.axis = .horizontal
+    window.contentView?.addSubview(handle)
+    window.orderFrontRegardless()
+    var lastDelta: CGFloat = 0
+    var ended = false
+    handle.onDrag = { delta in lastDelta = delta; handle.frame.origin.x = 200 + delta }
+    handle.onEnd = { ended = true }
+    let start = window.convertPoint(toScreen: NSPoint(x: 205, y: 200))
+    func event(_ type: NSEvent.EventType, _ dx: CGFloat) -> NSEvent {
+        NSEvent.mouseEvent(with: type, location: window.convertPoint(fromScreen: NSPoint(x: start.x + dx, y: start.y)),
+                          modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                          windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
+    }
+    handle.mouseDown(with: event(.leftMouseDown, 0))
+    handle.mouseDragged(with: event(.leftMouseDragged, 40))
+    handle.mouseDragged(with: event(.leftMouseDragged, 100))
+    handle.mouseUp(with: event(.leftMouseUp, 100))
+    #expect(abs(lastDelta - 100) < 1)
+    #expect(ended)
+    window.orderOut(nil)
+}
