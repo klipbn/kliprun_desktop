@@ -6,7 +6,7 @@ const root = fileURLToPath(new URL("../../", import.meta.url));
 const fixture = await Bun.file(join(root, "docs/screenshots/mock-api.json")).json();
 const build = join(root, "engine/src/client/dist");
 const requests: string[] = [];
-const clock = `<script>const OriginalDate = Date; window.Date = class extends OriginalDate { constructor(...args) { super(...(args.length ? args : [${fixture.board.generated_at}])); } static now() { return ${fixture.board.generated_at}; } }; window.webkit = { messageHandlers: { desktopAction: {postMessage(){}}, sessionSelected: {postMessage(){}} } };</script>`;
+const clock = `<script>const OriginalDate = Date; window.Date = class extends OriginalDate { constructor(...args) { super(...(args.length ? args : [${fixture.board.generated_at}])); } static now() { return ${fixture.board.generated_at}; } }; window.kliprunCardPriorities = ${JSON.stringify(fixture.card_priorities)}; window.kliprunPreferences = { detailTab: "agent-text", reduceMotion: true }; window.webkit = { messageHandlers: { desktopAction: {postMessage(){}}, sessionSelected: {postMessage(){}} } };</script>`;
 const server = Bun.serve({ hostname: "127.0.0.1", port: 18796, idleTimeout: 0, async fetch(request) {
   const url = new URL(request.url), path = url.pathname;
   if (path === "/__preview/requests") return Response.json(requests);

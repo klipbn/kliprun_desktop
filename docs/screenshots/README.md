@@ -1,25 +1,23 @@
 # Demo screenshots
 
-These images show the real KlipRun web interface with **fictional data** from [`mock-api.json`](mock-api.json). Every session ID, task title, project path, model total, and usage metric in the fixture is an example. The screenshots were refreshed from version 0.0.4 on 2026-10-15, with the clock fixed to the fixture date (2026-10-14) and `/api/*` requests served locally from the fixture; they were not taken from a user's live agent stores or terminal. `desktop-terminal.png` combines the fixture-based board capture with a synthetic terminal panel and transcript from [`terminal-demo.html`](terminal-demo.html); it does not run an agent process.
+All nine images were refreshed from **KlipRun Desktop 0.0.6** on **2026-10-15**. Session IDs, titles, project paths, models, priority flags, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
-| File | Example shown |
-| --- | --- |
-| [`recent-sessions.png`](recent-sessions.png) | Recent Sessions sidebar, historical sessions, Resume in Terminal controls, and selected session details |
-| [`desktop-terminal.png`](desktop-terminal.png) | Full desktop window with a synthetic OpenCode terminal |
-| [`kanban.png`](kanban.png) | Kanban columns and nested subagent |
-| [`kanban-details.png`](kanban-details.png) | Selected card and session activity |
-| [`office.png`](office.png) | Work, idle, and meeting areas with synthetic coworkers |
-| [`statistics.png`](statistics.png) | Thirty days of synthetic usage, Daily token heatmap and token mix, timezone UTC |
-| [`statistics-weekly.png`](statistics-weekly.png) | Weekly token heatmap and token composition for the same period |
-| [`usage.png`](usage.png) | Synthetic subscription allowances for OpenAI via OpenCode and Codex, Z.ai, and Kimi |
-| [`shortcuts.png`](shortcuts.png) | In-app keyboard shortcut guide |
+| File | Size | Example shown |
+| --- | --- | --- |
+| [`kanban.png`](kanban.png) | 1440 × 900 | Kanban columns, nested subagent, and synthetic Critical/Medium/Low flags |
+| [`kanban-details.png`](kanban-details.png) | 1440 × 900 | Selected Implement search API session and the default Agents T details tab |
+| [`recent-sessions.png`](recent-sessions.png) | 1600 × 1000 | Recent Sessions sidebar, Resume in Terminal buttons, and matching selected details |
+| [`desktop-terminal.png`](desktop-terminal.png) | 1440 × 900 | Fixture-based board plus a static synthetic terminal panel |
+| [`office.png`](office.png) | 1600 × 1200 | Fictional coworkers, model labels, rooms, and token leaderboard |
+| [`statistics.png`](statistics.png) | 1600 × 1600 | Last 30 days, Daily token activity, composition, and trends in UTC |
+| [`statistics-weekly.png`](statistics-weekly.png) | 1600 × 1600 | Weekly token activity for the same fictional dataset |
+| [`usage.png`](usage.png) | 1600 × 900 | Compact provider rows with colored status dots and white limit/reset labels |
+| [`shortcuts.png`](shortcuts.png) | 1600 × 1000 | Current in-app keyboard shortcut dialog |
 
-The mock API payload covers `/api/board`, `/api/session/:id`, `/api/recent-sessions`, `/api/stats`, `/api/stats/sessions`, `/api/stats/office-usage`, and `/api/quota/:provider` (the `quotas` map). When updating screenshots, serve the built `engine/src/client/dist` without a live engine, intercept those routes with the fixture, and verify that names and paths still refer only to the demo data before committing the images. The desktop terminal composition uses only the existing fixture screenshot and the static synthetic content in `terminal-demo.html`.
+The fixture API covers `/api/board`, `/api/session/:id`, `/api/recent-sessions`, `/api/stats`, `/api/stats/sessions`, `/api/stats/session/:id`, `/api/stats/office-usage`, and `/api/quota/:provider`. Statistics uses `statistics_dataset`, a fictional 60-day event and observation history, through the production aggregators. The `card_priorities` map supplies only fictional session IDs. The selected details session is `ses_demo_search`, matching the fixture’s `details` payload.
 
-`recent-sessions.png` captures the 0.0.4 web UI at 1600 × 1000 with the clock set to the fixture's `board.generated_at`. The `recent_sessions` fixture includes five board sessions and two historical sessions absent from the board. A stub desktop bridge displays the native action buttons without launching agents. The selected session is `ses_demo_search`, matching the fixture's `details` payload.
+Build the client with `cd engine/src/client && bun run build`, then start `bun docs/screenshots/preview.ts` from the repository root. The fixture-only server binds to `127.0.0.1:18796` and serves the built client without starting a live engine.
 
-`usage.png` captures the 0.0.4 Usage tab at 1600 × 1500 with the clock fixed to `board.generated_at` and a stub desktop bridge. All four `/api/quota/:provider` responses come from the fixture's `quotas` map; the example includes healthy, low, and exhausted balances. Provider names match the actual supported integrations. No provider credentials, live quota APIs, or real user data were used. [`capture-usage.js`](capture-usage.js) is a Playwright callback for this view.
+[`capture-all.js`](capture-all.js) is an async Playwright callback taking `(page, outputDirectory = "docs/screenshots")`. It captures all nine images, checks the UI version and provider names, and rejects external requests. Invoke it with a directory on the Playwright host, or run from the repository root to use the default directory. The 0.0.6 capture made **zero external requests**. [`capture-usage.js`](capture-usage.js) remains available for capturing Usage alone.
 
-Build the client with `cd engine/src/client && bun run build`, then run `bun docs/screenshots/preview.ts` from the repository root. This fixture-only server binds to `127.0.0.1:18796`, serves the built UI, stubs the desktop bridge and clock, and computes Statistics using the production aggregators. The synthetic terminal composition is available at `/__demo/terminal-demo.html`. No live engine is needed.
-
-The 0.0.4 Statistics screenshots use `statistics_dataset`, a fictional 60-day event and observation history in `mock-api.json`, aggregated by the production `buildDashboard` and `rankSessions` functions. The stored `stats` and `stats_sessions` payloads are its last-30-days UTC view. Interactive checks apply real filters to this fixture dataset; dates, token components, call counts, and heatmap totals are derived from the same records. The clock stays fixed to `board.generated_at`.
+`desktop-terminal.png` combines the current `kanban-details.png` capture with [`terminal-demo.html`](terminal-demo.html), available at `/__demo/terminal-demo.html`. The terminal transcript and tabs are static fictional content with white tab labels; this composition never launches an agent or captures a real terminal.
