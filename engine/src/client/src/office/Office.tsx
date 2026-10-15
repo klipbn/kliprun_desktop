@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, SquareTerminal } from "lucide-react";
 import type { BoardPayload, CardPayload } from "@shared/types";
 import type { TrackedCard } from "@shared/readTracker";
 import { formatDuration } from "@shared/format";
@@ -42,9 +42,9 @@ function Workstation({ state, small, zone, unread }: { state: ReturnType<typeof 
   </svg>;
 }
 
-export default function Office({ board, onSelect, onBack, isRead, now = Date.now() }: {
+export default function Office({ board, onSelect, onBack, isRead, activeTerminalId = null, now = Date.now() }: {
   board: BoardPayload | null; onSelect: (id: string) => void; onBack?: () => void;
-  isRead: (card: TrackedCard) => boolean; now?: number;
+  isRead: (card: TrackedCard) => boolean; activeTerminalId?: string | null; now?: number;
 }) {
   const residents = useMemo(() => {
     const result: CardPayload[] = [];
@@ -85,6 +85,7 @@ export default function Office({ board, onSelect, onBack, isRead, now = Date.now
   for (const card of residents) zones[placements.get(card.session_id)!.zone].push(card);
 
   const renderResident = (card: CardPayload, zone: OfficeZone) => {
+    const activeTerminal = card.session_id === activeTerminalId;
     const state = stateFor(card);
     const unread = zone === "lounge" && card.column === "idle" && state !== "unknown" && !isRead(card);
     const since = state === "working" ? card.running_since : state === "unknown" ? null : card.stage_since;
@@ -92,13 +93,15 @@ export default function Office({ board, onSelect, onBack, isRead, now = Date.now
     const timerLabel = { working: "Working", resting: "Idle", waiting: "Waiting", error: "Error", unknown: "Status unknown" }[state];
     const model = modelName(card);
     return <button type="button" key={card.session_id} data-session-id={card.session_id} data-office-state={state} data-office-zone={zone} data-office-unread={unread}
-      className={`office-resident office-${state}${unread ? " office-unread" : ""}`} style={{ "--resident-color": colorFor(card.session_id) } as CSSProperties}
-      onClick={() => onSelect(card.session_id)} aria-label={`${card.title} — ${CAPTIONS[state]} — ${card.stage}${unread ? " — Not viewed yet" : ""}`}
+      data-active-terminal={activeTerminal || undefined}
+      className={`office-resident office-${state}${unread ? " office-unread" : ""}${activeTerminal ? " office-active-terminal" : ""}`} style={{ "--resident-color": colorFor(card.session_id) } as CSSProperties}
+      onClick={() => onSelect(card.session_id)} aria-label={`${card.title} — ${CAPTIONS[state]} — ${card.stage}${unread ? " — Not viewed yet" : ""}${activeTerminal ? " — Active terminal" : ""}`}
       title={`${card.title}\n${card.directory_name} · ${model}${card.parent_id ? " · Subagent" : ""}\n${card.stage}${duration ? ` · ${duration}` : ""}${card.error ? `\n${card.error}` : ""}${unread ? "\nNot viewed yet — click to inspect" : ""}`}>
       <span className="office-timer" data-timer-state={state}>
         <span className="office-timer-session">{card.title}</span>
         <span>{timerLabel}{duration ? ` · ${duration}` : state === "unknown" ? "" : " · —"}</span>
       </span>
+      {activeTerminal && <span className="office-terminal-badge" data-testid="office-active-terminal-badge"><SquareTerminal size={10} />Terminal</span>}
       <Workstation state={state} small={!!card.parent_id} zone={zone} unread={unread} />
       <span className="office-nameplate"><span className="office-model-label">{model}</span>{card.parent_id && <small>Subagent</small>}</span>
       <span className="office-tooltip"><strong>{card.title}</strong><span>{card.directory_name} · {card.source}</span>

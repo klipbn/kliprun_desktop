@@ -29,6 +29,11 @@ for (const { name, root, binary } of variants) test(`${name} desktop server requ
       throw new Error(`Server did not start (exit ${child.exitCode}): stdout=${await new Response(child.stdout).text()} stderr=${await new Response(child.stderr).text()}`);
     }
     expect(response?.status).toBe(401);
+    const quotaURL = `http://127.0.0.1:${port}/api/quota/codex`;
+    expect((await fetch(quotaURL)).status).toBe(401);
+    const quota = await fetch(quotaURL, { headers: { Authorization: "Bearer testtoken" } });
+    expect(quota.headers.get("content-type")).toContain("application/json");
+    expect(await quota.json()).toMatchObject({ provider: "codex", status: "not_configured", limits: [] });
     const board = await fetch(url, { headers: { Authorization: "Bearer testtoken" } });
     expect(board.status).toBe(200);
     expect((await board.json() as { columns: unknown }).columns).toBeDefined();

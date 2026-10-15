@@ -51,6 +51,21 @@ test("office distinguishes loading from an empty live board", () => {
   expect(renderToStaticMarkup(<Office isRead={readAll} board={board([])} onSelect={() => {}} />)).toContain("The office is quiet");
 });
 
+test("office highlights only the coworker matching the active terminal, including subagents", () => {
+  const residents = board([
+    card("parent", { children: [card("child", { parent_id: "parent" })] }),
+    card("codex:waiting", { source: "codex", column: "attention" }),
+    card("idle", { column: "idle" }),
+  ]);
+  for (const activeTerminalId of ["parent", "child", "codex:waiting", "idle", null, "missing"]) {
+    const html = renderToStaticMarkup(<Office board={residents} isRead={readAll} now={100}
+      activeTerminalId={activeTerminalId} onSelect={() => {}} />);
+    const highlighted = [...html.matchAll(/<button[^>]*data-session-id="([^"]+)"[^>]*data-active-terminal="true"/g)].map(match => match[1]);
+    expect(highlighted).toEqual(activeTerminalId && activeTerminalId !== "missing" ? [activeTerminalId] : []);
+    expect((html.match(/data-testid="office-active-terminal-badge"/g) ?? []).length).toBe(highlighted.length);
+  }
+});
+
 test("the empty waiting area is a persistent meeting room rather than an unoccupied help queue", () => {
   const html = renderToStaticMarkup(<Office isRead={readAll} board={board([])} onSelect={() => {}} />);
   expect(html).toContain('aria-label="Meeting room"');

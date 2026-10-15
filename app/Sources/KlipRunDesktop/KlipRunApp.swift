@@ -56,6 +56,8 @@ struct KlipRunApp: App {
                         .keyboardShortcut("2", modifiers: [.control])
                     Button("Office") { delegate.store.showPage("/office") }
                         .keyboardShortcut("3", modifiers: [.control])
+                    Button("Usage") { delegate.store.showPage("/usage") }
+                        .keyboardShortcut("4", modifiers: [.control])
                 }
                 CommandMenu("Agents") {
                     Button("New Terminal") { delegate.store.chooseNewTerminal() }

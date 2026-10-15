@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Building2, Plus, Settings2, SquareTerminal } from "lucide-react";
+import { BarChart3, Building2, Columns3, Gauge, Plus, Settings2, SquareTerminal } from "lucide-react";
 import type { CardPayload, ColumnKey } from "@shared/types";
 import type { TrackedCard } from "@shared/readTracker";
 import { sessionCards } from "@shared/readTracker";
@@ -18,9 +18,10 @@ import { formatRelativeTimeVerbose } from "@shared/format";
 
 const Statistics = lazy(() => import("./statistics/Statistics"));
 const Office = lazy(() => import("./office/Office"));
+const Usage = lazy(() => import("./quota/Usage"));
 
 function currentPage() {
-  return window.location.pathname === "/stats" ? "stats" : window.location.pathname === "/office" ? "office" : "board";
+  return window.location.pathname === "/stats" ? "stats" : window.location.pathname === "/office" ? "office" : window.location.pathname === "/usage" ? "usage" : "board";
 }
 
 function ConnectionIndicator(state: "connecting" | "live" | "polling", error: string | null) {
@@ -95,11 +96,17 @@ export default function App() {
     window.history.pushState(null, "", "/office");
     setPage("office");
   }, []);
+  const openUsage = useCallback(() => {
+    if (window.location.pathname === "/stats") statisticsSearch.current = window.location.search;
+    window.history.pushState(null, "", "/usage");
+    setPage("usage");
+  }, []);
   useEffect(() => observeNativeNavigation(path => {
     if (path === "/") backToBoard();
     else if (path === "/stats") openStatistics();
     else if (path === "/office") openOffice();
-  }), [backToBoard, openStatistics, openOffice]);
+    else if (path === "/usage") openUsage();
+  }), [backToBoard, openStatistics, openOffice, openUsage]);
   const rememberStatisticsSearch = useCallback((search: string) => {
     statisticsSearch.current = search;
   }, []);
@@ -137,7 +144,7 @@ export default function App() {
           <img src="/kliprun-icon.png" alt="" className="w-6 h-6" />
           <h1 className="font-semibold text-lg">KlipRun</h1>
         </div>
-        {desktop && <div className="order-last w-full flex justify-center items-center gap-1.5 xl:order-none xl:w-auto xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2" aria-label="Agent terminals">
+        {desktop && <div className="order-last w-full flex justify-center items-center gap-1.5 xl:order-none xl:w-auto xl:flex-1" aria-label="Agent terminals">
           <button type="button" onClick={() => notifyNativeAction("new-opencode")} data-testid="new-opencode-button"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-text-secondary hover:text-accent hover:border-accent/40 transition-colors">
             <Plus className="w-3.5 h-3.5" />New OpenCode
@@ -151,7 +158,7 @@ export default function App() {
             <SquareTerminal className="w-3.5 h-3.5" />Terminal
           </button>
         </div>}
-        <div className="flex-1" />
+        <div className={desktop ? "flex-1 xl:hidden" : "flex-1"} />
         {error && <span className={`text-xs text-error ${desktop ? "hidden xl:inline" : ""}`}>{error}</span>}
         {desktop ? <div className="hidden xl:flex">{ConnectionIndicator(connection, error)}</div> : ConnectionIndicator(connection, error)}
         {board && (
@@ -159,6 +166,10 @@ export default function App() {
             updated {formatRelativeTimeVerbose(board.generated_at)}
           </span>
         )}
+        <button type="button" onClick={backToBoard} aria-pressed={page === "board"} data-testid="kanban-button" title="Kanban (Control+1)"
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "board" ? "border-accent/40 bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-accent hover:border-accent/40"}`}>
+          <Columns3 className="w-3.5 h-3.5" />Kanban
+        </button>
         <button
           type="button"
           onClick={showStatistics ? backToBoard : openStatistics}
@@ -172,6 +183,10 @@ export default function App() {
         <button type="button" onClick={page === "office" ? backToBoard : openOffice} aria-pressed={page === "office"} data-testid="office-button"
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "office" ? "border-accent/40 bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-accent hover:border-accent/40"}`}>
           <Building2 className="w-3.5 h-3.5" />Office
+        </button>
+        <button type="button" onClick={page === "usage" ? backToBoard : openUsage} aria-pressed={page === "usage"} data-testid="usage-button" title="Usage (Control+4)"
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "usage" ? "border-accent/40 bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-accent hover:border-accent/40"}`}>
+          <Gauge className="w-3.5 h-3.5" />Usage
         </button>
         {desktop && <button type="button" onClick={() => notifyNativeAction("notification-settings")} data-testid="notification-settings-button"
           aria-label="Notification settings" title="Notification settings"
@@ -189,10 +204,14 @@ export default function App() {
 
       {page === "office" && <main className="office-view flex-1 min-h-0 flex">
         <Suspense fallback={<div className="flex-1 flex items-center justify-center text-text-secondary">Loading office…</div>}>
-          <Office board={board} now={now} isRead={isRead} onSelect={select} onBack={backToBoard} />
+          <Office board={board} now={now} isRead={isRead} activeTerminalId={activeTerminalId} onSelect={select} onBack={backToBoard} />
         </Suspense>
         {selectedId && <DetailsPanel sessionId={selectedId} onClose={closeDetails} />}
       </main>}
+
+      {page === "usage" && <Suspense fallback={<div className="flex-1 flex items-center justify-center text-text-secondary">Loading usage…</div>}>
+        <Usage />
+      </Suspense>}
 
       <main className="flex-1 min-h-0 flex" style={page !== "board" ? { display: "none" } : undefined}>
         <RecentSessions sessions={recent.data?.sessions ?? []} collapsed={historyCollapsed} selectedId={selectedId}

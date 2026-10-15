@@ -117,7 +117,7 @@ final class DesktopStore: ObservableObject {
     }
 
     func showPage(_ path: String) {
-        guard ["/", "/stats", "/office"].contains(path) else { return }
+        guard ["/", "/stats", "/office", "/usage"].contains(path) else { return }
         terminalExpanded = false
         guard webReady, let webView else { pendingWebPage = path; return }
         webView.evaluateJavaScript("window.kliprunPendingNavigation = '\(path)'; window.dispatchEvent(new CustomEvent('kliprun:navigate', { detail: '\(path)' }));")
