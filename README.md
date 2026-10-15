@@ -31,6 +31,12 @@ KlipRun reads existing OpenCode and Codex session data without changing their st
 
 All sessions, project paths, and usage numbers shown below are fictional examples. [See the screenshot fixture and more views](docs/screenshots/README.md).
 
+### Recent sessions
+
+Browse recent OpenCode and Codex sessions, inspect their details, and resume them in the original agent and project folder.
+
+![Recent Sessions sidebar with session history, Resume in Terminal buttons, and selected session details](docs/screenshots/recent-sessions.png)
+
 ### Board and terminal
 
 ![KlipRun desktop with a synthetic OpenCode session visible in the embedded terminal](docs/screenshots/desktop-terminal.png)

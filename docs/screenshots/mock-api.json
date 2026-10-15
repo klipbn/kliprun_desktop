@@ -1245,5 +1245,72 @@
     "models": [],
     "kanban_history": [],
     "exists": true
+  },
+  "recent_sessions": {
+    "sessions": [
+      {
+        "id": "ses_demo_review",
+        "source": "opencode",
+        "parent_id": null,
+        "title": "Review database migration",
+        "directory": "/Users/demo/Projects/aurora",
+        "created_at": 1791978840000,
+        "updated_at": 1791979155000
+      },
+      {
+        "id": "ses_demo_search",
+        "source": "opencode",
+        "parent_id": null,
+        "title": "Implement search API",
+        "directory": "/Users/demo/Projects/atlas",
+        "created_at": 1791976680000,
+        "updated_at": 1791979155000
+      },
+      {
+        "id": "codex:00000000-0000-4000-8000-000000000001",
+        "source": "codex",
+        "parent_id": null,
+        "title": "Refine onboarding UI",
+        "directory": "/Users/demo/Projects/aurora",
+        "created_at": 1791977760000,
+        "updated_at": 1791979155000
+      },
+      {
+        "id": "ses_demo_release",
+        "source": "opencode",
+        "parent_id": null,
+        "title": "Draft release notes",
+        "directory": "/Users/demo/Projects/aurora",
+        "created_at": 1791978360000,
+        "updated_at": 1791979155000
+      },
+      {
+        "id": "codex:00000000-0000-4000-8000-000000000002",
+        "source": "codex",
+        "parent_id": null,
+        "title": "Fix cache keys",
+        "directory": "/Users/demo/Projects/atlas",
+        "created_at": 1791977580000,
+        "updated_at": 1791979155000
+      },
+      {
+        "id": "ses_demo_previous_rollout",
+        "source": "opencode",
+        "parent_id": null,
+        "title": "Prepare API rollout",
+        "directory": "/Users/demo/Projects/atlas",
+        "created_at": 1791892800000,
+        "updated_at": 1791936000000
+      },
+      {
+        "id": "codex:00000000-0000-4000-8000-000000000003",
+        "source": "codex",
+        "parent_id": null,
+        "title": "Investigate flaky tests",
+        "directory": "/Users/demo/Projects/aurora",
+        "created_at": 1791806400000,
+        "updated_at": 1791892800000
+      }
+    ]
   }
 }
