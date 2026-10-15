@@ -4,6 +4,13 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-10-15
+
+### Added
+
+- Compact subscription-limit bars and remaining percentages in the bottom status bar, with separate available windows, reset details on hover, and a shortcut to Usage. Shows up to six connected providers and wraps in narrow windows.
+- Shared quota loading for the status bar and Usage page, refreshing every minute across views without duplicate requests.
+
 ## [0.0.3] - 2026-10-15
 
 ### Added
@@ -74,4 +81,5 @@ First public macOS release.
 [0.0.1]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.1
 [0.0.2]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.2
 [0.0.3]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.3
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.3...main
+[0.0.4]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.4
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.4...main

@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
 import { AlertTriangle, ArrowUpRight, Check, Clock3, Gauge, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import { QUOTA_LABELS, QUOTA_PROVIDERS, type ProviderQuota, type QuotaProvider, type QuotaWindow } from "@shared/quota";
-import { useNow } from "../hooks/useBoard";
+import { tone, percent, countdown, date } from "./format";
 import "./usage.css";
 
 type Quotas = Partial<Record<QuotaProvider, ProviderQuota>>;
@@ -16,25 +15,9 @@ function remaining(quota: ProviderQuota): number | null {
 function resetDue(quota: ProviderQuota, now: number): boolean {
   return quota.limits.some(w => w.reset_at !== null && w.reset_at <= now);
 }
-function tone(percent: number | null): string {
-  return percent === null ? "unknown" : percent <= 10 ? "danger" : percent <= 30 ? "warning" : "healthy";
-}
-function percent(value: number): string {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value);
-}
-function countdown(at: number, now: number): string {
-  const minutes = Math.max(1, Math.ceil((at - now) / 60_000));
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60), rest = minutes % 60;
-  if (hours < 24) return `${hours}h${rest ? ` ${rest}m` : ""}`;
-  return `${Math.floor(hours / 24)}d${hours % 24 ? ` ${hours % 24}h` : ""}`;
-}
 function updated(at: number, now: number): string {
   const minutes = Math.max(0, Math.floor((now - at) / 60_000));
   return minutes < 1 ? "Updated just now" : minutes < 60 ? `Updated ${minutes}m ago` : `Updated ${Math.floor(minutes / 60)}h ago`;
-}
-function date(at: number): string {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(at);
 }
 
 function LimitRow({ limit, now }: { limit: QuotaWindow; now: number }) {
@@ -111,34 +94,4 @@ export function UsageDashboard({ quotas, pending, errors, now, onRefresh }: Prop
   </main>;
 }
 
-export default function Usage() {
-  const [quotas, setQuotas] = useState<Quotas>({});
-  const [errors, setErrors] = useState<Errors>({});
-  const [pending, setPending] = useState<QuotaProvider[]>([...QUOTA_PROVIDERS]);
-  const [refresh, setRefresh] = useState(0);
-  const now = useNow();
-  useEffect(() => {
-    let live = true, loading = false;
-    const controller = new AbortController();
-    async function load(force: boolean) {
-      if (loading) return;
-      loading = true;
-      setPending([...QUOTA_PROVIDERS]);
-      await Promise.allSettled(QUOTA_PROVIDERS.map(async provider => {
-        try {
-          const response = await fetch(`/api/quota/${provider}${force ? "?refresh=1" : ""}`, { signal: controller.signal });
-          if (!response.ok) throw new Error("Unable to load limits. Try refreshing shortly.");
-          const quota = await response.json() as ProviderQuota;
-          if (live) { setQuotas(value => ({ ...value, [provider]: quota })); setErrors(value => ({ ...value, [provider]: undefined })); }
-        } catch {
-          if (live) setErrors(value => ({ ...value, [provider]: "Unable to load limits. Try refreshing shortly." }));
-        } finally { if (live) setPending(value => value.filter(id => id !== provider)); }
-      }));
-      loading = false;
-    }
-    void load(refresh > 0);
-    const timer = window.setInterval(() => void load(false), 60_000);
-    return () => { live = false; controller.abort(); window.clearInterval(timer); };
-  }, [refresh]);
-  return <UsageDashboard quotas={quotas} pending={pending} errors={errors} now={now} onRefresh={() => setRefresh(value => value + 1)} />;
-}
+export default UsageDashboard;

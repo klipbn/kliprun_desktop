@@ -1,5 +1,6 @@
 import { Folder, Loader2, Mail, SquareTerminal } from "lucide-react";
 import type { AgentSummary } from "@shared/types";
+import type { ReactNode } from "react";
 
 interface Props {
   sessionCount: number;
@@ -9,6 +10,7 @@ interface Props {
   subagentsRunning: number;
   unread: number;
   agents: AgentSummary[];
+  usage?: ReactNode;
 }
 
 function plural(count: number, word: string): string {
@@ -16,13 +18,13 @@ function plural(count: number, word: string): string {
 }
 
 /** Bottom application status bar. */
-export function StatusBar({ sessionCount, projectCount, running, agentsRunning, subagentsRunning, unread, agents }: Props) {
+export function StatusBar({ sessionCount, projectCount, running, agentsRunning, subagentsRunning, unread, agents, usage }: Props) {
   return (
     <footer
-      className="shrink-0 flex items-center gap-3 px-4 py-1.5 border-t border-border bg-surface text-xs"
+      className="status-bar shrink-0 flex items-center gap-3 px-4 py-1.5 border-t border-border bg-surface text-xs"
       aria-label="Application status"
     >
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="status-bar-counts flex items-center gap-3 min-w-0">
         <span className="flex items-center gap-1.5 text-text-primary" data-testid="session-count">
           <SquareTerminal className="w-3.5 h-3.5 text-accent" />
           {plural(sessionCount, "session")}
@@ -33,7 +35,7 @@ export function StatusBar({ sessionCount, projectCount, running, agentsRunning, 
         </span>
       </div>
 
-      <div className="flex-1 flex items-center justify-center gap-3 min-w-0 overflow-hidden">
+      <div className="status-bar-activity flex-1 flex items-center justify-center gap-3 min-w-0 overflow-hidden">
         <span
           className="flex items-center gap-1.5 text-text-primary"
           title="Running agents and subagents"
@@ -74,6 +76,8 @@ export function StatusBar({ sessionCount, projectCount, running, agentsRunning, 
           </span>
         )}
       </div>
+
+      {usage}
 
       <span className="text-text-secondary shrink-0" title="Application version" data-testid="version">
         v{__APP_VERSION__}

@@ -15,6 +15,8 @@ import { RecentSessions } from "./components/RecentSessions";
 import { useStatsRequest } from "./statistics/useStatsRequest";
 import type { UsageSession } from "@shared/usage";
 import { formatRelativeTimeVerbose } from "@shared/format";
+import { useQuotas } from "./quota/useQuotas";
+import { StatusQuota } from "./quota/StatusQuota";
 
 const Statistics = lazy(() => import("./statistics/Statistics"));
 const Office = lazy(() => import("./office/Office"));
@@ -51,6 +53,7 @@ export default function App() {
   const [historyCollapsed, setHistoryCollapsed] = useState(recentSessionsCollapsed);
   const recent = useStatsRequest<{ sessions: UsageSession[] }>("/api/recent-sessions", 0);
   const now = useNow();
+  const quotaState = useQuotas();
   const { isRead, counts, markRead } = useReadTracker(board);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
@@ -210,7 +213,7 @@ export default function App() {
       </main>}
 
       {page === "usage" && <Suspense fallback={<div className="flex-1 flex items-center justify-center text-text-secondary">Loading usage…</div>}>
-        <Usage />
+        <Usage {...quotaState} now={now} />
       </Suspense>}
 
       <main className="flex-1 min-h-0 flex" style={page !== "board" ? { display: "none" } : undefined}>
@@ -257,6 +260,7 @@ export default function App() {
         subagentsRunning={counts.subagents_running}
         unread={counts.unread}
         agents={board?.agents ?? []}
+        usage={<StatusQuota {...quotaState} now={now} onOpen={openUsage} />}
       />
     </div>
   );
