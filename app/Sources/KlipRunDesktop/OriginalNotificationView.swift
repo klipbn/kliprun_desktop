@@ -17,9 +17,16 @@ struct NotificationView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .overlay(WindowDragHandle(dragging: dragging))
                         .help("Drag to move this notification")
-                    Button(action: dismiss) { Image(systemName: "xmark").font(.system(size: 11)) }
-                        .buttonStyle(.plain).foregroundStyle(.gray)
-                        .accessibilityLabel("Dismiss notification")
+                    Button(action: dismiss) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).foregroundStyle(Color(white: 0.9))
+                    .accessibilityLabel("Dismiss notification")
+                    .help("Dismiss notification")
                 }
                 Text(String(event.title.prefix(250)))
                     .font(.system(size: 14, weight: .semibold)).lineLimit(3)

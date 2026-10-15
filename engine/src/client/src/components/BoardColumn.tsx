@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { CircleAlert, Inbox, Mail, SquareTerminal } from "lucide-react";
 import { COLUMN_TITLES, type BoardColumn as BoardColumnData, type ColumnKey } from "@shared/types";
+import type { CardPriorities, CardPriority } from "../cardPriorities";
 import { SessionCard } from "./SessionCard";
 
 const COLUMN_ACCENT: Record<ColumnKey, string> = {
@@ -30,10 +31,12 @@ interface Props {
   activeTerminalId: string | null;
   now: number;
   isRead: (card: import("@shared/readTracker").TrackedCard) => boolean;
+  priorities: CardPriorities;
+  onPriorityChange: (id: string, priority: CardPriority | null) => void;
   onSelect: (id: string) => void;
 }
 
-export function BoardColumn({ columnKey, column, selectedId, activeTerminalId, now, isRead, onSelect }: Props) {
+export function BoardColumn({ columnKey, column, selectedId, activeTerminalId, now, isRead, priorities, onPriorityChange, onSelect }: Props) {
   const title = COLUMN_TITLES[columnKey];
   const highlight = columnKey === "attention" && column.count > 0;
 
@@ -74,6 +77,8 @@ export function BoardColumn({ columnKey, column, selectedId, activeTerminalId, n
               activeTerminalId={activeTerminalId}
               now={now}
               isRead={isRead}
+              priorities={priorities}
+              onPriorityChange={onPriorityChange}
               onSelect={onSelect}
             />
           ))

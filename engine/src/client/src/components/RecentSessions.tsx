@@ -27,7 +27,7 @@ export function RecentSessions({ sessions, collapsed, selectedId, pending, error
       {!sessions.length && <p className="text-xs text-text-secondary p-2">{pending ? "Loading recent sessions…" : "No recent sessions yet."}</p>}
       {sessions.map(session => <div key={session.id} className={`rounded-md border ${selectedId === session.id ? "border-accent/50 bg-accent/10" : "border-transparent hover:bg-background"}`}>
         <button type="button" onClick={() => onSelect(session.id)} className="w-full text-left p-2" title={session.directory}>
-          <span className="block text-xs font-medium break-words line-clamp-2">{session.title || "Untitled session"}</span>
+          <span className="block text-xs font-medium text-white break-words line-clamp-2">{session.title || "Untitled session"}</span>
           <span className="block text-[10px] text-text-secondary mt-1 truncate">{session.source === "codex" ? "Codex" : "OpenCode"} · {session.directory.split("/").filter(Boolean).pop() || "/"}</span>
           <span className="block text-[10px] text-text-secondary mt-0.5">{formatRelativeTimeVerbose(session.updated_at)}</span>
         </button>

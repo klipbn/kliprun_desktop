@@ -18,6 +18,7 @@ import type { UsageSession } from "@shared/usage";
 import { formatRelativeTimeVerbose } from "@shared/format";
 import { useQuotas } from "./quota/useQuotas";
 import { StatusQuota } from "./quota/StatusQuota";
+import { loadCardPriorities, saveCardPriorities, updateCardPriority, type CardPriority } from "./cardPriorities";
 
 const Statistics = lazy(() => import("./statistics/Statistics"));
 const Office = lazy(() => import("./office/Office"));
@@ -58,6 +59,7 @@ export default function App() {
   const quotaState = useQuotas();
   const { isRead, counts, markRead } = useReadTracker(board);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [priorities, setPriorities] = useState(loadCardPriorities);
   const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
   const [linkedId, setLinkedId] = useState(() => linkedSessionId(window.location.search));
   const [page, setPage] = useState(currentPage);
@@ -72,6 +74,7 @@ export default function App() {
   useEffect(() => {
     return observeNativeTerminalSelection(setActiveTerminalId);
   }, []);
+  useEffect(() => saveCardPriorities(priorities), [priorities]);
   useEffect(() => {
     const navigate = () => {
       setPage(currentPage());
@@ -135,6 +138,10 @@ export default function App() {
     [board, markRead],
   );
 
+  const changePriority = useCallback((id: string, priority: CardPriority | null) => {
+    setPriorities(current => updateCardPriority(current, id, priority));
+  }, []);
+
   const closeDetails = useCallback(() => {
     setSelectedId(null);
     notifyNativeSelection(null);
@@ -144,61 +151,64 @@ export default function App() {
 
   return (
     <div className={`h-screen flex flex-col bg-background text-text-primary ${preferences.reduceMotion ? "reduce-office-motion" : ""}`}>
-      <header className="relative shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 border-b border-border bg-surface">
-        <div className="flex items-center gap-2">
-          <img src="/kliprun-icon.png" alt="" className="w-6 h-6" />
-          <h1 className="font-semibold text-lg">KlipRun</h1>
+      <header className={`relative shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 border-b border-border bg-surface ${desktop ? "2xl:grid 2xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : ""}`}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2">
+            <img src="/kliprun-icon.png" alt="" className="w-6 h-6" />
+            <h1 className="font-semibold text-lg">KlipRun</h1>
+          </div>
+          {error && <span className={`text-xs text-error ${desktop ? "hidden 2xl:inline" : ""}`}>{error}</span>}
+          {desktop ? <div className="hidden 2xl:flex">{ConnectionIndicator(connection, error)}</div> : ConnectionIndicator(connection, error)}
+          {board && (
+            <span className={`text-xs text-text-secondary ${desktop ? "hidden 2xl:inline" : ""}`}>
+              updated {formatRelativeTimeVerbose(board.generated_at)}
+            </span>
+          )}
         </div>
-        {desktop && <div className="order-last w-full flex justify-center items-center gap-1.5 xl:order-none xl:w-auto xl:flex-1" aria-label="Agent terminals">
+        {desktop && <div className="order-last w-full flex justify-center items-center gap-1.5 2xl:order-none 2xl:w-auto" aria-label="Agent terminals">
           <button type="button" onClick={() => notifyNativeAction("new-opencode")} data-testid="new-opencode-button"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-text-secondary hover:text-accent hover:border-accent/40 transition-colors">
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-white hover:text-white hover:border-accent/40 transition-colors">
             <Plus className="w-3.5 h-3.5" />New OpenCode
           </button>
           <button type="button" onClick={() => notifyNativeAction("new-codex")} data-testid="new-codex-button"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-text-secondary hover:text-accent hover:border-accent/40 transition-colors">
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-white hover:text-white hover:border-accent/40 transition-colors">
             <Plus className="w-3.5 h-3.5" />New Codex
           </button>
           <button type="button" onClick={() => notifyNativeAction("show-terminal")} data-testid="show-terminal-button"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-text-secondary hover:text-accent hover:border-accent/40 transition-colors">
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-white hover:text-white hover:border-accent/40 transition-colors">
             <SquareTerminal className="w-3.5 h-3.5" />Terminal
           </button>
         </div>}
-        <div className={desktop ? "flex-1 xl:hidden" : "flex-1"} />
-        {error && <span className={`text-xs text-error ${desktop ? "hidden xl:inline" : ""}`}>{error}</span>}
-        {desktop ? <div className="hidden xl:flex">{ConnectionIndicator(connection, error)}</div> : ConnectionIndicator(connection, error)}
-        {board && (
-          <span className={`text-xs text-text-secondary ${desktop ? "hidden xl:inline" : ""}`}>
-            updated {formatRelativeTimeVerbose(board.generated_at)}
-          </span>
-        )}
-        <button type="button" onClick={backToBoard} aria-pressed={page === "board"} data-testid="kanban-button" title="Kanban (Control+1)"
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "board" ? "border-accent/40 bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-accent hover:border-accent/40"}`}>
-          <Columns3 className="w-3.5 h-3.5" />Kanban
-        </button>
-        <button
-          type="button"
-          onClick={showStatistics ? backToBoard : openStatistics}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${showStatistics ? "border-accent/40 bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-accent hover:border-accent/40"}`}
-          aria-pressed={showStatistics}
-          data-testid="statistics-button"
-        >
-          <BarChart3 className="w-3.5 h-3.5" />
-          Statistics
-        </button>
-        <button type="button" onClick={page === "office" ? backToBoard : openOffice} aria-pressed={page === "office"} data-testid="office-button"
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "office" ? "border-accent/40 bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-accent hover:border-accent/40"}`}>
-          <Building2 className="w-3.5 h-3.5" />Office
-        </button>
-        <button type="button" onClick={page === "usage" ? backToBoard : openUsage} aria-pressed={page === "usage"} data-testid="usage-button" title="Usage (Control+4)"
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "usage" ? "border-accent/40 bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-accent hover:border-accent/40"}`}>
-          <Gauge className="w-3.5 h-3.5" />Usage
-        </button>
-        {desktop && <button type="button" onClick={() => notifyNativeAction("settings")} data-testid="settings-button"
-          aria-label="Settings" title="Settings (⌘,)"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-text-secondary hover:text-accent hover:border-accent/40 transition-colors">
-          <Settings2 className="w-3.5 h-3.5" /><span className="hidden 2xl:inline">Settings</span>
-        </button>}
-        {desktop && <ShortcutHelp />}
+        <div className="ml-auto flex items-center gap-3 2xl:ml-0 2xl:justify-end">
+          <button type="button" onClick={backToBoard} aria-pressed={page === "board"} data-testid="kanban-button" title="Kanban (Control+1)"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "board" ? "border-accent/40 bg-accent/10 text-white" : "border-border text-white hover:text-white hover:border-accent/40"}`}>
+            <Columns3 className="w-3.5 h-3.5" />Kanban
+          </button>
+          <button
+            type="button"
+            onClick={showStatistics ? backToBoard : openStatistics}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${showStatistics ? "border-accent/40 bg-accent/10 text-white" : "border-border text-white hover:text-white hover:border-accent/40"}`}
+            aria-pressed={showStatistics}
+            data-testid="statistics-button"
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            Statistics
+          </button>
+          <button type="button" onClick={page === "office" ? backToBoard : openOffice} aria-pressed={page === "office"} data-testid="office-button"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "office" ? "border-accent/40 bg-accent/10 text-white" : "border-border text-white hover:text-white hover:border-accent/40"}`}>
+            <Building2 className="w-3.5 h-3.5" />Office
+          </button>
+          <button type="button" onClick={page === "usage" ? backToBoard : openUsage} aria-pressed={page === "usage"} data-testid="usage-button" title="Usage (Control+4)"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "usage" ? "border-accent/40 bg-accent/10 text-white" : "border-border text-white hover:text-white hover:border-accent/40"}`}>
+            <Gauge className="w-3.5 h-3.5" />Usage
+          </button>
+          {desktop && <button type="button" onClick={() => notifyNativeAction("settings")} data-testid="settings-button"
+            aria-label="Settings" title="Settings (⌘,)"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-white hover:text-white hover:border-accent/40 transition-colors">
+            <Settings2 className="w-3.5 h-3.5" /><span className="hidden 2xl:inline">Settings</span>
+          </button>}
+          {desktop && <ShortcutHelp />}
+        </div>
       </header>
 
       {showStatistics && (
@@ -241,6 +251,8 @@ export default function App() {
                   activeTerminalId={activeTerminalId}
                   now={now}
                   isRead={isRead}
+                  priorities={priorities}
+                  onPriorityChange={changePriority}
                   onSelect={select}
                 />
               ))}
