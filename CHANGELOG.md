@@ -4,6 +4,10 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+### Documentation
+
+- Show the Recent Sessions sidebar and session continuation controls in the README with a screenshot generated from fictional data.
+
 ## [0.0.2] - 2026-10-15
 
 ### Added
