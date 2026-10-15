@@ -45,7 +45,13 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
 
     func terminate() { if isRunning { view.terminate() } }
     func rename(_ name: String) { titleState.rename(name); title = titleState.display }
-    func setZoom(_ factor: Double) { view.font = NSFont.monospacedSystemFont(ofSize: CGFloat(13 * factor), weight: .regular) }
+    func applyPreferences(_ preferences: AppPreferences) {
+        if view.scrollSensitivity != preferences.wheelSensitivity { view.scrollSensitivity = preferences.wheelSensitivity }
+        if view.preciseScrollSensitivity != preferences.smoothSensitivity { view.preciseScrollSensitivity = preferences.smoothSensitivity }
+        if view.font.pointSize != preferences.terminalFontSize {
+            view.font = NSFont.monospacedSystemFont(ofSize: preferences.terminalFontSize, weight: .regular)
+        }
+    }
     func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {}
     func setTerminalTitle(source: LocalProcessTerminalView, title: String) {
         titleState.updateAutomatic(title)

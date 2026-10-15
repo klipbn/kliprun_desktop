@@ -4,6 +4,20 @@ import CoreGraphics
 public final class NotificationPreferences {
     private let defaults: UserDefaults
     public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    public var enabled: Bool { defaults.object(forKey: "notification.enabled") as? Bool ?? true }
+    public var responseReady: Bool { defaults.object(forKey: "notification.responseReady") as? Bool ?? true }
+    public var needsInput: Bool { defaults.object(forKey: "notification.needsInput") as? Bool ?? true }
+    public func setEnabled(_ value: Bool) { defaults.set(value, forKey: "notification.enabled") }
+    public func setResponseReady(_ value: Bool) { defaults.set(value, forKey: "notification.responseReady") }
+    public func setNeedsInput(_ value: Bool) { defaults.set(value, forKey: "notification.needsInput") }
+    public func allows(_ kind: AgentNotification.Kind) -> Bool {
+        enabled && (kind == .finished ? responseReady : needsInput)
+    }
+    public var soundName: String? { defaults.string(forKey: "notification.soundName") }
+    public func setSoundName(_ name: String?) {
+        if let name { defaults.set(name, forKey: "notification.soundName") }
+        else { defaults.removeObject(forKey: "notification.soundName") }
+    }
     public var displaySeconds: Double {
         guard let seconds = defaults.object(forKey: "notification.displaySeconds") as? NSNumber,
               validDuration(seconds.doubleValue) else { return 8 }

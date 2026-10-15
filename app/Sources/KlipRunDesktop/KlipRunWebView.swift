@@ -18,6 +18,7 @@ struct KlipRunWebView: NSViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: "recentSessionsCollapsed")
         let collapsed = UserDefaults.standard.bool(forKey: "recentSessions.collapsed")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.kliprunRecentSessionsCollapsed = \(collapsed);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        configuration.userContentController.addUserScript(WKUserScript(source: store.preferences.webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "desktopAction")
         configuration.userContentController.add(context.coordinator, name: "exportStatistics")
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -78,7 +79,7 @@ struct KlipRunWebView: NSViewRepresentable {
                 case "new-codex": store.launch(source: "codex")
                 case "show-terminal": store.toggleTerminal()
                 case "open-iterm": store.openSelectedInITerm()
-                case "notification-settings": store.showNotificationSettings()
+                case "settings": store.showSettings()
                 default: break
                 }
             }

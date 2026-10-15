@@ -1,5 +1,21 @@
 import { expect, test } from "bun:test";
-import { exportStatisticsCSV, notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection } from "../nativeBridge";
+import { exportStatisticsCSV, notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection, observeNativePreferences } from "../nativeBridge";
+
+test("desktop preferences are delivered initially and live, with validated defaults and cleanup", () => {
+  const host = Object.assign(new EventTarget(), { kliprunPreferences: { detailTab: "all", reduceMotion: true } });
+  const values: unknown[] = [];
+  const stop = observeNativePreferences(value => values.push(value), host);
+  host.kliprunPreferences = { detailTab: "agent", reduceMotion: false };
+  host.dispatchEvent(new Event("kliprun:preferences"));
+  host.kliprunPreferences = { detailTab: "unexpected", reduceMotion: false };
+  host.dispatchEvent(new Event("kliprun:preferences"));
+  stop();
+  host.dispatchEvent(new Event("kliprun:preferences"));
+  expect(values).toEqual([
+    { detailTab: "all", reduceMotion: true }, { detailTab: "agent", reduceMotion: false },
+    { detailTab: "agent-text", reduceMotion: false },
+  ]);
+});
 
 test("reports the exact selected session to the desktop shell", () => {
   const received: Array<string | null> = [];

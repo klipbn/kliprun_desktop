@@ -9,13 +9,12 @@ struct NotificationSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Label("Notifications", systemImage: "bell.badge").font(.headline)
-                Spacer()
-                Button("Done") { store.showingNotificationSettings = false }
-            }
-            Toggle("Show the coworker when a response is ready or input is needed", isOn: Binding(
+            Toggle("Enable notifications", isOn: Binding(
                 get: { !notifications.paused }, set: { notifications.setPaused(!$0) }))
+            HStack {
+                Toggle("Response ready", isOn: Binding(get: { notifications.responseReady }, set: { notifications.setResponseReady($0) }))
+                Toggle("Needs your input", isOn: Binding(get: { notifications.needsInput }, set: { notifications.setNeedsInput($0) }))
+            }.disabled(notifications.paused)
             Picker("Display duration", selection: Binding(
                 get: { notifications.displaySeconds }, set: { _ = notifications.setDisplaySeconds($0) })) {
                 ForEach([5.0, 8.0, 15.0, 30.0, 60.0, 0.0], id: \.self) { seconds in
@@ -34,6 +33,17 @@ struct NotificationSettingsView: View {
             }
             Text("1 to 3600 seconds. Until dismissed keeps the popup visible until you close it.")
                 .font(.caption).foregroundStyle(.secondary)
+            HStack {
+                Picker("Sound", selection: Binding<String?>(
+                    get: { notifications.soundName }, set: { notifications.setSoundName($0) })) {
+                    Text("None").tag(nil as String?)
+                    ForEach(PopupNotifications.systemSoundNames, id: \.self) { name in
+                        Text(name).tag(Optional(name))
+                    }
+                }
+                Button("Preview sound") { notifications.previewSound() }
+                    .disabled(notifications.soundName == nil)
+            }
             Divider()
             Button("Show preview") { store.previewNotification() }
             Button("Reset to top right") { notifications.resetPosition() }
@@ -47,8 +57,5 @@ struct NotificationSettingsView: View {
                 }
             }
         }
-        .padding(22)
-        .frame(width: 430)
-        .preferredColorScheme(.dark)
     }
 }

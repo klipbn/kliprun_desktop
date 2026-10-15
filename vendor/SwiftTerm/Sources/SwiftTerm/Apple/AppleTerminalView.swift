@@ -4909,16 +4909,18 @@ struct WheelReportBudget {
 
     private var allowance: Double = Double(Self.burst)
     private var stampNanoseconds: UInt64
+    private let maximumBurst: Int
 
-    init(nowNanoseconds: UInt64 = DispatchTime.now().uptimeNanoseconds) {
+    init(nowNanoseconds: UInt64 = DispatchTime.now().uptimeNanoseconds, maximumBurst: Int = Self.burst) {
         stampNanoseconds = nowNanoseconds
+        self.maximumBurst = max(Self.burst, min(10, maximumBurst))
+        allowance = Double(self.maximumBurst)
     }
 
-    /// A classic wheel event is one notch however far acceleration says it travelled, because a
-    /// mouse report is a notch and the application chooses how far a notch scrolls.
-    static func requestedReports(lineCount: Int, isPrecise: Bool) -> Int {
+    /// Classic events remain one notch unless the host explicitly requests a wheel multiplier.
+    static func requestedReports(lineCount: Int, isPrecise: Bool, wheelMultiplier: Int = 1) -> Int {
         guard lineCount != 0 else { return 0 }
-        return isPrecise ? requestedKeys(lineCount: lineCount) : 1
+        return isPrecise ? requestedKeys(lineCount: lineCount) : max(1, min(10, wheelMultiplier))
     }
 
     /// A cursor key carries its own distance, so an accelerated event keeps its line count up to
@@ -4941,7 +4943,7 @@ struct WheelReportBudget {
         }
         let elapsed = Double(elapsedNanoseconds) / 1_000_000_000
         allowance = min(
-            Double(Self.burst),
+            Double(maximumBurst),
             allowance + elapsed * Self.reportsPerSecond)
         let granted = min(wanted, Int(allowance))
         allowance -= Double(granted)

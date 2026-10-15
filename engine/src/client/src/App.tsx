@@ -6,6 +6,7 @@ import { sessionCards } from "@shared/readTracker";
 import { linkedSessionId } from "@shared/sessionLink";
 import { hasDesktopBridge, notifyNativeAction, notifyNativeSelection, notifyNativeResume, observeNativeNavigation, observeNativeTerminalSelection, recentSessionsCollapsed, setRecentSessionsCollapsed } from "./nativeBridge";
 import { useBoard, useNow } from "./hooks/useBoard";
+import { useDesktopPreferences } from "./hooks/useDesktopPreferences";
 import { useReadTracker } from "./hooks/useReadTracker";
 import { BoardColumn } from "./components/BoardColumn";
 import { DetailsPanel } from "./components/DetailsPanel";
@@ -48,6 +49,7 @@ function ConnectionIndicator(state: "connecting" | "live" | "polling", error: st
 }
 
 export default function App() {
+  const preferences = useDesktopPreferences();
   const { board, connection, error } = useBoard();
   const desktop = hasDesktopBridge();
   const [historyCollapsed, setHistoryCollapsed] = useState(recentSessionsCollapsed);
@@ -141,7 +143,7 @@ export default function App() {
   const loading = board === null;
 
   return (
-    <div className="h-screen flex flex-col bg-background text-text-primary">
+    <div className={`h-screen flex flex-col bg-background text-text-primary ${preferences.reduceMotion ? "reduce-office-motion" : ""}`}>
       <header className="relative shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 border-b border-border bg-surface">
         <div className="flex items-center gap-2">
           <img src="/kliprun-icon.png" alt="" className="w-6 h-6" />
@@ -191,10 +193,10 @@ export default function App() {
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "usage" ? "border-accent/40 bg-accent/10 text-accent" : "border-border text-text-secondary hover:text-accent hover:border-accent/40"}`}>
           <Gauge className="w-3.5 h-3.5" />Usage
         </button>
-        {desktop && <button type="button" onClick={() => notifyNativeAction("notification-settings")} data-testid="notification-settings-button"
-          aria-label="Notification settings" title="Notification settings"
+        {desktop && <button type="button" onClick={() => notifyNativeAction("settings")} data-testid="settings-button"
+          aria-label="Settings" title="Settings (⌘,)"
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-text-secondary hover:text-accent hover:border-accent/40 transition-colors">
-          <Settings2 className="w-3.5 h-3.5" /><span className="hidden 2xl:inline">Notifications</span>
+          <Settings2 className="w-3.5 h-3.5" /><span className="hidden 2xl:inline">Settings</span>
         </button>}
         {desktop && <ShortcutHelp />}
       </header>

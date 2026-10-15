@@ -12,8 +12,9 @@ final class DesktopStore: ObservableObject {
     }
     var selectedTerminalID: Int? { terminalDock.visibleID }
     @Published var terminalExpanded = false
-    @Published private(set) var interfaceZoom = InterfaceZoom(percent: UserDefaults.standard.integer(forKey: "interface.zoom"))
-    @Published var showingNotificationSettings = false
+    @Published private(set) var preferences: AppPreferences
+    var interfaceZoom: InterfaceZoom { InterfaceZoom(percent: preferences.interfaceZoomPercent) }
+    @Published var showingSettings = false
     @Published var terminals: [TerminalSession] = []
     @Published var error: String?
     let runtime = EngineRuntime()
@@ -21,7 +22,8 @@ final class DesktopStore: ObservableObject {
 
     private var links: [String: Int32] = [:]
     private var tracker = NotificationTracker()
-    let notifications = PopupNotifications()
+    let notifications: PopupNotifications
+    private let defaults: UserDefaults
     private var loop: Task<Void, Never>?
     private var nextTerminalID = 1
     private var pendingWebSessionID: String?
@@ -32,7 +34,26 @@ final class DesktopStore: ObservableObject {
     private var projectPanel: NSOpenPanel?
     private var resumingSessions = Set<String>()
 
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        preferences = AppPreferences(defaults: defaults)
+        notifications = PopupNotifications(defaults: defaults)
+    }
+
+    func updatePreferences(_ change: (inout AppPreferences) -> Void) {
+        var updated = preferences
+        change(&updated)
+        updated = updated.validated()
+        guard updated != preferences else { return }
+        preferences = updated
+        updated.save(to: defaults)
+        terminals.forEach { $0.applyPreferences(updated) }
+        webView?.pageZoom = CGFloat(interfaceZoom.factor)
+        webView?.evaluateJavaScript(updated.webScript)
+    }
+
     func start() {
+        pendingWebPage = preferences.startupPage
         runtime.start()
         loop = Task { [weak self] in
             while !Task.isCancelled {
@@ -111,6 +132,7 @@ final class DesktopStore: ObservableObject {
     func webDidStartLoading() { webReady = false; terminalSelectionPublished = false }
     func webDidFinishLoading() {
         webReady = true
+        webView?.evaluateJavaScript(preferences.webScript)
         publishTerminalSelection()
         if let pendingWebPage { self.pendingWebPage = nil; showPage(pendingWebPage) }
         if let pendingWebSessionID { self.pendingWebSessionID = nil; openInWeb(pendingWebSessionID) }
@@ -184,7 +206,7 @@ final class DesktopStore: ObservableObject {
     private func startTerminal(source: String, directory: String, resumeSessionID: String? = nil) {
         guard let terminal = TerminalSession(id: nextTerminalID, source: source, directory: directory, resumeSessionID: resumeSessionID,
                                               onExit: { [weak self] id in self?.closeTerminal(id) }) else { return }
-        terminal.setZoom(interfaceZoom.factor)
+        terminal.applyPreferences(preferences)
         nextTerminalID += 1
         terminals.append(terminal)
         selectedID = nil
@@ -299,21 +321,17 @@ final class DesktopStore: ObservableObject {
     func resetZoom() { var zoom = interfaceZoom; zoom.reset(); setZoom(zoom) }
 
     private func setZoom(_ zoom: InterfaceZoom) {
-        guard zoom != interfaceZoom else { return }
-        interfaceZoom = zoom
-        UserDefaults.standard.set(zoom.percent, forKey: "interface.zoom")
-        webView?.pageZoom = CGFloat(zoom.factor)
-        terminals.forEach { $0.setZoom(zoom.factor) }
+        updatePreferences { $0.interfaceZoomPercent = zoom.percent }
     }
 
-    func showNotificationSettings() {
+    func showSettings() {
         NSApp.activate(ignoringOtherApps: true)
-        showingNotificationSettings = true
+        showingSettings = true
     }
 
     func previewNotification() {
         notifications.preview { [weak self] in
-            self?.showingNotificationSettings = false
+            self?.showingSettings = false
             NSApp.activate(ignoringOtherApps: true)
             self?.webView?.evaluateJavaScript("window.history.pushState(null, '', '/'); window.dispatchEvent(new PopStateEvent('popstate'));")
         }

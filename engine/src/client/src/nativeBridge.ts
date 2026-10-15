@@ -8,7 +8,30 @@ type NativeBridgeHost = {
   } };
 };
 
-export type DesktopAction = "new-opencode" | "new-codex" | "show-terminal" | "open-iterm" | "notification-settings";
+export type DesktopAction = "new-opencode" | "new-codex" | "show-terminal" | "open-iterm" | "settings";
+
+export interface DesktopPreferences {
+  detailTab: "agent-text" | "all" | "agent";
+  reduceMotion: boolean;
+}
+
+type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; reduceMotion?: unknown } };
+
+export function desktopPreferences(host: PreferencesHost = typeof window === "undefined" ? {} : window as PreferencesHost): DesktopPreferences {
+  const value = host.kliprunPreferences;
+  return {
+    detailTab: value?.detailTab === "all" || value?.detailTab === "agent" ? value.detailTab : "agent-text",
+    reduceMotion: value?.reduceMotion === true,
+  };
+}
+
+export function observeNativePreferences(onChange: (value: DesktopPreferences) => void,
+  host: EventTarget & PreferencesHost = window): () => void {
+  const listener = () => onChange(desktopPreferences(host));
+  host.addEventListener("kliprun:preferences", listener);
+  listener();
+  return () => host.removeEventListener("kliprun:preferences", listener);
+}
 
 export function hasDesktopBridge(host: NativeBridgeHost = window as unknown as NativeBridgeHost): boolean {
   return !!host.webkit?.messageHandlers?.desktopAction;

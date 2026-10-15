@@ -40,6 +40,10 @@ struct KlipRunApp: App {
         WindowGroup("KlipRun") { ContentView(store: delegate.store) }
             .commands {
                 CommandGroup(replacing: .newItem) {}
+                CommandGroup(replacing: .appSettings) {
+                    Button("Settings…") { delegate.store.showSettings() }
+                        .keyboardShortcut(",", modifiers: [.command])
+                }
                 TerminalCommands(store: delegate.store)
                 CommandGroup(after: .toolbar) {
                     Button("Zoom In") { delegate.store.zoomIn() }
