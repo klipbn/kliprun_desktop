@@ -4,6 +4,10 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+### Documentation
+
+- Refresh all nine demo screenshots for 0.0.4, show supported Usage providers, and include a fixture-only preview server.
+
 ## [0.0.4] - 2026-10-15
 
 ### Added
