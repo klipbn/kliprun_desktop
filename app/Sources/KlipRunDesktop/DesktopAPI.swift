@@ -3,6 +3,12 @@ import KlipRunCore
 
 struct TerminalLink: Decodable { let session_id: String; let pid: Int32 }
 struct TerminalLinks: Decodable { let links: [TerminalLink] }
+struct ResumeSessionDetail: Decodable {
+    let source: String
+    let session_id: String
+    let directory: String
+    let exists: Bool
+}
 
 @MainActor final class DesktopAPI {
     let baseURL: URL

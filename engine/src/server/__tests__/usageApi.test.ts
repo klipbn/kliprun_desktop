@@ -16,6 +16,19 @@ function fixture() {
   const app = new Hono(); registerStatsRoutes(app, service);
   return { service, app };
 }
+test("recent sessions include both harnesses, newest first, without child sessions", async () => {
+  const { app } = fixture();
+  await app.request("/api/stats?from=0&to=300");
+  const store = new UsageStore(join(resources[resources.length - 1].home, "usage.sqlite3"));
+  try {
+    for (const [id, parent, at, source] of [["ses_old", null, 100, "opencode"], ["codex:01900000-0000-7000-8000-000000000001", null, 200, "codex"], ["ses_child", "ses_old", 300, "opencode"]] as const) {
+      store.upsertSession({ id, parent_id: parent, source, title: id, directory: "/project", created_at: 1, updated_at: at });
+    }
+    const response = await app.request("/api/recent-sessions");
+    expect(response.status).toBe(200);
+    expect((await response.json() as { sessions: Array<{ id: string }> }).sessions.map(s => s.id)).toEqual(["codex:01900000-0000-7000-8000-000000000001", "ses_old"]);
+  } finally { store.close(); }
+});
 test("worker-backed statistics serve independent observations while unavailable sources remain isolated", async () => {
   const { service, app } = fixture();
   const cards = [{ session_id: "ses_a", source: "opencode" as const, title: "Task", directory: "/p", parent_id: null, agent: "build", model: "p/a" }];

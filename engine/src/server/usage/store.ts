@@ -40,6 +40,11 @@ export class UsageStore {
     const safe = { ...session, title: scrub(session.title), directory: scrub(session.directory) };
     this.db.query("INSERT INTO usage_sessions(id,data) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data").run(session.id, JSON.stringify(safe));
   }
+  recentSessions(): UsageSession[] {
+    return this.db.query<{ data: string }, []>(`SELECT data FROM usage_sessions
+      WHERE json_extract(data,'$.parent_id') IS NULL AND json_extract(data,'$.directory') != ''
+      ORDER BY json_extract(data,'$.updated_at') DESC, id ASC LIMIT 50`).all().map(row => JSON.parse(row.data) as UsageSession);
+  }
   upsertEvents(sessionId: string, events: UsageEvent[]): void {
     const insert = this.db.query("INSERT INTO usage_events(session_id,event_id,at,data) VALUES(?,?,?,?) ON CONFLICT(session_id,event_id) DO UPDATE SET at=excluded.at,data=excluded.data");
     this.db.transaction(() => {

@@ -88,12 +88,14 @@ export class CodexAdapter {
   }
 
   detail(sessionId: string, now: number): SessionDetailPayload {
-    const row = this.threads.get(sessionId.replace(/^codex:/, ""));
+    const id = sessionId.replace(/^codex:/, "");
+    let row = this.threads.get(id);
+    try { row ??= this.storage.thread(id) ?? undefined; } catch { /* storage unavailable */ }
     let messages: SessionDetailPayload["messages"] = [];
     let models: SessionDetailPayload["models"] = [];
     if (row) {
       try {
-        const state = this.readers.get(row.id)?.read(row.rollout_path, now);
+        const state = (this.readers.get(row.id) ?? new RolloutReader()).read(row.rollout_path, now);
         messages = state?.messages ?? [];
         models = state?.models ?? [];
       } catch { /* journal removed */ }

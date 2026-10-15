@@ -8,6 +8,8 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
     let id: Int
     let source: String
     let directory: String
+    let resumeSessionID: String?
+    private let onExit: (Int) -> Void
     let view = LocalProcessTerminalView(frame: .zero)
     @Published var title: String
     private var titleState: TerminalTitle
@@ -15,10 +17,12 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
     var sessionID: String?
     var pid: Int32 { view.process?.shellPid ?? 0 }
 
-    init?(id: Int, source: String, directory: String) {
+    init?(id: Int, source: String, directory: String, resumeSessionID: String? = nil, onExit: @escaping (Int) -> Void = { _ in }) {
         guard let launch = AgentLaunch.make(source: source, home: FileManager.default.homeDirectoryForCurrentUser.path,
-                                            inherited: ProcessInfo.processInfo.environment) else { return nil }
+                                            inherited: ProcessInfo.processInfo.environment, sessionID: resumeSessionID) else { return nil }
         self.id = id; self.source = source; self.directory = directory
+        self.resumeSessionID = resumeSessionID
+        self.onExit = onExit
         let initialTitle = "\(source == "codex" ? "Codex" : source == "opencode" ? "OpenCode" : "Terminal") · \((directory as NSString).lastPathComponent)"
         title = initialTitle
         titleState = TerminalTitle(automatic: initialTitle)
@@ -48,7 +52,10 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
         self.title = titleState.display
     }
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
-    func processTerminated(source: TerminalView, exitCode: Int32?) { isRunning = false }
+    func processTerminated(source: TerminalView, exitCode: Int32?) {
+        isRunning = false
+        onExit(id)
+    }
     func processFailedToStart(source: TerminalView, error: LocalProcessError) {
         isRunning = false
         view.feed(text: "\r\nCould not start the terminal: \(error)\r\n")

@@ -30,6 +30,7 @@ final class DesktopStore: ObservableObject {
     private var publishedTerminalSessionID: String?
     private var terminalSelectionPublished = false
     private var projectPanel: NSOpenPanel?
+    private var resumingSessions = Set<String>()
 
     func start() {
         runtime.start()
@@ -180,8 +181,9 @@ final class DesktopStore: ObservableObject {
         }
     }
 
-    private func startTerminal(source: String, directory: String) {
-        guard let terminal = TerminalSession(id: nextTerminalID, source: source, directory: directory) else { return }
+    private func startTerminal(source: String, directory: String, resumeSessionID: String? = nil) {
+        guard let terminal = TerminalSession(id: nextTerminalID, source: source, directory: directory, resumeSessionID: resumeSessionID,
+                                              onExit: { [weak self] id in self?.closeTerminal(id) }) else { return }
         terminal.setZoom(interfaceZoom.factor)
         nextTerminalID += 1
         terminals.append(terminal)
@@ -189,6 +191,34 @@ final class DesktopStore: ObservableObject {
         var dock = terminalDock
         dock.show(terminal.id)
         terminalDock = dock
+    }
+
+    func resumeSession(_ id: String) {
+        let source = id.hasPrefix("codex:") ? "codex" : "opencode"
+        guard AgentLaunch.make(source: source, home: "", inherited: [:], sessionID: id) != nil else { return }
+        if let terminal = terminals.first(where: { $0.isRunning && ($0.sessionID == id || ($0.sessionID == nil && $0.resumeSessionID == id)) }) {
+            selectTerminalTab(terminal.id)
+            return
+        }
+        guard let baseURL = runtime.baseURL, resumingSessions.insert(id).inserted else { return }
+        Task {
+            defer { resumingSessions.remove(id) }
+            do {
+                let detail: ResumeSessionDetail = try await DesktopAPI(baseURL: baseURL, token: runtime.token).get("api/session/\(id)")
+                var isDirectory: ObjCBool = false
+                guard detail.exists, detail.session_id == id, detail.source == source,
+                      detail.directory.hasPrefix("/"),
+                      FileManager.default.fileExists(atPath: detail.directory, isDirectory: &isDirectory), isDirectory.boolValue else {
+                    throw NSError(domain: "KlipRun", code: 1, userInfo: [NSLocalizedDescriptionKey: "The session or its original project folder is no longer available."])
+                }
+                startTerminal(source: source, directory: detail.directory, resumeSessionID: id)
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = "Could not resume session"
+                alert.informativeText = error.localizedDescription
+                alert.runModal()
+            }
+        }
     }
 
     func closeTerminal(_ id: Int) {

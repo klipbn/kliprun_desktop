@@ -12,6 +12,10 @@ struct KlipRunWebView: NSViewRepresentable {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.userContentController.add(context.coordinator, name: "sessionSelected")
+        configuration.userContentController.add(context.coordinator, name: "sessionResume")
+        configuration.userContentController.add(context.coordinator, name: "recentSessionsCollapsed")
+        let collapsed = UserDefaults.standard.bool(forKey: "recentSessions.collapsed")
+        configuration.userContentController.addUserScript(WKUserScript(source: "window.kliprunRecentSessionsCollapsed = \(collapsed);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "desktopAction")
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
@@ -35,6 +39,8 @@ struct KlipRunWebView: NSViewRepresentable {
 
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "sessionSelected")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "sessionResume")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "recentSessionsCollapsed")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "desktopAction")
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
@@ -49,6 +55,10 @@ struct KlipRunWebView: NSViewRepresentable {
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "sessionSelected" {
                 store.selectWebSession(message.body as? String)
+            } else if message.name == "sessionResume", let id = message.body as? String {
+                store.resumeSession(id)
+            } else if message.name == "recentSessionsCollapsed", let collapsed = message.body as? Bool {
+                UserDefaults.standard.set(collapsed, forKey: "recentSessions.collapsed")
             } else if message.name == "desktopAction", let action = message.body as? String {
                 switch action {
                 case "new-opencode": store.launch(source: "opencode")
