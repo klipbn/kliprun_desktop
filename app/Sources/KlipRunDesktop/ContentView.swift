@@ -157,7 +157,7 @@ struct ContentView: View {
                     Circle().fill(terminal.isRunning ? .green : .gray).frame(width: 6, height: 6)
                     Text(terminal.title).lineLimit(1).frame(maxWidth: 190)
                 }
-                .foregroundStyle(selected ? .white : .secondary)
+                .foregroundStyle(.white)
             }.buttonStyle(.plain).accessibilityLabel("Open tab \(terminal.title)")
             Button { store.closeTerminal(terminal.id) } label: {
                 Image(systemName: "xmark").font(.system(size: 9))

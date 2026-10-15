@@ -4,6 +4,7 @@ import {
   CircleAlert,
   CircleHelp,
   Folder,
+  Flag,
   GitBranch,
   GitMerge,
   Loader2,
@@ -15,6 +16,13 @@ import {
 import type { CardPayload } from "@shared/types";
 import type { TrackedCard } from "@shared/readTracker";
 import { formatDuration, formatRelativeTimeVerbose, formatTokens } from "@shared/format";
+import type { CardPriorities, CardPriority } from "../cardPriorities";
+
+const PRIORITY_STYLES: Record<CardPriority, string> = {
+  critical: "text-error",
+  medium: "text-warning",
+  low: "text-success",
+};
 
 function StatusIcon({ card, read }: { card: CardPayload; read: boolean }) {
   if (card.source === "codex" && card.stage === "Status unknown") {
@@ -59,13 +67,16 @@ interface Props {
   activeTerminalId: string | null;
   now: number;
   isRead: (card: TrackedCard) => boolean;
+  priorities: CardPriorities;
+  onPriorityChange: (id: string, priority: CardPriority | null) => void;
   onSelect: (id: string) => void;
 }
 
-export const SessionCard = memo(function SessionCard({ card, depth, selectedId, activeTerminalId, now, isRead, onSelect }: Props) {
+export const SessionCard = memo(function SessionCard({ card, depth, selectedId, activeTerminalId, now, isRead, priorities, onPriorityChange, onSelect }: Props) {
   const selected = card.session_id === selectedId;
   const activeTerminal = card.session_id === activeTerminalId;
   const read = card.column === "idle" && isRead(card);
+  const priority = priorities[card.session_id];
   const isAttention = card.column === "attention";
   const isRunning = card.column === "running";
 
@@ -86,17 +97,9 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
   const context = card.context;
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <article
       data-testid={`card-${card.session_id}`}
-      onClick={() => onSelect(card.session_id)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onSelect(card.session_id);
-        }
-      }}
+      onClick={(event) => { event.stopPropagation(); onSelect(card.session_id); }}
       className={`w-full text-left rounded-md border border-border border-l-2 ${borderClass(card)} ${
         activeTerminal ? "bg-accent/10 ring-2 ring-accent shadow-[0_0_18px_rgba(88,166,255,0.28)]" :
         selected ? "bg-background ring-2 ring-accent/70" : "bg-surface hover:bg-background"
@@ -107,14 +110,30 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
       <div className="flex items-center gap-2 w-full min-w-0">
         <StatusIcon card={card} read={read} />
         <h3
-          className={`text-sm font-medium truncate flex-1 min-w-0 ${
-            selected || activeTerminal ? "text-accent" : "text-text-primary"
-          }`}
+          className="text-sm font-medium truncate flex-1 min-w-0 text-white"
           title={card.title}
         >
-          {card.title || "Untitled Session"}
+          <button type="button" className="w-full truncate text-left outline-none focus-visible:underline">
+            {card.title || "Untitled Session"}
+          </button>
         </h3>
         {activeTerminal && <span className="inline-flex items-center gap-1 rounded border border-accent/60 bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent shrink-0" data-testid="active-terminal-badge"><SquareTerminal className="w-3 h-3" />Terminal</span>}
+        <span className={`relative flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-border/50 focus-within:ring-1 focus-within:ring-accent ${priority ? PRIORITY_STYLES[priority] : "text-text-secondary/60 hover:text-text-primary"}`} title={`Priority: ${priority ? priority[0].toUpperCase() + priority.slice(1) : "Not set"}. Click to change.`}>
+          <Flag className="h-3.5 w-3.5" fill={priority ? "currentColor" : "none"} aria-hidden="true" />
+          <select
+            aria-label={`Priority for ${card.title || "Untitled Session"}`}
+            data-testid="card-priority"
+            value={priority ?? ""}
+            onClick={(event) => event.stopPropagation()}
+            onChange={(event) => onPriorityChange(card.session_id, (event.target.value || null) as CardPriority | null)}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          >
+            <option value="">No priority</option>
+            <option value="critical">Critical</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </span>
         <span className="text-xs text-text-secondary shrink-0">
           {formatRelativeTimeVerbose(card.last_event_at || null)}
         </span>
@@ -217,7 +236,7 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
           </div>
           <div className="flex items-center justify-between text-[10px] text-text-secondary gap-2">
             <span className="truncate">
-              <span className="text-text-primary">{context.model}</span>
+              <span className="text-white">{context.model}</span>
               <span className="mx-1">·</span>
               {Math.round(context.percent)}% context
             </span>
@@ -250,11 +269,13 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
               activeTerminalId={activeTerminalId}
               now={now}
               isRead={isRead}
+              priorities={priorities}
+              onPriorityChange={onPriorityChange}
               onSelect={onSelect}
             />
           ))}
         </div>
       )}
-    </div>
+    </article>
   );
 });

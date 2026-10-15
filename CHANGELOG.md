@@ -4,6 +4,27 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-10-15
+
+### Added
+
+- Per-session **Critical**, **Medium**, and **Low** priorities, selected through a small flag beside the Kanban title. Priorities are saved in macOS preferences and restored across app launches.
+
+### Changed
+
+- Compact Usage provider rows with larger names, remaining-quota status dots, and white limit/reset labels. Remove the KPI overview and plan/status subtitles; expand reset schedules and provider information on demand.
+- Keep Usage row sizes stable when opening the terminal dock; scroll the page when vertical room is limited.
+- Use pure white text for terminal tabs, session and model names, toolbar buttons, and the session-details close control. Center **New OpenCode**, **New Codex**, and **Terminal** relative to the window, with a separate centered row in narrower layouts.
+- Enlarge the coworker notification close icon to **16 pt** and its click target to **36 × 36 pt**.
+
+### Fixed
+
+- Restore the Codex context bar for long journals when the model event is outside the bounded tail, using the same session’s persisted model without attributing historical spend to it.
+
+### Documentation
+
+- Refresh all nine screenshots from the 0.0.6 UI using fictional fixture data, including sample priority flags and the current Usage layout. Add a reusable capture callback and update screenshot provenance.
+
 ## [0.0.5] - 2026-10-15
 
 ### Added
@@ -104,4 +125,5 @@ First public macOS release.
 [0.0.3]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.3
 [0.0.4]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.4
 [0.0.5]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.5
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.5...main
+[0.0.6]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.6
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.6...main

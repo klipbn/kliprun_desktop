@@ -1,6 +1,6 @@
 // Playwright callback for the fixture-only preview. No provider label overrides.
 async (page) => {
-  await page.setViewportSize({ width: 1600, height: 1500 });
+  await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto('http://127.0.0.1:18796/usage');
   await page.locator('.usage-provider[data-provider="kimi"] .usage-balance').waitFor();
   await page.getByText('Checking providers…', { exact: true }).waitFor({ state: 'hidden' });

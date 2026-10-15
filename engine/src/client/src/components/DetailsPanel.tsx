@@ -76,7 +76,7 @@ function MessageView({ message }: { message: DetailMessage }) {
           <Terminal className="w-3.5 h-3.5 text-accent" />
         )}
         <span className="text-text-primary font-medium">{message.agent ?? message.role}</span>
-        {message.model && <span className="px-1.5 rounded bg-background border border-border">{message.model}</span>}
+        {message.model && <span className="px-1.5 rounded bg-background border border-border text-white">{message.model}</span>}
         {message.created !== null && <span>{formatRelativeTimeVerbose(message.created)}</span>}
         {message.duration_ms !== null && (
           <span className="flex items-center gap-0.5">
@@ -179,7 +179,7 @@ function ModelsView({ detail }: { detail: SessionDetailPayload }) {
         <div key={model.model} className="rounded-md border border-border bg-surface p-3 space-y-2">
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-accent" />
-            <span className="text-sm font-medium">{model.model}</span>
+            <span className="text-sm font-medium text-white">{model.model}</span>
             <span className="text-xs text-text-secondary">{model.turns} turns</span>
           </div>
           <div className="grid grid-cols-3 gap-2 text-xs">
@@ -312,7 +312,7 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
         }} />}
       <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-border">
         <ChevronRight className="w-4 h-4 text-accent shrink-0" />
-        <h2 className="text-sm font-medium truncate flex-1" title={detail?.title ?? sessionId}>
+        <h2 className="text-sm font-medium truncate flex-1 text-white" title={detail?.title ?? sessionId}>
           {detail?.title ?? sessionId}
         </h2>
         {detail && <span className="text-[10px] text-text-secondary shrink-0">{detail.source === "codex" ? "Codex CLI" : "OpenCode"}</span>}
@@ -322,7 +322,7 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
         <button
           type="button"
           onClick={onClose}
-          className="p-1 rounded hover:bg-background text-text-secondary"
+          className="p-1 rounded hover:bg-background text-white"
           aria-label="Close details"
         >
           <X className="w-4 h-4" />

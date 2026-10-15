@@ -14,7 +14,18 @@ const card = {
 
 test("active terminal card stands out even when its details are closed", () => {
   const html = renderToStaticMarkup(<SessionCard card={card} depth={0} selectedId={null}
-    activeTerminalId={card.session_id} now={0} isRead={() => false} onSelect={() => {}} />);
+    activeTerminalId={card.session_id} now={0} isRead={() => false} priorities={{}} onPriorityChange={() => {}} onSelect={() => {}} />);
   expect(html).toContain('data-testid="active-terminal-badge"');
   expect(html).toContain("ring-2 ring-accent");
+});
+
+test("session card exposes the selected priority and all priority choices", () => {
+  const priorityProps = { priorities: { [card.session_id]: "critical" }, onPriorityChange: () => {} } as unknown as React.ComponentProps<typeof SessionCard>;
+  const html = renderToStaticMarkup(<SessionCard {...priorityProps} card={card} depth={0} selectedId={null}
+    activeTerminalId={null} now={0} isRead={() => false} onSelect={() => {}} />);
+
+  expect(html).toContain('data-testid="card-priority"');
+  expect(html).toContain("Critical");
+  expect(html).toContain("Medium");
+  expect(html).toContain("Low");
 });

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowUpRight, Check, Clock3, Gauge, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Gauge, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import { QUOTA_LABELS, QUOTA_PROVIDERS, type ProviderQuota, type QuotaProvider, type QuotaWindow } from "@shared/quota";
 import { tone, percent, countdown, date } from "./format";
 import "./usage.css";
@@ -7,7 +7,6 @@ type Quotas = Partial<Record<QuotaProvider, ProviderQuota>>;
 type Errors = Partial<Record<QuotaProvider, string>>;
 type Props = { quotas: Quotas; pending: QuotaProvider[]; errors: Errors; now: number; onRefresh: () => void };
 const SOURCE = { openai: "OpenCode", codex: "Codex", zai: "OpenCode", kimi: "OpenCode" };
-const MONOGRAM = { openai: "O", codex: "C", zai: "Z", kimi: "K" };
 
 function remaining(quota: ProviderQuota): number | null {
   return quota.limits.length ? Math.min(...quota.limits.map(w => w.remaining_percent)) : null;
@@ -43,10 +42,9 @@ function ProviderCard({ provider, quota, pending, error, now }: { provider: Quot
   const limiting = quota?.limits.find(w => w.remaining_percent === value);
   const status = cached ? "Cached" : due ? "Reset pending" : live ? value === 0 ? "Limit reached" : value !== null && value <= 30 ? "Running low" : "Available"
     : quota?.status === "not_configured" ? "Not connected" : quota?.status === "sign_in_required" ? "Sign in required" : pending && !quota ? "Connecting" : "Unavailable";
-  return <article className="usage-provider" data-provider={provider} data-tone={live || cached ? tone(value) : "unknown"} aria-label={QUOTA_LABELS[provider]}>
+  return <article className="usage-provider" data-provider={provider} data-tone={live || cached ? tone(value) : "unknown"} aria-label={QUOTA_LABELS[provider]} title={`${status} · Via ${SOURCE[provider]} · ${quota?.updated_at != null ? updated(quota.updated_at, now) : "No usage data yet"}`}>
     <header className="usage-provider-header">
-      <div className="usage-provider-identity"><span className="usage-monogram" aria-hidden="true">{MONOGRAM[provider]}</span><div><h2>{QUOTA_LABELS[provider]}</h2><p>{quota?.plan ?? (provider === "kimi" ? "Kimi Code" : provider === "zai" ? "Coding plan" : "ChatGPT subscription")}</p></div></div>
-      <span className="usage-status" data-muted={cached || !live || undefined}>{pending && quota ? <RefreshCw size={12} className="animate-spin" /> : live && value !== null && value > 30 ? <Check size={12} /> : cached || value === 0 ? <AlertTriangle size={12} /> : null}{status}</span>
+      <div className="usage-provider-identity"><span className="usage-provider-indicator" data-tone={live ? tone(value) : "unknown"} role="img" aria-label={`${status}${value !== null ? `: ${percent(value)}% remaining` : ""}`} title={`${status}${value !== null ? `: ${percent(value)}% remaining` : ""}`} /><h2>{QUOTA_LABELS[provider]}</h2></div>
     </header>
     {value !== null && quota ? <>
       <div className="usage-balance" aria-label={`${QUOTA_LABELS[provider]}: ${percent(value)}% remaining`}>
@@ -63,33 +61,25 @@ function ProviderCard({ provider, quota, pending, error, now }: { provider: Quot
 
 export function UsageDashboard({ quotas, pending, errors, now, onRefresh }: Props) {
   const connected = QUOTA_PROVIDERS.filter(id => quotas[id]?.status === "ready" && !errors[id] && !resetDue(quotas[id]!, now));
-  const available = connected.filter(id => (remaining(quotas[id]!) ?? 0) > 0);
-  const low = connected.filter(id => (remaining(quotas[id]!) ?? 100) <= 30);
   const resets = connected.flatMap(provider => quotas[provider]!.limits
     .filter(w => w.reset_at !== null && w.reset_at > now)
     .map(w => ({ provider, window: w.label, at: w.reset_at! }))).sort((a, b) => a.at - b.at);
-  const nextReset = resets[0];
   const checking = pending.length > 0;
   return <main className="usage-screen" data-testid="usage-screen">
     <div className="usage-container">
       <div className="usage-heading"><div><div className="usage-eyebrow"><Gauge size={14} />Subscription limits</div><h1>Usage</h1><p>Your subscriptions, at a glance. Know what is left and when it resets.</p></div>
         <div className="usage-refresh"><span>{checking ? "Checking providers…" : "Auto-refreshes every minute"}</span><button type="button" onClick={onRefresh} disabled={checking}><RefreshCw size={15} className={checking ? "animate-spin" : ""} />Refresh</button></div>
       </div>
-      <section className="usage-summary" aria-label="Quota overview">
-        <div className="usage-summary-tile" data-available={available.length}><span className="usage-summary-icon"><ShieldCheck size={20} /></span><div><h2>Available providers</h2><strong>{available.length}<small> / {QUOTA_PROVIDERS.length}</small></strong><p>{connected.length ? `${connected.length} with confirmed limits` : checking ? "Checking current limits" : "No confirmed limits yet"}</p></div></div>
-        <div className="usage-summary-tile" data-low={low.length} data-warning={low.length > 0 || undefined}><span className="usage-summary-icon"><AlertTriangle size={20} /></span><div><h2>Low on quota</h2><strong>{low.length}</strong><p>{low.length ? "30% or less in at least one window" : connected.length ? "No low balances in confirmed limits" : "Waiting for current limits"}</p></div></div>
-        <div className="usage-summary-tile"><span className="usage-summary-icon"><Clock3 size={20} /></span><div><h2>Next reset</h2><strong className="usage-next-reset">{nextReset ? countdown(nextReset.at, now) : "—"}</strong><p>{nextReset ? `${QUOTA_LABELS[nextReset.provider]} · ${nextReset.window}` : "No confirmed reset time"}</p></div></div>
-      </section>
       <div className="usage-section-heading"><h2>Provider balances</h2><span>Each percentage shows the allowance remaining</span></div>
       <section className="usage-provider-grid" aria-label="Provider balances">
         {QUOTA_PROVIDERS.map(provider => <ProviderCard key={provider} provider={provider} quota={quotas[provider]} pending={pending.includes(provider)} error={errors[provider]} now={now} />)}
       </section>
-      <section className="usage-reset-panel" aria-label="Upcoming resets"><div className="usage-section-heading"><h2><Clock3 size={16} />Upcoming resets</h2><span>In your local time</span></div>
+      <details className="usage-reset-panel"><summary className="usage-reset-summary">Reset schedule and provider information</summary>
         {resets.length ? <div className="usage-reset-list">{resets.slice(0, 4).map((reset, index) => <div className="usage-reset-item" key={`${reset.provider}-${index}`}>
           <span className="usage-reset-dot" data-provider={reset.provider} /><div><strong>{QUOTA_LABELS[reset.provider]}</strong><span>{reset.window}</span></div><time dateTime={new Date(reset.at).toISOString()}>{date(reset.at)}</time><b>in {countdown(reset.at, now)}</b>
         </div>)}</div> : <p className="usage-reset-empty">Reset times will appear when a provider returns current limits.</p>}
-      </section>
-      <div className="usage-footnote"><ShieldCheck size={15} /><p>Limits come directly from your providers using your existing agent sign-ins. Cached balances are marked and excluded from the overview. OpenCode and Codex can use different OpenAI accounts.</p><a href="/stats" onClick={event => { event.preventDefault(); window.history.pushState(null, "", "/stats"); window.dispatchEvent(new PopStateEvent("popstate")); }}>View usage history<ArrowUpRight size={13} /></a></div>
+      <div className="usage-footnote"><ShieldCheck size={15} /><p>Limits come directly from your providers using your existing agent sign-ins. Cached balances are marked. OpenCode and Codex can use different OpenAI accounts.</p><a href="/stats" onClick={event => { event.preventDefault(); window.history.pushState(null, "", "/stats"); window.dispatchEvent(new PopStateEvent("popstate")); }}>View usage history<ArrowUpRight size={13} /></a></div>
+      </details>
     </div>
   </main>;
 }

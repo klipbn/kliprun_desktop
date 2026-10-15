@@ -44,9 +44,9 @@
 .office-station { width: 160px; max-width: 100%; height: 110px; flex-shrink: 0; overflow: visible; }
 .office-nameplate { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; max-width: 100%; font: 11px ui-monospace, monospace; color: var(--resident-color); }
 .office-nameplate small { color: #a5b4c8; font-size: 9px; }
-.office-model-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%; }
+.office-model-label { color: #ffffff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%; }
 .office-timer { display: inline-flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; flex-shrink: 0; width: 160px; max-width: 100%; height: 40px; padding: 4px 7px; color: #b8c8dc; background: #162331; border: 1px solid #68809b55; border-radius: 3px; font: 9px ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.office-timer-session { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; color: #dce4ef; font-size: 10px; }
+.office-timer-session { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; color: #ffffff; font-size: 10px; }
 .office-timer[data-timer-state="working"] { color: #8dd5ae; border-color: #8dd5ae50; }
 .office-timer[data-timer-state="waiting"] { color: #efd081; border-color: #efd08150; }
 .office-timer[data-timer-state="error"] { color: #f38c86; border-color: #f38c8650; }

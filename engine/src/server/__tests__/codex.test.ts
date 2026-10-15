@@ -132,7 +132,7 @@ describe("Codex rollout state", () => {
     const reader = new RolloutReader();
     expect(reader.read(path, t).context?.model).toBe("first");
     appendFileSync(path, event("turn_context", { model: "second" }, t + 1));
-    expect(reader.read(path, t + 1).context).toBeNull();
+    expect(reader.read(path, t + 1, "first").context).toBeNull();
   });
   test("summarizes recorded usage by model without counting repeated cumulative snapshots", () => {
     const path = join(temp(), "session.jsonl");
@@ -297,6 +297,26 @@ describe("Codex storage and adapter", () => {
     const adapter = new CodexAdapter(dir);
     adapter.setProcesses([cli(), { ...cli("11"), cwd: "/other" }]);
     expect(adapter.cards(t).map(card => card.title)).toEqual(["healthy"]);
+    adapter.close();
+  });
+  test("keeps context usage when the journal model falls outside the bounded tail", () => {
+    const dir = temp(); const { db } = database(dir);
+    const rollout = join(dir, `rollout-${id}.jsonl`);
+    writeFileSync(rollout, event("turn_context", { model: "gpt-test" }) +
+      event("response_item", { type: "ignored", text: "x".repeat(5 * 1024 * 1024) }) +
+      event("event_msg", { type: "token_count", info: {
+        model_context_window: 10000,
+        last_token_usage: { total_tokens: 4300 },
+        total_token_usage: { total_tokens: 900000 },
+      } }));
+    db.query("INSERT INTO threads VALUES (?,?,?,?,?,?,?,?)").run(id, "/project", "long task", "cli", rollout, t / 1000, 0, "gpt-test");
+    db.close();
+    const adapter = new CodexAdapter(dir); adapter.setProcesses([cli()]);
+    const card = adapter.cards(t)[0];
+    expect(card.context).toEqual({ model: "gpt-test", percent: 43, used: 4300, limit: 10000 });
+    expect(card.tokens_total).toBe(900000);
+    // A fallback for the current context must not assign historical model spend.
+    expect(adapter.detail(`codex:${id}`, t).models).toEqual([]);
     adapter.close();
   });
   test("reads real SQLite and rollout fixtures without changing the source database", () => {

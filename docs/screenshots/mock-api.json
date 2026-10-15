@@ -4111,5 +4111,10 @@
       {"source":"opencode","state":"ready","indexed":4,"total":4,"updated_at":1791979200000,"skipped":0,"message":null},
       {"source":"codex","state":"ready","indexed":2,"total":2,"updated_at":1791979200000,"skipped":0,"message":null}
     ]
+  },
+  "card_priorities": {
+    "ses_demo_review": "critical",
+    "ses_demo_search": "medium",
+    "codex:00000000-0000-4000-8000-000000000001": "low"
   }
 }
