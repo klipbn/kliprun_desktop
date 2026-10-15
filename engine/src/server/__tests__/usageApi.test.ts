@@ -39,6 +39,9 @@ test("worker-backed statistics serve independent observations while unavailable 
   expect(response.status).toBe(200);
   const result = await response.json() as StatsDashboardPayload;
   expect(result.summary.running_ms).toBe(100);
+  expect(result.token_activity.daily).toHaveLength(1);
+  expect(result.token_activity.weekly).toHaveLength(1);
+  expect(result.token_activity.daily[0].tokens.total).toBe(0);
   expect(result.sources.some(s => s.state === "unavailable")).toBe(true);
   const list = await (await app.request("/api/stats/sessions?from=0&to=300&timezone=UTC")).json() as StatsSessionsPayload;
   expect(list.rows[0].id).toBe("ses_a");

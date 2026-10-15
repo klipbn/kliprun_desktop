@@ -1,7 +1,7 @@
 import type { StatsFilters } from "@shared/usage";
 
-export type Preset = "today" | "yesterday" | "7" | "30" | "month" | "all" | "custom";
-const RELATIVE_PRESETS: string[] = ["today", "yesterday", "7", "30", "month", "all"];
+export type Preset = "today" | "yesterday" | "7" | "30" | "90" | "month" | "all" | "custom";
+const RELATIVE_PRESETS: string[] = ["today", "yesterday", "7", "30", "90", "month", "all"];
 export const browserTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
 function validTimezone(value: string | null, fallback: string): string {
@@ -41,7 +41,7 @@ export function calendarPeriod(preset: Exclude<Preset, "custom">, now = Date.now
   if (preset === "all") return { from: 0, to: tomorrow };
   if (preset === "yesterday") return { from: shifted(p.year, p.month, p.day, -1, timezone), to: today };
   if (preset === "month") return { from: midnight(p.year, p.month, 1, timezone), to: tomorrow };
-  return { from: shifted(p.year, p.month, p.day, preset === "7" ? -6 : preset === "30" ? -29 : 0, timezone), to: tomorrow };
+  return { from: shifted(p.year, p.month, p.day, preset === "7" ? -6 : preset === "30" ? -29 : preset === "90" ? -89 : 0, timezone), to: tomorrow };
 }
 export function dateText(at: number, timezone: string): string {
   const p = localParts(at, timezone);
@@ -61,7 +61,7 @@ export function dateRange(start: string, end: string, timezone: string): { from:
 export function parseFilters(search: string, now = Date.now(), fallbackTimezone = browserTimezone()): StatsFilters {
   const query = new URLSearchParams(search);
   const timezone = validTimezone(query.get("timezone"), fallbackTimezone);
-  const initial = calendarPeriod("7", now, timezone);
+  const initial = calendarPeriod("30", now, timezone);
   const from = Number(query.get("from")), to = Number(query.get("to"));
   const validRange = query.has("from") && query.has("to") && Number.isFinite(from) && Number.isFinite(to) && from >= 0 && to > from && to <= 8.64e15;
   const preset = query.get("period");

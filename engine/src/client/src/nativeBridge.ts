@@ -4,6 +4,7 @@ type NativeBridgeHost = {
     sessionResume?: { postMessage: (id: string) => void };
     recentSessionsCollapsed?: { postMessage: (collapsed: boolean) => void };
     desktopAction?: { postMessage: (action: string) => void };
+    exportStatistics?: { postMessage: (request: { filename: string; content: string }) => void };
   } };
 };
 
@@ -15,6 +16,13 @@ export function hasDesktopBridge(host: NativeBridgeHost = window as unknown as N
 
 export function notifyNativeAction(action: DesktopAction, host: NativeBridgeHost = window as unknown as NativeBridgeHost): void {
   host.webkit?.messageHandlers?.desktopAction?.postMessage(action);
+}
+
+export function exportStatisticsCSV(filename: string, content: string, host: NativeBridgeHost = window as unknown as NativeBridgeHost): boolean {
+  const handler = host.webkit?.messageHandlers?.exportStatistics;
+  if (!handler) return false;
+  handler.postMessage({ filename, content });
+  return true;
 }
 
 export function notifyNativeSelection(id: string | null, host: NativeBridgeHost = window as unknown as NativeBridgeHost): void {

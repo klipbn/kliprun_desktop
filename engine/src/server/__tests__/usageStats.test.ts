@@ -25,6 +25,40 @@ const data = { sessions, events, intervals, attributions: [
 ], observed_at: 200, sources: [] };
 
 describe("usage aggregation", () => {
+  test("token heatmaps preserve timezone boundaries, zero days and filtered totals independently of chart granularity", () => {
+    const from = Date.parse("2026-03-07T05:00:00Z"), to = Date.parse("2026-03-10T04:00:00Z");
+    const dated = [
+      { ...events[0], id: "sat", at: Date.parse("2026-03-08T04:30:00Z"), tokens: tokens(120) },
+      { ...events[0], id: "sun", at: Date.parse("2026-03-08T05:30:00Z"), tokens: tokens(80) },
+      { ...events[1], id: "excluded-model", at: Date.parse("2026-03-09T02:00:00Z"), tokens: tokens(900) },
+      { ...events[0], id: "outside", at: to, tokens: tokens(700) },
+      { ...events[0], id: "unknown-date", at: null, tokens: tokens(600) },
+    ];
+    const result = buildDashboard({ ...data, events: dated, intervals: [], attributions: [] }, {
+      ...filters, from, to, timezone: "America/New_York", models: ["openai/a"], granularity: "month",
+    }, to);
+    expect(result.token_activity.daily.map(b => [b.key, b.tokens.total, b.calls])).toEqual([
+      ["2026-03-07", 120, 1], ["2026-03-08", 80, 1], ["2026-03-09", 0, 0],
+    ]);
+    expect(result.token_activity.daily[1].to - result.token_activity.daily[1].from).toBe(23 * 3600_000);
+    expect(result.token_activity.weekly.map(b => [b.key, b.tokens.total, b.partial])).toEqual([
+      ["2026-03-02", 200, true], ["2026-03-09", 0, true],
+    ]);
+    expect(result.summary.tokens.total).toBe(200);
+    expect(result.series).toHaveLength(1);
+  });
+  test("token heatmaps keep missing dates out of cells and mark current periods as partial", () => {
+    const now = Date.parse("2026-10-15T12:00:00Z"), to = Date.parse("2026-10-16T00:00:00Z");
+    const result = buildDashboard({ ...data, events: [
+      { ...events[0], at: now - 1000, tokens: { ...tokens(90), input: 50, output: 20, cache_read: 20 } },
+      { ...events[1], at: null },
+    ], intervals: [], attributions: [] }, { ...filters, to }, now);
+    expect(result.summary.tokens.total).toBe(140);
+    expect(result.token_activity.daily).toHaveLength(1);
+    expect(result.token_activity.daily[0]).toMatchObject({ tokens: { total: 90, input: 50, output: 20, cache_read: 20 }, partial: true, calls: 1 });
+    expect(result.token_activity.weekly[0].tokens.total).toBe(90);
+    expect(result.undated_calls).toBe(1);
+  });
   test("sums task-tree spend once and distinguishes parallel agent time from active time", () => {
     const result = buildDashboard(data, filters, 200);
     expect(result.summary.tokens.total).toBe(150);

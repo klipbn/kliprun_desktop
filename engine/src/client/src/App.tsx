@@ -183,7 +183,7 @@ export default function App() {
 
       {showStatistics && (
         <Suspense fallback={<div className="flex-1 flex items-center justify-center gap-3 text-text-secondary"><Loader2Impl /><span>Loading statistics…</span></div>}>
-          <Statistics activeSessionIds={activeSessionIds} onBack={backToBoard} onBoard={openBoardSession} onQueryChange={rememberStatisticsSearch} />
+          <Statistics activeSessionIds={activeSessionIds} onBoard={openBoardSession} onQueryChange={rememberStatisticsSearch} />
         </Suspense>
       )}
 
