@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   AlertCircle,
   ChevronRight,
@@ -19,19 +21,38 @@ import type { ColumnKey, DetailMessage, SessionDetailPayload } from "@shared/typ
 import { COLUMNS } from "@shared/types";
 import { hasDesktopBridge, notifyNativeAction } from "../nativeBridge";
 import { resizedDetailsWidth } from "./detailsSizing";
+import { useDesktopPreferences } from "../hooks/useDesktopPreferences";
 import { formatDuration, formatRelativeTimeVerbose, formatTokens } from "@shared/format";
 
 const AGENT_MESSAGE_LIMIT = 42;
 
-type TabKey = "all" | "agent" | "user" | "models" | "kanban";
+type TabKey = "agent-text" | "all" | "agent" | "user" | "models" | "kanban";
 
 const TABS: { key: TabKey; label: string; icon: typeof MessageSquare }[] = [
+  { key: "agent-text", label: "Agents T", icon: MessageSquare },
   { key: "all", label: "All", icon: MessageSquare },
   { key: "agent", label: "Agent", icon: Terminal },
   { key: "user", label: "User", icon: User },
   { key: "models", label: "Models", icon: Cpu },
   { key: "kanban", label: "Kanban", icon: History },
 ];
+
+export function AgentTextView({ messages }: { messages: DetailMessage[] }) {
+  const replies = messages.filter((message) => message.role === "assistant" && message.text.trim());
+  if (!replies.length) return <p className="text-sm text-text-secondary p-4">No agent text yet.</p>;
+  return <div className="space-y-3 min-w-0">
+    {replies.map((message, index) => (
+      <article key={index} className="agent-markdown rounded-md border border-border bg-surface/60 p-3 text-sm text-text-primary"
+        data-testid="agent-text-message">
+        <Markdown remarkPlugins={[remarkGfm]} skipHtml components={{
+          a: ({ children, href }) => <a href={href} target="_blank" rel="noreferrer">{children}</a>,
+          img: ({ alt }) => <span>{alt}</span>,
+          table: ({ children }) => <div className="overflow-x-auto"><table>{children}</table></div>,
+        }}>{message.text}</Markdown>
+      </article>
+    ))}
+  </div>;
+}
 
 const COLUMN_BADGE: Record<string, string> = {
   attention: "bg-warning/15 text-warning",
@@ -201,8 +222,10 @@ interface Props {
 }
 
 export function DetailsPanel({ sessionId, onClose }: Props) {
+  const preferences = useDesktopPreferences();
   const [detail, setDetail] = useState<SessionDetailPayload | null>(null);
-  const [tab, setTab] = useState<TabKey>("all");
+  const [tab, setTab] = useState<TabKey>(preferences.detailTab);
+  useEffect(() => setTab(preferences.detailTab), [sessionId, preferences.detailTab]);
   const [error, setError] = useState<string | null>(null);
   const [panelWidth, setPanelWidth] = useState(() => {
     try {
@@ -336,7 +359,7 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
           ))}
         </div>
       )}
-      <div className="shrink-0 flex items-center gap-1 px-2 py-1.5 border-b border-border">
+      <div className="shrink-0 flex flex-wrap items-center gap-1 px-2 py-1.5 border-b border-border">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -345,6 +368,7 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
             className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
               tab === key ? "bg-accent/10 text-accent" : "text-text-secondary hover:bg-background"
             }`}
+            aria-pressed={tab === key}
             data-testid={`tab-${key}`}
           >
             <Icon className="w-3.5 h-3.5" />
@@ -365,6 +389,7 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
             filtered.map((message, index) => <MessageView key={index} message={message} />)
           ))}
         {detail?.exists && tab === "models" && <ModelsView detail={detail} />}
+        {detail?.exists && tab === "agent-text" && <AgentTextView messages={detail.messages} />}
         {detail?.exists && tab === "kanban" && <KanbanHistory detail={detail} />}
       </div>
     </aside>

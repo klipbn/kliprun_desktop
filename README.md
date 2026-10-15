@@ -6,7 +6,7 @@ KlipRun is a macOS app for following OpenCode and Codex sessions in one place. I
 
 The downloadable build is for **Apple Silicon Macs running macOS 13 or newer**.
 
-1. Download `KlipRun-0.0.4-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.5-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip it and move `KlipRun.app` to **Applications**.
 3. Open the app. The release is signed locally but is not notarized, so macOS may block the first launch. If it does, go to **System Settings → Privacy & Security → Open Anyway**, then open KlipRun again.
 
@@ -57,7 +57,11 @@ Browse recent OpenCode and Codex sessions, inspect their details, and resume the
 - Use the position button beside **+** in the terminal toolbar to switch between **Move terminal to left** and **Move terminal to bottom**. Drag the divider to adjust the pane; its position, bottom height, and left width are remembered independently. Moving the panel keeps the current terminal and dashboard view open.
 - Exiting an agent or shell automatically closes its terminal tab. The terminal area hides after the last tab exits.
 - **⌘W** closes the visible selected terminal tab, with confirmation for a running process. It is disabled when the terminal area is hidden or empty. **⌘Q** quits the app.
-- Click **?** in the upper-right corner for every keyboard shortcut. The neighboring **Notifications** button controls the coworker popup.
+- Click **?** in the upper-right corner for every keyboard shortcut. Open **Settings** with the neighboring button or **⌘,**. Settings are saved between launches.
+- **Settings → Terminal** adjusts mouse-wheel speed from **1–10×** (default **5×**), smooth scrolling for trackpads and Magic Mouse independently (default **1×**), terminal font size (**10–24 pt**), and left/bottom placement. Speed and font changes apply to all open terminals immediately and to newly opened tabs. Wheel speed also applies when Codex/OpenCode handles scrolling itself; generated input remains rate-limited.
+- **Settings → Appearance** controls interface scale independently of the terminal font, the next launch's startup screen, the default details tab, and reduced Office animations. The macOS Reduce Motion setting is also respected.
+- Session details default to **Agents T**, the first tab before **All**. It shows only agent text, with Markdown headings, lists, links, tables, and code blocks; tool calls and technical metadata remain in the other tabs. You can choose **All** or **Agent** as the default in Settings.
+- **Settings → Notifications** controls the coworker popup, with separate **Response ready** and **Needs your input** switches. **Sound** offers installed macOS system sounds, **Preview sound**, and **None** for silence. The selected sound plays when a popup appears, including **Show preview**. Display duration and popup position controls are in the same section.
 
 KlipRun reads existing OpenCode and Codex session data without changing their stores. Its bundled engine runs on a random local loopback port and requires an app-generated token. App preferences and its own state live in `~/Library/Application Support/KlipRun Desktop`.
 

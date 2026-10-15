@@ -128,3 +128,4 @@
 @container (max-width: 750px) { .office-floor { grid-template-columns: minmax(0, 1fr); grid-template-areas: "work" "lounge" "meeting" "superwork"; }.office-zone { padding: 20px 18px; }.office-zone-lounge { padding-right: 100px; }.office-reactor { right: 18px; } }
 @media (max-width: 600px) { .office-page { padding-top: 20px; }.office-wall { height: 120px; }.office-window { left: 5%; width: 70px; height: 73px; }.office-window-center { left: 50%; }.office-clock { right: 6%; }.office-plant { right: 5%; }.office-footer-note { margin-left: 0; }.office-tooltip { width: 145px; } }
 @media (prefers-reduced-motion: reduce) { .office-page *, .office-page *::after { animation: none !important; transition: none !important; } }
+.reduce-office-motion .office-page *, .reduce-office-motion .office-page *::after { animation: none !important; transition: none !important; }

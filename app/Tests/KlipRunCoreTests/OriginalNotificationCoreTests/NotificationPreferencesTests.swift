@@ -4,6 +4,39 @@ import Testing
 @testable import KlipRunCore
 
 struct NotificationPreferencesTests {
+    @Test func notificationSwitchesPersistAndFilterEachKind() {
+        let suite = "local.kliprun.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = NotificationPreferences(defaults: defaults)
+        #expect(preferences.allows(.finished))
+        #expect(preferences.allows(.question))
+        preferences.setResponseReady(false)
+        let restored = NotificationPreferences(defaults: defaults)
+        #expect(!restored.allows(.finished))
+        for kind: AgentNotification.Kind in [.question, .permission, .input] { #expect(restored.allows(kind)) }
+        preferences.setNeedsInput(false)
+        for kind: AgentNotification.Kind in [.question, .permission, .input] { #expect(!restored.allows(kind)) }
+        preferences.setResponseReady(true)
+        preferences.setEnabled(false)
+        #expect(!NotificationPreferences(defaults: defaults).allows(.finished))
+        preferences.setEnabled(true)
+        #expect(restored.allows(.finished))
+        #expect(!restored.allows(.question))
+    }
+
+    @Test func selectedSoundPersistsAndNoneRestoresSilence() {
+        let suite = "local.kliprun.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = NotificationPreferences(defaults: defaults)
+        #expect(preferences.soundName == nil)
+        preferences.setSoundName("Glass")
+        #expect(NotificationPreferences(defaults: defaults).soundName == "Glass")
+        preferences.setSoundName(nil)
+        #expect(NotificationPreferences(defaults: defaults).soundName == nil)
+    }
+
     @Test func durationPersistsAndZeroMeansUntilDismissed() {
         let suite = "local.kliprun.tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

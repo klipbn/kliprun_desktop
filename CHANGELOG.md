@@ -4,6 +4,23 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-10-15
+
+### Added
+
+- Default **Agents T** session-details tab before **All**, showing only assistant text with Markdown formatting, including tables and code blocks. Details tabs wrap in narrow panels.
+- System sound selection and preview in Notifications, with a saved **None** option for silence.
+- Unified Settings window, available from the toolbar and **⌘,**, with Terminal, Appearance, and Notifications sections. Saves independent wheel/smooth scrolling speeds, terminal font size, interface scale, terminal placement, startup screen, default details tab, reduced Office animations, and notification event switches.
+
+### Changed
+
+- Default mouse-wheel scrolling to **5×**, with a configurable **1–10×** range and independent **1×** smooth scrolling. Apply changes immediately to open terminals.
+- Keep interface zoom independent of terminal font size.
+
+### Fixed
+
+- Honor wheel speed when the terminal application requests mouse reporting, instead of reducing every wheel event to a single report. Retain bounded bursts and input rate limits.
+
 ### Documentation
 
 - Refresh all nine demo screenshots for 0.0.4, show supported Usage providers, and include a fixture-only preview server.
@@ -86,4 +103,5 @@ First public macOS release.
 [0.0.2]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.2
 [0.0.3]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.3
 [0.0.4]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.4
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.4...main
+[0.0.5]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.5
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.5...main

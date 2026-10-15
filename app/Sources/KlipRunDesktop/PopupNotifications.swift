@@ -4,23 +4,35 @@ import KlipRunCore
 
 @MainActor
 final class PopupNotifications: NSObject, ObservableObject, NSWindowDelegate {
-    @Published private(set) var paused = false
+    @Published private(set) var paused: Bool
+    @Published private(set) var responseReady: Bool
+    @Published private(set) var needsInput: Bool
     @Published private(set) var displaySeconds: Double
+    @Published private(set) var soundName: String?
+    static let systemSoundNames: [String] = ((try? FileManager.default.contentsOfDirectory(atPath: "/System/Library/Sounds")) ?? [])
+        .filter { ($0 as NSString).pathExtension.lowercased() == "aiff" }
+        .map { ($0 as NSString).deletingPathExtension }
+        .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    private var playingSound: NSSound?
     private let preferences: NotificationPreferences
     private var panel: NSPanel?
     private var queue: [(AgentNotification, () -> Void)] = []
     private var timer: Timer?
     private var dragging = false
 
-    override init() {
-        let preferences = NotificationPreferences()
+    init(defaults: UserDefaults = .standard) {
+        let preferences = NotificationPreferences(defaults: defaults)
         self.preferences = preferences
+        paused = !preferences.enabled
+        responseReady = preferences.responseReady
+        needsInput = preferences.needsInput
         displaySeconds = preferences.displaySeconds
+        soundName = preferences.soundName.flatMap { Self.systemSoundNames.contains($0) ? $0 : nil }
         super.init()
     }
 
     func show(_ event: AgentNotification, open: @escaping () -> Void) {
-        guard !paused else { return }
+        guard preferences.allows(event.kind) else { return }
         queue.append((event, open))
         presentNext()
     }
@@ -34,7 +46,34 @@ final class PopupNotifications: NSObject, ObservableObject, NSWindowDelegate {
 
     func setPaused(_ value: Bool) {
         paused = value
-        if value { queue.removeAll(); hideCurrent() }
+        preferences.setEnabled(!value)
+        if value { queue.removeAll(); hideCurrent(); playingSound?.stop() }
+    }
+
+    func setResponseReady(_ value: Bool) {
+        responseReady = value
+        preferences.setResponseReady(value)
+        queue.removeAll { !preferences.allows($0.0.kind) }
+    }
+
+    func setNeedsInput(_ value: Bool) {
+        needsInput = value
+        preferences.setNeedsInput(value)
+        queue.removeAll { !preferences.allows($0.0.kind) }
+    }
+
+    func setSoundName(_ name: String?) {
+        if let name, !Self.systemSoundNames.contains(name) { return }
+        playingSound?.stop()
+        soundName = name
+        preferences.setSoundName(name)
+    }
+
+    func previewSound() {
+        playingSound?.stop()
+        guard let soundName else { return }
+        playingSound = NSSound(contentsOfFile: "/System/Library/Sounds/\(soundName).aiff", byReference: true)
+        playingSound?.play()
     }
 
     @discardableResult func setDisplaySeconds(_ value: Double) -> Bool {
@@ -56,7 +95,7 @@ final class PopupNotifications: NSObject, ObservableObject, NSWindowDelegate {
     private func presentNext() {
         guard panel == nil, !queue.isEmpty else { return }
         let (event, open) = queue.removeFirst()
-        guard !paused || event.sessionID == "ses_preview" else { return }
+        guard preferences.allows(event.kind) || event.sessionID == "ses_preview" else { return }
         let window = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 420, height: 230),
                              styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         window.level = .statusBar
@@ -75,6 +114,7 @@ final class PopupNotifications: NSObject, ObservableObject, NSWindowDelegate {
         panel = window
         window.delegate = self
         window.orderFrontRegardless()
+        previewSound()
         scheduleExpiration()
     }
 

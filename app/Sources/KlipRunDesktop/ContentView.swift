@@ -4,7 +4,7 @@ import KlipRunCore
 struct ContentView: View {
     @ObservedObject var store: DesktopStore
     @ObservedObject var runtime: EngineRuntime
-    @AppStorage("terminal.position") private var terminalPosition = "bottom"
+    private var terminalPosition: String { store.preferences.terminalPosition }
     @AppStorage("terminal.height") private var preferredTerminalHeight = 330.0
     @AppStorage("terminal.width") private var preferredTerminalWidth = 460.0
     @State private var dragStartExtent: Double?
@@ -61,8 +61,8 @@ struct ContentView: View {
             dragStartExtent = nil
             store.terminalExpanded = false
         }
-        .sheet(isPresented: $store.showingNotificationSettings) {
-            NotificationSettingsView(store: store, notifications: store.notifications)
+        .sheet(isPresented: $store.showingSettings) {
+            SettingsView(store: store)
         }
     }
 
@@ -112,7 +112,7 @@ struct ContentView: View {
                 .fixedSize()
                 .frame(width: 28)
                 .help("New terminal tab")
-                Button { terminalPosition = terminalOnLeft ? "bottom" : "left" } label: {
+                Button { store.updatePreferences { $0.terminalPosition = terminalOnLeft ? "bottom" : "left" } } label: {
                     Image(systemName: terminalOnLeft ? "rectangle.bottomthird.inset.filled" : "sidebar.left")
                         .frame(width: 22, height: 22)
                 }

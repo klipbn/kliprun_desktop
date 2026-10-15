@@ -4,6 +4,7 @@ import { CircleHelp, X } from "lucide-react";
 const groups = [
   { title: "Navigate", shortcuts: [
     ["Kanban board", "⌃ 1"], ["Statistics", "⌃ 2"], ["Office", "⌃ 3"], ["Usage", "⌃ 4"],
+    ["Settings", "⌘ ,"],
   ] },
   { title: "Terminals", shortcuts: [
     ["Choose a new terminal", "⌘ T"], ["Show or hide terminal", "⌘ J"],

@@ -4273,8 +4273,19 @@ open class TerminalView: NSView, NSUserInterfaceValidations, TerminalDelegate {
     /// it up. Host apps can expose this as a user preference. Clamped to a small
     /// positive floor so it can never disable scrolling entirely.
     public var scrollSensitivity: CGFloat = 1.0 {
-        didSet { scrollSensitivity = max(0.05, scrollSensitivity) }
+        didSet {
+            scrollSensitivity = max(0.05, scrollSensitivity)
+            wheelReportBudget = WheelReportBudget(maximumBurst: wheelReportMultiplier)
+            scrollAccumulator.reset()
+        }
     }
+
+    /// Optional independent sensitivity for trackpads and other pixel-scrolling devices.
+    public var preciseScrollSensitivity: CGFloat? {
+        didSet { scrollAccumulator.reset() }
+    }
+
+    private var wheelReportMultiplier: Int { Int(min(10, max(1, scrollSensitivity.rounded()))) }
 
     private static let logsMouseInput =
         ProcessInfo.processInfo.environment["SWIFTTERM_MOUSE_LOG"] == "1"
@@ -4321,7 +4332,8 @@ open class TerminalView: NSView, NSUserInterfaceValidations, TerminalDelegate {
         // in line units. This replaces the old step-function velocity that
         // jumped a full page on fast flicks — the cause of the visible line
         // "skipping" during fast scrolls. `scrollSensitivity` scales the delta.
-        let scaledDelta = event.scrollingDeltaY * scrollSensitivity
+        let sensitivity = event.hasPreciseScrollingDeltas ? (preciseScrollSensitivity ?? scrollSensitivity) : scrollSensitivity
+        let scaledDelta = event.scrollingDeltaY * max(0.05, sensitivity)
         let lines: Int
         if event.hasPreciseScrollingDeltas {
             lines = scrollAccumulator.takeWholeLines(
@@ -4372,7 +4384,8 @@ open class TerminalView: NSView, NSUserInterfaceValidations, TerminalDelegate {
                                                         shift: flags.contains(.shift), meta: flags.contains(.option), control: flags.contains(.control))
                 let wantedReports = WheelReportBudget.requestedReports(
                     lineCount: lines,
-                    isPrecise: event.hasPreciseScrollingDeltas)
+                    isPrecise: event.hasPreciseScrollingDeltas,
+                    wheelMultiplier: wheelReportMultiplier)
                 let reports = wheelReportBudget.grant(wantedReports)
                 for _ in 0..<reports {
                     terminal.sendEvent(buttonFlags: buttonFlags, x: hit.grid.col, y: screenRow,
