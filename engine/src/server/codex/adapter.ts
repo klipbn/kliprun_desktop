@@ -58,7 +58,7 @@ export class CodexAdapter {
     let reader = this.readers.get(row.id);
     if (!reader) { reader = new RolloutReader(); this.readers.set(row.id, reader); }
     let state: RolloutState | undefined;
-    try { state = reader.read(row.rollout_path, now); } catch {
+    try { state = reader.read(row.rollout_path, now, row.model); } catch {
       this.diagnostics.push(`Session ${row.id}: local journal unavailable`);
     }
     const previous = this.statuses.get(row.id);

@@ -79,7 +79,7 @@ export class RolloutReader {
       reason: "No confirmed turn status in the local journal" };
   }
 
-  read(path: string, now: number): RolloutState {
+  read(path: string, now: number, persistedModel: string | null = null): RolloutState {
     const stat = statSync(path);
     const identity = `${path}:${stat.dev}:${stat.ino}`;
     if (identity !== this.identity || stat.size < this.offset || (stat.size === this.offset && stat.mtimeMs !== this.mtime)) {
@@ -101,10 +101,15 @@ export class RolloutReader {
       } finally { closeSync(fd); }
     }
     this.mtime = stat.mtimeMs;
-    const stale = this.state.turnActive && this.state.column === "running" && now - this.state.lastEventAt > STALE_STREAM_MS;
-    if (stale) return { ...this.state, column: "idle", stage: "Status unknown", since: this.state.lastEventAt + STALE_STREAM_MS,
+    // The model event may predate the bounded tail. Use persisted metadata only for
+    // the current context; do not assign historical token usage to that model.
+    const state = !this.state.model && persistedModel && this.limit && this.used !== null
+      ? { ...this.state, context: { model: persistedModel, percent: Math.min(100, this.used / this.limit * 100), used: this.used, limit: this.limit } }
+      : this.state;
+    const stale = state.turnActive && state.column === "running" && now - state.lastEventAt > STALE_STREAM_MS;
+    if (stale) return { ...state, column: "idle", stage: "Status unknown", since: state.lastEventAt + STALE_STREAM_MS,
       finishedAt: null, reason: "No recent events; work or permission waiting cannot be confirmed" };
-    return this.state;
+    return state;
   }
 
   private reset(): void {
