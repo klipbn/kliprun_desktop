@@ -23,3 +23,17 @@ import Testing
     #expect(launch?.environment["MY_SETTING"] == "yes")
     #expect(launch?.environment["TERM"] == "xterm-256color")
 }
+
+@Test func resumeUsesTheOriginalHarnessAndExactSession() {
+    let id = "01900000-0000-7000-8000-000000000001"
+    let codex = AgentLaunch.make(source: "codex", home: "/Users/test", inherited: [:], sessionID: "codex:\(id)", isExecutable: { _ in true })
+    #expect(codex?.arguments == ["-lic", "exec codex-vk resume \(id)"])
+    let opencode = AgentLaunch.make(source: "opencode", home: "/Users/test", inherited: [:], sessionID: "ses_abc-123")
+    #expect(opencode?.arguments == ["-lic", "exec opencode --session ses_abc-123"])
+}
+
+@Test func resumeRejectsMismatchedOrUnsafeSessionIDs() {
+    for (source, id) in [("codex", "ses_abc"), ("opencode", "ses_a;touch /tmp/oops"), ("terminal", "ses_a"), ("codex", "codex:--last")] {
+        #expect(AgentLaunch.make(source: source, home: "/Users/test", inherited: [:], sessionID: id) == nil)
+    }
+}

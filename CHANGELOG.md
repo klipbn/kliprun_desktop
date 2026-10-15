@@ -4,6 +4,21 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-10-15
+
+### Added
+
+- Collapsible Recent Sessions sidebar with session details and continuation in the original Codex or OpenCode terminal and project folder.
+- ⌘W closes the selected visible terminal tab using the existing end-session confirmation.
+
+### Fixed
+
+- Close terminal tabs automatically when their agent or shell exits; hide the terminal area when the last tab exits.
+- Keep Running cards in arrival order instead of reordering them with every event.
+- Preserve the system-rendered Dock icon appearance after launch by using the bundle icon.
+- Read historical Codex session details after its terminal has exited.
+- Keep terminal launch controls and Kanban columns usable in narrow windows with session details open.
+
 ### Documentation
 
 - Add an agent development guide and screenshots generated from fictional session and usage data.
@@ -35,4 +50,5 @@ First public macOS release.
 - Quitting the app ends agents started in its terminal tabs after confirmation.
 
 [0.0.1]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.1
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.1...main
+[0.0.2]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.2
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.2...main

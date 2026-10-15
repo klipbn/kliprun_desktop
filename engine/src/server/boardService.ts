@@ -58,6 +58,7 @@ export class BoardService {
   readonly history: StatusHistoryStore;
   readonly codex: CodexAdapter;
   private cache: BoardCacheEntry | null = null;
+  private runningOrder: string[] = [];
   private building = false;
   private livenessTimer: Timer | null = null;
   private lastLiveness: TuiLiveness | null = null;
@@ -191,6 +192,13 @@ export class BoardService {
         ...codex.map(card => ({ session_id: card.session_id, source: "codex" as const, parent_id: null, title: card.title, directory: card.directory, agent: card.agent?.name ?? null, model: this.codex.usageModel(card) })),
       ] });
       const data = combineBoard(this.engine.board(now), codex, now);
+      const running = data.columns.running.cards;
+      const present = new Set(running.map(card => card.session_id));
+      this.runningOrder = this.runningOrder.filter(id => present.has(id));
+      const known = new Set(this.runningOrder);
+      this.runningOrder.push(...running.filter(card => !known.has(card.session_id)).map(card => card.session_id));
+      const positions = new Map(this.runningOrder.map((id, index) => [id, index]));
+      running.sort((a, b) => positions.get(a.session_id)! - positions.get(b.session_id)!);
       const etag = `"${createHash("sha1").update(JSON.stringify({ ...data, generated_at: 0 })).digest("hex").slice(0, 16)}"`;
       this.cache = { data, etag, livenessAt: now };
       this.livenessChanged = false;

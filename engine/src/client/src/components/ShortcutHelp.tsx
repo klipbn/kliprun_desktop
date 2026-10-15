@@ -9,6 +9,7 @@ const groups = [
     ["Choose a new terminal", "⌘ T"], ["Show or hide terminal", "⌘ J"],
     ["Expand or restore terminal", "⌘ ↩"], ["Select terminal tab 1–9", "⌘ 1–9"],
     ["Rename active tab", "⌘ R"],
+    ["Close active terminal", "⌘ W"],
   ] },
   { title: "Agents", shortcuts: [
     ["New OpenCode", "⌘ ⇧ O"], ["New Codex", "⌘ ⇧ C"],

@@ -47,6 +47,30 @@ function fixture(observe?: (observation: UsageObservation) => void) {
   return { app, service, codex, home, rollout, event, engine, id: `codex:${id}` };
 }
 
+test("Running keeps arrival order across events and appends entering cards", () => {
+  const { service, engine } = fixture();
+  const column = engine.board(0).columns.running;
+  const original = column.cards[0];
+  const second = { ...original, session_id: "ses_second", last_event_at: 0 };
+  column.cards = [original, second];
+  const firstOrder = service.getBoard().data.columns.running.cards.map(card => card.session_id);
+  second.last_event_at = Date.now() + 10000;
+  column.cards.reverse(); service.invalidate();
+  expect(service.getBoard().data.columns.running.cards.map(card => card.session_id)).toEqual(firstOrder);
+  column.cards.unshift({ ...original, session_id: "ses_new", last_event_at: Date.now() + 20000 });
+  service.invalidate();
+  expect(service.getBoard().data.columns.running.cards.map(card => card.session_id)).toEqual([...firstOrder, "ses_new"]);
+  column.cards = column.cards.filter(card => card.session_id !== "ses_second"); service.invalidate(); service.getBoard();
+  column.cards.unshift(second); service.invalidate();
+  expect(service.getBoard().data.columns.running.cards.at(-1)!.session_id).toBe("ses_second");
+});
+
+test("historical Codex details remain available after the terminal exits", () => {
+  const { service, codex, id, home } = fixture();
+  service.getBoard(); codex.setProcesses([]); service.invalidate();
+  expect(service.getSessionDetail(id)).toMatchObject({ exists: true, title: "Codex fixture", directory: home });
+});
+
 test("combined API counts both sources, serves namespaced details, updates ETag and history", async () => {
   const { app, service, rollout, event, id } = fixture();
   const response = await app.request("/api/board");

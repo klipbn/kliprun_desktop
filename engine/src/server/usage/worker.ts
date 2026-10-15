@@ -56,6 +56,7 @@ scope.onmessage = event => {
     }
     const request = data as { filters: StatsFilters; sessionId: string; sessionIds: string[]; sort: string; page: number; limit: number };
     if (op === "office") { reply(store.officeUsage(request.sessionIds)); return; }
+    if (op === "recent") { reply({ sessions: store.recentSessions() }); return; }
     const dataset = store.dataset();
     if (op === "dashboard") reply(buildDashboard(dataset, request.filters));
     else if (op === "sessions") reply(rankSessions(dataset, request.filters, request.sort, request.page, request.limit));

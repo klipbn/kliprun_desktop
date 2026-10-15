@@ -4,13 +4,16 @@ import type { CardPayload, ColumnKey } from "@shared/types";
 import type { TrackedCard } from "@shared/readTracker";
 import { sessionCards } from "@shared/readTracker";
 import { linkedSessionId } from "@shared/sessionLink";
-import { hasDesktopBridge, notifyNativeAction, notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection } from "./nativeBridge";
+import { hasDesktopBridge, notifyNativeAction, notifyNativeSelection, notifyNativeResume, observeNativeNavigation, observeNativeTerminalSelection, recentSessionsCollapsed, setRecentSessionsCollapsed } from "./nativeBridge";
 import { useBoard, useNow } from "./hooks/useBoard";
 import { useReadTracker } from "./hooks/useReadTracker";
 import { BoardColumn } from "./components/BoardColumn";
 import { DetailsPanel } from "./components/DetailsPanel";
 import { StatusBar } from "./components/StatusBar";
 import { ShortcutHelp } from "./components/ShortcutHelp";
+import { RecentSessions } from "./components/RecentSessions";
+import { useStatsRequest } from "./statistics/useStatsRequest";
+import type { UsageSession } from "@shared/usage";
 import { formatRelativeTimeVerbose } from "@shared/format";
 
 const Statistics = lazy(() => import("./statistics/Statistics"));
@@ -44,6 +47,8 @@ function ConnectionIndicator(state: "connecting" | "live" | "polling", error: st
 export default function App() {
   const { board, connection, error } = useBoard();
   const desktop = hasDesktopBridge();
+  const [historyCollapsed, setHistoryCollapsed] = useState(recentSessionsCollapsed);
+  const recent = useStatsRequest<{ sessions: UsageSession[] }>("/api/recent-sessions", 0);
   const now = useNow();
   const { isRead, counts, markRead } = useReadTracker(board);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -132,7 +137,7 @@ export default function App() {
           <img src="/kliprun-icon.png" alt="" className="w-6 h-6" />
           <h1 className="font-semibold text-lg">KlipRun</h1>
         </div>
-        {desktop && <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5" aria-label="Agent terminals">
+        {desktop && <div className="order-last w-full flex justify-center items-center gap-1.5 xl:order-none xl:w-auto xl:absolute xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2" aria-label="Agent terminals">
           <button type="button" onClick={() => notifyNativeAction("new-opencode")} data-testid="new-opencode-button"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-text-secondary hover:text-accent hover:border-accent/40 transition-colors">
             <Plus className="w-3.5 h-3.5" />New OpenCode
@@ -190,6 +195,10 @@ export default function App() {
       </main>}
 
       <main className="flex-1 min-h-0 flex" style={page !== "board" ? { display: "none" } : undefined}>
+        <RecentSessions sessions={recent.data?.sessions ?? []} collapsed={historyCollapsed} selectedId={selectedId}
+          pending={recent.pending} error={recent.error ? "Recent sessions temporarily unavailable" : null}
+          onSelect={select} onResume={desktop ? notifyNativeResume : undefined}
+          onToggle={() => { const collapsed = !historyCollapsed; setHistoryCollapsed(collapsed); setRecentSessionsCollapsed(collapsed); }} />
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-text-secondary" data-testid="loading-screen">
             <Loader2Impl />
@@ -198,7 +207,7 @@ export default function App() {
           </div>
         ) : (
           <>
-            <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-3 p-3">
+            <div className={`flex-1 min-w-0 grid gap-3 p-3 ${selectedId ? "grid-cols-1 xl:grid-cols-3" : "grid-cols-1 md:grid-cols-3"}`}>
               {(["attention", "running", "idle"] as ColumnKey[]).map((key) => (
                 <BoardColumn
                   key={key}

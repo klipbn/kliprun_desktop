@@ -6,9 +6,6 @@ final class DesktopAppDelegate: NSObject, NSApplicationDelegate {
     let store = DesktopStore()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if let url = Bundle.main.url(forResource: "KlipRun", withExtension: "icns"), let icon = NSImage(contentsOf: url) {
-            NSApp.applicationIconImage = icon
-        }
         store.start()
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
@@ -43,6 +40,7 @@ struct KlipRunApp: App {
         WindowGroup("KlipRun") { ContentView(store: delegate.store) }
             .commands {
                 CommandGroup(replacing: .newItem) {}
+                TerminalCommands(store: delegate.store)
                 CommandGroup(after: .toolbar) {
                     Button("Zoom In") { delegate.store.zoomIn() }
                         .keyboardShortcut("+", modifiers: [.command])
@@ -84,5 +82,18 @@ struct KlipRunApp: App {
                     }
                 }
             }
+    }
+}
+
+private struct TerminalCommands: Commands {
+    @ObservedObject var store: DesktopStore
+    var body: some Commands {
+        CommandGroup(replacing: .saveItem) {
+            Button("Close Terminal") {
+                if let id = store.selectedTerminalID { store.closeTerminal(id) }
+            }
+            .keyboardShortcut("w", modifiers: [.command])
+            .disabled(store.selectedTerminalID == nil)
+        }
     }
 }

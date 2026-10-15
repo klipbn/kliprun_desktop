@@ -9,6 +9,6 @@ let package = Package(
     targets: [
         .target(name: "KlipRunCore"),
         .executableTarget(name: "KlipRunDesktop", dependencies: ["KlipRunCore", "SwiftTerm"]),
-        .testTarget(name: "KlipRunCoreTests", dependencies: ["KlipRunCore", "SwiftTerm"])
+        .testTarget(name: "KlipRunCoreTests", dependencies: ["KlipRunCore", "KlipRunDesktop", "SwiftTerm"])
     ]
 )

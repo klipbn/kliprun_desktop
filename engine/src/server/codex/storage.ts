@@ -65,11 +65,21 @@ export class CodexStorage {
     } catch (error) { db.close(); throw error; }
   }
 
+  private fields(): string {
+    const hasOriginator = this.columns.has("originator");
+    const title = this.columns.has("name") ? "COALESCE(NULLIF(TRIM(name), ''), title) AS title" : "title";
+    return `id, cwd, ${title}, source, rollout_path, updated_at, ${this.columns.has("model") ? "model" : "NULL AS model"}, ${this.columns.has("model_provider") ? "model_provider" : "NULL AS model_provider"}, ${hasOriginator ? "originator" : "NULL AS originator"}`;
+  }
+
+  thread(id: string): CodexThread | null {
+    const db = this.connect();
+    return db.query<CodexThread, [string]>(`SELECT ${this.fields()} FROM threads WHERE id = ? LIMIT 1`).get(id) ?? null;
+  }
+
   candidates(processes: CliProcess[]): CodexThread[] {
     const db = this.connect();
     const hasOriginator = this.columns.has("originator");
-    const title = this.columns.has("name") ? "COALESCE(NULLIF(TRIM(name), ''), title) AS title" : "title";
-    const fields = `id, cwd, ${title}, source, rollout_path, updated_at, ${this.columns.has("model") ? "model" : "NULL AS model"}, ${this.columns.has("model_provider") ? "model_provider" : "NULL AS model_provider"}, ${hasOriginator ? "originator" : "NULL AS originator"}`;
+    const fields = this.fields();
     const cliSource = hasOriginator ? TUI_ORIGIN_SQL : "source = 'cli'";
     const rows = new Map<string, CodexThread>();
     const referencedIds = new Set<string>();

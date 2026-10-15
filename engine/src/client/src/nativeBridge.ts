@@ -1,6 +1,8 @@
 type NativeBridgeHost = {
   webkit?: { messageHandlers?: {
     sessionSelected?: { postMessage: (id: string | null) => void };
+    sessionResume?: { postMessage: (id: string) => void };
+    recentSessionsCollapsed?: { postMessage: (collapsed: boolean) => void };
     desktopAction?: { postMessage: (action: string) => void };
   } };
 };
@@ -17,6 +19,21 @@ export function notifyNativeAction(action: DesktopAction, host: NativeBridgeHost
 
 export function notifyNativeSelection(id: string | null, host: NativeBridgeHost = window as unknown as NativeBridgeHost): void {
   host.webkit?.messageHandlers?.sessionSelected?.postMessage(id);
+}
+
+export function notifyNativeResume(id: string, host: NativeBridgeHost = window as unknown as NativeBridgeHost): void {
+  host.webkit?.messageHandlers?.sessionResume?.postMessage(id);
+}
+
+export function setRecentSessionsCollapsed(collapsed: boolean): void {
+  try { localStorage.setItem("kliprun.recent-sessions-collapsed", String(collapsed)); } catch { /* storage unavailable */ }
+  (window as unknown as NativeBridgeHost).webkit?.messageHandlers?.recentSessionsCollapsed?.postMessage(collapsed);
+}
+
+export function recentSessionsCollapsed(): boolean {
+  const native = (window as unknown as { kliprunRecentSessionsCollapsed?: boolean }).kliprunRecentSessionsCollapsed;
+  if (native !== undefined) return native;
+  try { return localStorage.getItem("kliprun.recent-sessions-collapsed") === "true"; } catch { return false; }
 }
 
 export function observeNativeTerminalSelection(onSelect: (id: string | null) => void, host: EventTarget = window): () => void {
