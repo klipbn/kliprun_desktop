@@ -6,7 +6,7 @@ KlipRun is a macOS app for following OpenCode and Codex sessions in one place. I
 
 The downloadable build is for **Apple Silicon Macs running macOS 13 or newer**.
 
-1. Download `KlipRun-0.0.3-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.4-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip it and move `KlipRun.app` to **Applications**.
 3. Open the app. The release is signed locally but is not notarized, so macOS may block the first launch. If it does, go to **System Settings → Privacy & Security → Open Anyway**, then open KlipRun again.
 
@@ -49,7 +49,8 @@ Browse recent OpenCode and Codex sessions, inspect their details, and resume the
 - **Recent Sessions** on the left lists the latest 50 top-level sessions. Click a title for details or **Resume in Terminal** to continue the same Codex or OpenCode session in its original folder. An existing matching tab is selected when available. The panel remembers whether it is collapsed.
 - **Kanban** next to **Statistics** returns to the board from any view. **Office** shows the same agents as animated coworkers; the coworker matching the selected terminal has a blue outline and a **Terminal** badge, just like the board card.
 - **Statistics** opens on the last 30 days. Daily and Weekly token heatmaps, token composition, peak-day and leading-model/project highlights, trends, work patterns, and task rankings share the same date and source filters. Choose a token type, click a day or week to explore it, and use **Back to previous range** to return. The task list includes calls and tokens per call. **Last 90 days** reveals longer-term patterns; **Export daily CSV** saves exact totals through the macOS save dialog.
-- **Usage** next to Office (**Control+4**) shows remaining subscription allowances for OpenAI via OpenCode, OpenAI via Codex, Z.ai, and Kimi. Cards show each available limit window, the lowest remaining allowance, and reset times; the overview highlights available providers, low balances, and the next reset. Limits refresh every minute while the tab is open, or with **Refresh**.
+- **Usage** next to Office (**Control+4**) shows remaining subscription allowances for OpenAI via OpenCode, OpenAI via Codex, Z.ai, and Kimi. Cards show each available limit window, the lowest remaining allowance, and reset times; the overview highlights available providers, low balances, and the next reset. Limits refresh every minute while the app is open, or with **Refresh**.
+- The **bottom status bar** shows compact remaining-limit bars and percentages for up to six connected providers. Available 5-hour and weekly windows appear separately; other periods keep their own labels. Hover for reset times or click a provider to open Usage. Cached balances and pending resets are marked in gray. The limits wrap onto another row in narrow windows.
 - **New OpenCode** and **New Codex** ask you to choose a project folder, then start the agent in the terminal panel.
 - **⌘T** lets you choose OpenCode, Codex, or a plain terminal. A plain terminal opens in the selected tab's folder, or your home folder when no tab is selected.
 - Click **Terminal** to show or hide the terminal area. Tabs keep running while hidden. Closing an active tab or quitting the app asks before ending its process.
