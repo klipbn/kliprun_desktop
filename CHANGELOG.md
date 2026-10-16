@@ -4,6 +4,10 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+### Added
+
+- Check for updates silently at launch and once an hour. Highlight the Updates button with an amber dot and **Update available** when a newer compatible stable release is found; show its version on hover. Preserve the last known indicator during network failures and the ready download while checking in the background.
+
 ## [0.0.9] - 2026-10-16
 
 ### Added

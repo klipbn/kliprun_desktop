@@ -1,5 +1,21 @@
 import { expect, test } from "bun:test";
-import { exportStatisticsCSV, notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection, observeNativePreferences } from "../nativeBridge";
+import { exportStatisticsCSV, notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection, observeNativePreferences, observeNativeUpdate } from "../nativeBridge";
+
+test("update availability arrives initially and live and stops after cleanup", () => {
+  const host = Object.assign(new EventTarget(), { kliprunUpdateVersion: "0.0.10" as unknown });
+  const versions: Array<string | null> = [];
+  const stop = observeNativeUpdate(version => versions.push(version), host);
+  host.kliprunUpdateVersion = "0.0.11";
+  host.dispatchEvent(new Event("kliprun:update"));
+  host.kliprunUpdateVersion = null;
+  host.dispatchEvent(new Event("kliprun:update"));
+  host.kliprunUpdateVersion = 42;
+  host.dispatchEvent(new Event("kliprun:update"));
+  stop();
+  host.kliprunUpdateVersion = "0.0.12";
+  host.dispatchEvent(new Event("kliprun:update"));
+  expect(versions).toEqual(["0.0.10", "0.0.11", null, null]);
+});
 
 test("desktop preferences are delivered initially and live, with validated defaults and cleanup", () => {
   const host = Object.assign(new EventTarget(), { kliprunPreferences: { detailTab: "all", reduceMotion: true } });

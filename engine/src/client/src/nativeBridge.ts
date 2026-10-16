@@ -33,6 +33,21 @@ export function observeNativePreferences(onChange: (value: DesktopPreferences) =
   return () => host.removeEventListener("kliprun:preferences", listener);
 }
 
+type UpdateHost = { kliprunUpdateVersion?: unknown };
+
+export function availableUpdateVersion(host: UpdateHost = typeof window === "undefined" ? {} : window as UpdateHost): string | null {
+  const value = host.kliprunUpdateVersion;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+export function observeNativeUpdate(onChange: (version: string | null) => void,
+  host: EventTarget & UpdateHost = window): () => void {
+  const listener = () => onChange(availableUpdateVersion(host));
+  host.addEventListener("kliprun:update", listener);
+  listener();
+  return () => host.removeEventListener("kliprun:update", listener);
+}
+
 export function hasDesktopBridge(host: NativeBridgeHost = window as unknown as NativeBridgeHost): boolean {
   return !!host.webkit?.messageHandlers?.desktopAction;
 }
