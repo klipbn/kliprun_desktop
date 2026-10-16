@@ -47,6 +47,35 @@ function fixture(observe?: (observation: UsageObservation) => void) {
   return { app, service, codex, home, rollout, event, engine, id: `codex:${id}` };
 }
 
+test("session details expose the live branch and its browser URL", async () => {
+  const { app, home, id } = fixture();
+  Bun.spawnSync(["git", "init", "-q", home]);
+  Bun.spawnSync(["git", "-C", home, "config", "remote.origin.url", "git@github.com:demo/project.git"]);
+  writeFileSync(join(home, ".git", "HEAD"), "ref: refs/heads/feature/details\n");
+  const detail = await (await app.request(`/api/session/${id}`)).json();
+  expect(detail).toMatchObject({ branch: "feature/details", repository_url: "https://github.com/demo/project/tree/feature%2Fdetails" });
+  writeFileSync(join(home, ".git", "HEAD"), "ref: refs/heads/main\n");
+  expect(await (await app.request(`/api/session/${id}`)).json()).toMatchObject({ branch: "main", repository_url: "https://github.com/demo/project/tree/main" });
+});
+
+test("native title observations validate process generation and update terminal links", async () => {
+  const { app, codex, home, id } = fixture();
+  codex.setProcesses([{ pid: "10", startedAt: "generation-1", cwd: home, rollouts: [] }]);
+  const report = (prefix: unknown, generation = "generation-1") => app.request("/api/codex/terminal-observation", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pid: 10, generation, session_prefix: prefix }),
+  });
+  expect((await report(id.slice(6), "stale")).status).toBe(409);
+  expect((await report("short")).status).toBe(400);
+  expect((await report(id.slice(6))).status).toBe(200);
+  const payload = await (await app.request("/api/terminal-links")).json() as { links: unknown[]; codex_terminals: unknown[] };
+  expect(payload.links).toContainEqual({ session_id: id, pid: 10 });
+  expect(payload.codex_terminals).toEqual([{ pid: 10, generation: "generation-1" }]);
+  expect((await report(null)).status).toBe(200);
+  const cleared = await (await app.request("/api/terminal-links")).json() as { links: unknown[] };
+  expect(cleared.links).not.toContainEqual({ session_id: id, pid: 10 });
+});
+
 test("Running keeps arrival order across events and appends entering cards", () => {
   const { service, engine } = fixture();
   const column = engine.board(0).columns.running;

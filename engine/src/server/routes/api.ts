@@ -36,7 +36,19 @@ export function registerHealthRoute(app: Hono, service: BoardService) {
 }
 
 export function registerTerminalLinksRoute(app: Hono, service: BoardService) {
-  app.get("/api/terminal-links", c => c.json({ links: service.terminalLinks() }));
+  app.get("/api/terminal-links", c => c.json({ links: service.terminalLinks(), codex_terminals: service.codexTerminals() }));
+  app.post("/api/codex/terminal-observation", async c => {
+    const body = await c.req.json().catch(() => null);
+    if (!body || !Number.isSafeInteger(body.pid) || body.pid <= 0 || typeof body.generation !== "string" ||
+      !body.generation.length || body.generation.length > 128 || (body.session_prefix !== null &&
+      (typeof body.session_prefix !== "string" || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{5}(?:[a-f0-9]{7})?$/i.test(body.session_prefix)))) {
+      return c.json({ error: "Invalid terminal session observation" }, 400);
+    }
+    if (!service.observeCodexTerminalSession(body.pid, body.session_prefix, body.generation)) {
+      return c.json({ error: "Terminal or session is not yet resolved" }, 409);
+    }
+    return c.json({ ok: true });
+  });
   app.post("/api/codex/terminal-session", async c => {
     const body = await c.req.json().catch(() => null);
     if (!body || !Number.isSafeInteger(body.pid) || body.pid <= 0 || typeof body.generation !== "string" || body.generation.length > 128 ||

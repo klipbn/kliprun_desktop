@@ -1,7 +1,7 @@
 import { basename, join } from "node:path";
 import type { CardPayload, SessionDetailPayload } from "@shared/types";
 import { scrub } from "../security";
-import { branchOf } from "../vcs";
+import { branchOf, repositoryOf } from "../vcs";
 import { canonicalPath, identifiedCliSessions, matchCliSessions, type CliProcess } from "./liveness";
 import { exactTerminalLinks, type TerminalLink } from "../terminalLinks";
 import { RolloutReader, type RolloutState } from "./rollout";
@@ -16,6 +16,7 @@ export class CodexAdapter {
   private threads = new Map<string, CodexThread>();
   private statuses = new Map<string, Pick<RolloutState, "column" | "since" | "turnId">>();
   private choices = new Map<string, string>();
+  private observations = new Map<string, string | null>();
   private links: TerminalLink[] = [];
   diagnostics: string[] = [];
 
@@ -23,13 +24,34 @@ export class CodexAdapter {
 
   setProcesses(processes: CliProcess[]): void {
     for (const previous of this.processes) {
-      if (!processes.some(p => p.pid === previous.pid && p.startedAt === previous.startedAt && p.cwd === previous.cwd)) this.choices.delete(previous.pid);
+      if (!processes.some(p => p.pid === previous.pid && p.startedAt === previous.startedAt && p.cwd === previous.cwd)) {
+        this.choices.delete(previous.pid);
+        this.observations.delete(previous.pid);
+      }
     }
     this.processes = processes;
   }
 
   terminalLinks(): TerminalLink[] {
     return this.links;
+  }
+
+  terminals(): Array<{ pid: number; generation: string }> {
+    return this.processes.map(p => ({ pid: Number(p.pid), generation: p.startedAt ?? "" }));
+  }
+
+  observeTerminalSession(pid: number, prefix: string | null, generation: string): boolean {
+    const process = this.processes.find(p => Number(p.pid) === pid && p.startedAt === generation);
+    if (!process) return false;
+    try {
+      const row = prefix === null ? null : this.storage.threadWithPrefix(prefix);
+      // Never retain the previous chat while a new title is unresolved or ambiguous.
+      this.observations.set(process.pid, row?.id ?? null);
+      return prefix === null || row !== null;
+    } catch {
+      this.observations.set(process.pid, null);
+      return false;
+    }
   }
 
   private sessionCandidates(process: CliProcess): CodexThread[] {
@@ -57,11 +79,12 @@ export class CodexAdapter {
     let processes: CliProcess[];
     let matched: CodexThread[];
     try {
-      this.candidates = this.storage.candidates(this.processes.map(p => ({ ...p, selectedSessionId: this.choices.get(p.pid) })));
+      this.candidates = this.storage.candidates(this.processes.map(p => ({ ...p, selectedSessionId: this.choices.get(p.pid), activeSessionId: this.observations.get(p.pid) })));
       processes = this.processes.map(p => {
         const direct = identifiedCliSessions(p, this.candidates);
         if (direct.length === 1 && direct[0].id !== this.choices.get(p.pid)) this.choices.delete(p.pid);
-        return { ...p, selectedSessionId: this.sessionCandidates(p).find(row => row.id === this.choices.get(p.pid))?.id };
+        return { ...p, selectedSessionId: this.sessionCandidates(p).find(row => row.id === this.choices.get(p.pid))?.id,
+          activeSessionId: this.observations.get(p.pid) };
       });
       const match = matchCliSessions(processes, this.candidates);
       this.diagnostics = match.diagnostics;
@@ -69,7 +92,7 @@ export class CodexAdapter {
       this.links = exactTerminalLinks(new Map(), processes, this.candidates);
       for (const process of processes) {
         const rows = matched.filter(row => canonicalPath(row.cwd) === canonicalPath(process.cwd));
-        if (rows.length === 1 && processes.filter(p => canonicalPath(p.cwd) === canonicalPath(process.cwd)).length === 1 &&
+        if (process.activeSessionId === undefined && rows.length === 1 && processes.filter(p => canonicalPath(p.cwd) === canonicalPath(process.cwd)).length === 1 &&
           !this.links.some(link => link.session_id === `codex:${rows[0].id}` || link.pid === Number(process.pid))) {
           this.links.push({ session_id: `codex:${rows[0].id}`, pid: Number(process.pid) });
         }
@@ -102,7 +125,7 @@ export class CodexAdapter {
     return { source: "codex", session_id: `codex-terminal:${process.pid}`, directory: scrub(process.cwd),
       directory_name: scrub(basename(process.cwd)), title: `Codex · ${scrub(basename(process.cwd))}`, prompt_snippet: null,
       parent_id: null, agent: { name: "Codex" }, column: "idle", stage: "Status unknown", stage_since: 0,
-      running_since: null, last_event_at: 0, reason: "Choose the chat currently open in this terminal.", error: null,
+      running_since: null, last_event_at: 0, reason: "Waiting for a confirmed session link from the Codex terminal.", error: null,
       last_tool: null, message_count: 0, finished_at: null, tokens_total: null, model_ref: null, context: null,
       branch: null, mrs: [], subagent_count: 0, subagent_active: 0, subagent_errors: 0, subagent_error_notes: [], children: [],
       terminal: { pid: Number(process.pid), generation: process.startedAt ?? "", session_id: null, candidates: [] } };
@@ -154,8 +177,9 @@ export class CodexAdapter {
         models = state?.models ?? [];
       } catch { /* journal removed */ }
     }
+    const repository = row ? repositoryOf(row.cwd) : { branch: null, url: null };
     return { source: "codex", session_id: sessionId, title: scrub(row?.title ?? ""), directory: scrub(row?.cwd ?? ""),
-      branch: row ? scrub(branchOf(row.cwd)) : null, mrs: [], messages, models, kanban_history: [], exists: !!row };
+      branch: scrub(repository.branch), repository_url: repository.url, mrs: [], messages, models, kanban_history: [], exists: !!row };
   }
 
   watchPaths(): string[] {
@@ -171,5 +195,5 @@ export class CodexAdapter {
     return provider ? scrub(`${provider}/${card.model_ref}`) : card.model_ref;
   }
 
-  close(): void { this.storage.close(); this.threads.clear(); this.readers.clear(); this.statuses.clear(); this.candidates = []; this.choices.clear(); this.links = []; }
+  close(): void { this.storage.close(); this.threads.clear(); this.readers.clear(); this.statuses.clear(); this.candidates = []; this.choices.clear(); this.observations.clear(); this.links = []; }
 }

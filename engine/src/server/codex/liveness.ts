@@ -7,6 +7,8 @@ export interface CliProcess {
   startedAt?: string;
   /** A choice made explicitly in KlipRun, never inferred from daemon ownership. */
   selectedSessionId?: string;
+  /** Current chat reported by this terminal's TUI; null explicitly clears the link. */
+  activeSessionId?: string | null;
   cwd: string;
   rollouts: string[];
   /** Session writer files held open by this terminal's Codex process. */
@@ -121,7 +123,7 @@ export function matchCliSessions(processes: CliProcess[], candidates: CodexThrea
   for (const { direct } of matches) if (direct.length === 1) selected.set(direct[0].id, direct[0]);
   for (const cwd of new Set(matches.map(match => match.cwd))) {
     const terminals = matches.filter(match => match.cwd === cwd);
-    const unmatched = terminals.filter(match => match.direct.length !== 1);
+    const unmatched = terminals.filter(match => match.direct.length !== 1 && match.process.activeSessionId === undefined);
     if (!unmatched.length) continue;
     const sameDirectory = candidates.filter(row => isTuiThread(row) && canonicalPath(row.cwd) === cwd);
     const loaded = sameDirectory.filter(row => !selected.has(row.id) &&
@@ -143,6 +145,7 @@ export function matchCliSessions(processes: CliProcess[], candidates: CodexThrea
 
 /** Exact descriptors take precedence over a previous explicit choice. */
 export function identifiedCliSessions<T extends { id: string; rollout_path: string; source?: string }>(process: CliProcess, candidates: T[]): T[] {
+  if (process.activeSessionId !== undefined) return candidates.filter(row => row.id === process.activeSessionId);
   const rollouts = process.rollouts.map(canonicalPath);
   const direct = candidates.filter(row => !row.source?.startsWith("{") &&
     (rollouts.includes(canonicalPath(row.rollout_path)) || process.writerSessionIds?.includes(row.id)));

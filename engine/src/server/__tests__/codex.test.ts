@@ -23,6 +23,63 @@ function thread(overrides: Partial<CodexThread> = {}): CodexThread {
 function cli(pid = "10"): CliProcess { return { pid, cwd: "/project", rollouts: [] }; }
 
 describe("Codex CLI membership", () => {
+  test("title observations distinguish two terminals using one daemon in the same directory", () => {
+    const dir = temp(); const { db } = database(dir);
+    const first = "01900000-0000-7000-8000-111110000001";
+    const second = "01900000-0000-7000-8000-222220000002";
+    for (const key of [first, second]) db.query("INSERT INTO threads VALUES (?,?,?,?,?,?,?,?)")
+      .run(key, "/project", key, "cli", join(dir, `${key}.jsonl`), t / 1000, 0, null);
+    db.close();
+    const adapter = new CodexAdapter(dir);
+    adapter.setProcesses([cli("10"), cli("11")].map(p => ({ ...p, startedAt: "generation-1", daemonSessionIds: [first, second] })));
+    adapter.cards(t);
+    expect(adapter.terminalLinks()).toEqual([]);
+    expect(adapter.observeTerminalSession(10, first.slice(0, 29), "generation-1")).toBe(true);
+    expect(adapter.observeTerminalSession(11, second.slice(0, 29), "generation-1")).toBe(true);
+    expect(adapter.cards(t).map(card => card.session_id)).toEqual([`codex:${first}`, `codex:${second}`]);
+    expect(adapter.terminalLinks()).toEqual([{ session_id: `codex:${first}`, pid: 10 }, { session_id: `codex:${second}`, pid: 11 }]);
+    adapter.close();
+  });
+  test("colliding title prefixes clear an old link instead of choosing a historical chat", () => {
+    const dir = temp(); const { db } = database(dir);
+    const first = "01900000-0000-7000-8000-000000000001";
+    const second = "01900000-0000-7000-8000-000000000002";
+    for (const key of [first, second]) db.query("INSERT INTO threads VALUES (?,?,?,?,?,?,?,?)")
+      .run(key, "/project", key, "cli", join(dir, `${key}.jsonl`), t / 1000, 0, null);
+    db.close();
+    const adapter = new CodexAdapter(dir);
+    adapter.setProcesses([{ ...cli(), startedAt: "generation-1", writerSessionIds: [first] }]);
+    adapter.cards(t);
+    expect(adapter.observeTerminalSession(10, first, "generation-1")).toBe(true);
+    expect(adapter.observeTerminalSession(10, first.slice(0, 29), "generation-1")).toBe(false);
+    expect(adapter.cards(t)[0].terminal?.session_id).toBe(null);
+    expect(adapter.terminalLinks()).toEqual([]);
+    adapter.close();
+  });
+  test("terminal title observations follow the displayed chat despite retained writer files", () => {
+    const dir = temp(); const { db } = database(dir);
+    const first = "01900000-0000-7000-8000-111110000001";
+    const second = "01900000-0000-7000-8000-222220000002";
+    for (const key of [first, second]) {
+      db.query("INSERT INTO threads VALUES (?,?,?,?,?,?,?,?)").run(key, "/project", key, "cli", join(dir, `${key}.jsonl`), t / 1000, 0, null);
+    }
+    db.close();
+    const adapter = new CodexAdapter(dir);
+    const process = { ...cli(), startedAt: "generation-1", writerSessionIds: [first, second] };
+    adapter.setProcesses([process]); adapter.cards(t);
+    expect(adapter.observeTerminalSession(10, first.slice(0, 29), "generation-1")).toBe(true);
+    expect(adapter.cards(t).map(card => card.session_id)).toEqual([`codex:${first}`]);
+    expect(adapter.observeTerminalSession(10, second.slice(0, 29), "generation-1")).toBe(true);
+    expect(adapter.cards(t).map(card => card.session_id)).toEqual([`codex:${second}`]);
+    adapter.setProcesses([process]);
+    expect(adapter.cards(t).map(card => card.session_id)).toEqual([`codex:${second}`]);
+    expect(adapter.observeTerminalSession(10, null, "generation-1")).toBe(true);
+    expect(adapter.cards(t)[0].terminal?.session_id).toBe(null);
+    expect(adapter.observeTerminalSession(10, first, "generation-0")).toBe(false);
+    adapter.setProcesses([{ ...process, startedAt: "generation-2" }]);
+    expect(adapter.cards(t)[0].terminal?.session_id).toBe(null);
+    adapter.close();
+  });
   test("keeps both daemon-backed windows in one directory without choosing historical sessions", () => {
     const processes = [cli(), cli("11")].map(process => ({ ...process, daemonSessionIds: [id, "second"] }));
     const candidates = [thread({ id: "old" }), thread({ source: "vscode", originator: "codex-tui" }),

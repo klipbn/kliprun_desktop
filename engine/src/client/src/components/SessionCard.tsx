@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 import {
   Bot,
   CircleAlert,
@@ -17,6 +17,7 @@ import type { CardPayload } from "@shared/types";
 import type { TrackedCard } from "@shared/readTracker";
 import { formatDuration, formatRelativeTimeVerbose, formatTokens } from "@shared/format";
 import type { CardPriorities, CardPriority } from "../cardPriorities";
+import { HarnessIcon } from "./HarnessIcon";
 
 const PRIORITY_STYLES: Record<CardPriority, string> = {
   critical: "text-error",
@@ -81,7 +82,7 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
   const isAttention = card.column === "attention";
   const isRunning = card.column === "running";
 
-  const actionLine = unresolved ? "Session not linked" : isAttention
+  const actionLine = unresolved ? "Connecting session…" : isAttention
     ? "⚡ Needs your input"
     : card.stage || "No active task";
 
@@ -141,7 +142,8 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
       </div>
 
       <div className="flex flex-wrap items-center gap-2 pl-6 w-full min-w-0 text-xs">
-        <span className="px-1.5 py-0.5 rounded text-[10px] border border-border text-text-secondary shrink-0" data-testid="card-source">
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border border-border text-text-secondary shrink-0" data-testid="card-source">
+          <HarnessIcon source={card.source} />
           {card.source === "codex" ? "Codex CLI" : "OpenCode"}
         </span>
         <span
@@ -227,8 +229,6 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
         </div>
       )}
 
-      {card.terminal && <TerminalSessionPicker terminal={card.terminal} />}
-
       {context && (
         <div className="pl-6 flex flex-col gap-1" data-testid="card-context" title={`${context.model}: ${formatTokens(context.used)} of ${formatTokens(context.limit)} context tokens`}>
           <div className="h-1 rounded-full bg-border overflow-hidden">
@@ -282,30 +282,3 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
     </article>
   );
 });
-
-function TerminalSessionPicker({ terminal }: { terminal: NonNullable<CardPayload["terminal"]> }) {
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  return <div className="pl-6 min-w-0" onClick={event => event.stopPropagation()}>
-    <span className="block text-[11px] text-text-secondary mb-1">Current chat</span>
-    <select aria-label="Current chat" value={terminal.session_id ?? ""} disabled={pending || !terminal.candidates.length}
-      className="w-full min-w-0 rounded border border-border bg-background p-1.5 text-xs text-white"
-      onChange={async event => {
-        const session_id = event.target.value || null;
-        setPending(true); setError(null);
-        try {
-          const response = await fetch("/api/codex/terminal-session", { method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pid: terminal.pid, generation: terminal.generation, session_id }) });
-          if (!response.ok) throw new Error(response.status === 409 ? "Terminal changed. Refresh and try again." : "Could not link this chat. Try again.");
-          window.dispatchEvent(new Event("kliprun:board-refresh"));
-        } catch (error) { setError(error instanceof Error ? error.message : "Could not link this chat."); }
-        finally { setPending(false); }
-      }}>
-      <option value="">{terminal.candidates.length ? "Choose current chat…" : "Waiting for chat metadata…"}</option>
-      {terminal.candidates.map(candidate => <option key={candidate.session_id} value={candidate.session_id}>
-        {candidate.title || "Untitled Session"} · {candidate.session_id.slice(-8)}
-      </option>)}
-    </select>
-    {error && <p role="alert" className="mt-1 text-xs text-error">{error}</p>}
-  </div>;
-}

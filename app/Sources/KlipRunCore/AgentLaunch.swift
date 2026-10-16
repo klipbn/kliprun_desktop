@@ -27,6 +27,7 @@ public struct AgentLaunch {
         environment["TERM"] = "xterm-256color"
         environment["COLORTERM"] = "truecolor"
         if environment["LANG"]?.isEmpty != false { environment["LANG"] = "en_US.UTF-8" }
-        return Self(arguments: source == "terminal" ? ["-l", "-i"] : ["-lic", "exec \(command)\(resume)"], environment: environment)
+        let title = source == "codex" ? " -c 'tui.terminal_title=[\"session-id\"]'" : ""
+        return Self(arguments: source == "terminal" ? ["-l", "-i"] : ["-lic", "exec \(command)\(title)\(resume)"], environment: environment)
     }
 }

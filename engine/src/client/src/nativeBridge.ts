@@ -11,7 +11,7 @@ type NativeBridgeHost = {
 export type DesktopAction = "new-opencode" | "new-codex" | "show-terminal" | "open-iterm" | "settings" | "check-updates";
 
 export interface DesktopPreferences {
-  detailTab: "agent-text" | "all" | "agent";
+  detailTab: "agent-text" | "agent";
   reduceMotion: boolean;
 }
 
@@ -20,7 +20,7 @@ type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; reduceMotio
 export function desktopPreferences(host: PreferencesHost = typeof window === "undefined" ? {} : window as PreferencesHost): DesktopPreferences {
   const value = host.kliprunPreferences;
   return {
-    detailTab: value?.detailTab === "all" || value?.detailTab === "agent" ? value.detailTab : "agent-text",
+    detailTab: value?.detailTab === "agent" ? value.detailTab : "agent-text",
     reduceMotion: value?.reduceMotion === true,
   };
 }

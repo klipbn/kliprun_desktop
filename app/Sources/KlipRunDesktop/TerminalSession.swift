@@ -16,6 +16,9 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
     @Published var isRunning = true
     var explicitSessionID: String?
     var sessionID: String?
+    private(set) var codexSessionPrefix: String?
+    private(set) var hasCodexSessionTitle = false
+    var reportedCodexObservation: String?
     var pid: Int32 { view.process?.shellPid ?? 0 }
 
     init?(id: Int, source: String, directory: String, resumeSessionID: String? = nil, onExit: @escaping (Int) -> Void = { _ in }) {
@@ -69,6 +72,17 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
     }
     func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {}
     func setTerminalTitle(source: LocalProcessTerminalView, title: String) {
+        if self.source == "codex" {
+            let prefix = TerminalTitle.codexSessionPrefix(title)
+            if prefix != nil { hasCodexSessionTitle = true }
+            if codexSessionPrefix != prefix {
+                codexSessionPrefix = prefix
+                reportedCodexObservation = nil
+                explicitSessionID = nil
+                sessionID = nil
+            }
+            return
+        }
         titleState.updateAutomatic(title)
         self.title = titleState.display
     }

@@ -33,7 +33,7 @@ public struct AppPreferences: Equatable {
         value.interfaceZoomPercent = InterfaceZoom(percent: interfaceZoomPercent).percent
         if !["bottom", "left"].contains(terminalPosition) { value.terminalPosition = "bottom" }
         if !["/", "/office", "/stats", "/usage"].contains(startupPage) { value.startupPage = "/" }
-        if !["agent-text", "all", "agent"].contains(detailTab) { value.detailTab = "agent-text" }
+        if !["agent-text", "agent"].contains(detailTab) { value.detailTab = "agent-text" }
         return value
     }
 

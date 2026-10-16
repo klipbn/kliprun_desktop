@@ -76,6 +76,13 @@ export class CodexStorage {
     return db.query<CodexThread, [string]>(`SELECT ${this.fields()} FROM threads WHERE id = ? LIMIT 1`).get(id) ?? null;
   }
 
+  threadWithPrefix(prefix: string): CodexThread | null {
+    if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{5}(?:[a-f0-9]{7})?$/i.test(prefix)) return null;
+    const db = this.connect();
+    const rows = db.query<CodexThread, [string]>(`SELECT ${this.fields()} FROM threads WHERE id LIKE ? LIMIT 2`).all(`${prefix}%`);
+    return rows.length === 1 && isTuiThread(rows[0]) ? rows[0] : null;
+  }
+
   candidates(processes: CliProcess[]): CodexThread[] {
     const db = this.connect();
     const hasOriginator = this.columns.has("originator");
@@ -89,6 +96,7 @@ export class CodexStorage {
       for (const row of db.query<CodexThread, [string]>(`SELECT ${fields} FROM threads WHERE archived = 0 AND cwd = ? AND ${cliSource} LIMIT 2`).all(cwd)) rows.set(row.id, row);
     }
     for (const process of processes.filter(p => directories.includes(p.cwd))) {
+      if (process.activeSessionId) referencedIds.add(process.activeSessionId);
       if (process.selectedSessionId) referencedIds.add(process.selectedSessionId);
       for (const id of [...(process.writerSessionIds ?? []), ...(process.daemonSessionIds ?? [])]) referencedIds.add(id);
       for (const path of process.rollouts.slice(0, 4)) {

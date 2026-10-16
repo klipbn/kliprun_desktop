@@ -82,7 +82,6 @@ struct SettingsView: View {
             Text("Opens the next time you launch KlipRun.").font(.caption).foregroundStyle(.secondary)
             Picker("Default details tab", selection: binding(\.detailTab)) {
                 Text("Agents T").tag("agent-text")
-                Text("All").tag("all")
                 Text("Agent").tag("agent")
             }
             Toggle("Reduce Office animations", isOn: binding(\.reduceMotion))

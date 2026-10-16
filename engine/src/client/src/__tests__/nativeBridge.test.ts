@@ -28,7 +28,7 @@ test("desktop preferences are delivered initially and live, with validated defau
   stop();
   host.dispatchEvent(new Event("kliprun:preferences"));
   expect(values).toEqual([
-    { detailTab: "all", reduceMotion: true }, { detailTab: "agent", reduceMotion: false },
+    { detailTab: "agent-text", reduceMotion: true }, { detailTab: "agent", reduceMotion: false },
     { detailTab: "agent-text", reduceMotion: false },
   ]);
 });
