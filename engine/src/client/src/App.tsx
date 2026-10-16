@@ -19,6 +19,7 @@ import { formatRelativeTimeVerbose } from "@shared/format";
 import { useQuotas } from "./quota/useQuotas";
 import { StatusQuota } from "./quota/StatusQuota";
 import { loadCardPriorities, saveCardPriorities, updateCardPriority, type CardPriority } from "./cardPriorities";
+import { loadCardOrder, saveCardOrder, type CardOrder } from "./cardOrder";
 
 const Statistics = lazy(() => import("./statistics/Statistics"));
 const Office = lazy(() => import("./office/Office"));
@@ -60,6 +61,7 @@ export default function App() {
   const { isRead, counts, markRead } = useReadTracker(board);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [priorities, setPriorities] = useState(loadCardPriorities);
+  const [cardOrder, setCardOrder] = useState(loadCardOrder);
   const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
   const [linkedId, setLinkedId] = useState(() => linkedSessionId(window.location.search));
   const [page, setPage] = useState(currentPage);
@@ -75,6 +77,7 @@ export default function App() {
     return observeNativeTerminalSelection(setActiveTerminalId);
   }, []);
   useEffect(() => saveCardPriorities(priorities), [priorities]);
+  useEffect(() => saveCardOrder(cardOrder), [cardOrder]);
   useEffect(() => {
     const navigate = () => {
       setPage(currentPage());
@@ -140,6 +143,10 @@ export default function App() {
 
   const changePriority = useCallback((id: string, priority: CardPriority | null) => {
     setPriorities(current => updateCardPriority(current, id, priority));
+  }, []);
+
+  const changeCardOrder = useCallback((column: ColumnKey, ids: string[]) => {
+    setCardOrder((current: CardOrder) => ({ ...current, [column]: ids }));
   }, []);
 
   const closeDetails = useCallback(() => {
@@ -246,6 +253,8 @@ export default function App() {
                 <BoardColumn
                   key={key}
                   columnKey={key}
+                  order={cardOrder[key]}
+                  onOrderChange={changeCardOrder}
                   column={board?.columns[key] ?? { title: key, count: 0, cards: [] }}
                   selectedId={selectedId}
                   activeTerminalId={activeTerminalId}

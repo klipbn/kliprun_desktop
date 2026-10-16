@@ -49,3 +49,20 @@ test("agent Markdown cannot insert HTML, unsafe links or remote images", () => {
   expect(html).not.toContain("javascript:");
   expect(html).not.toContain("<img");
 });
+
+test("Agents T timestamps each reply and switches to exact local time at 12 hours", () => {
+  const now = Date.now();
+  const html = renderToStaticMarkup(<details.AgentTextView messages={[
+    { ...message("assistant", "Recent reply"), created: now - 3_600_000, completed: now - 60_000 },
+    { ...message("assistant", "Ten hours ago"), created: now - 10 * 3_600_000 },
+    { ...message("assistant", "Older reply"), created: now - 12 * 3_600_000 },
+    message("assistant", "No recorded time"),
+  ]} />);
+  expect(html).toContain("1m ago");
+  expect(html).toContain("10h ago");
+  expect(html).not.toContain("12h ago");
+  expect(html.match(/<time /g)).toHaveLength(3);
+  expect(html).toContain(`dateTime="${new Date(now - 12 * 3_600_000).toISOString()}"`);
+  // Even relative labels expose the exact timestamp on hover.
+  expect(html).toMatch(/<time [^>]*title="[^"]+"[^>]*>1m ago<\/time>/);
+});

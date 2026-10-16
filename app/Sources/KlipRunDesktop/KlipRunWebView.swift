@@ -16,6 +16,8 @@ struct KlipRunWebView: NSViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: "sessionSelected")
         configuration.userContentController.add(context.coordinator, name: "sessionResume")
         configuration.userContentController.add(context.coordinator, name: "recentSessionsCollapsed")
+        configuration.userContentController.add(context.coordinator, name: "cardOrder")
+        configuration.userContentController.addUserScript(WKUserScript(source: SessionOrder().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "cardPriorities")
         configuration.userContentController.addUserScript(WKUserScript(source: SessionPriorities().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         let collapsed = UserDefaults.standard.bool(forKey: "recentSessions.collapsed")
@@ -47,6 +49,7 @@ struct KlipRunWebView: NSViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "sessionSelected")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "sessionResume")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "recentSessionsCollapsed")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "cardOrder")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "cardPriorities")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "desktopAction")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "exportStatistics")
@@ -70,6 +73,16 @@ struct KlipRunWebView: NSViewRepresentable {
                let filename = body["filename"], let content = body["content"],
                let request = StatisticsExport(filename: filename, content: content) {
                 saveStatistics(request, webView: message.webView)
+            } else if message.name == "cardOrder",
+                      message.frameInfo.isMainFrame,
+                      message.frameInfo.securityOrigin.host == "127.0.0.1",
+                      message.frameInfo.securityOrigin.port == loadedBaseURL?.port,
+                      let order = message.body as? [String: [String]],
+                      SessionOrder().set(order) {
+                let scripts = userContentController.userScripts.filter { !$0.source.hasPrefix("window.kliprunCardOrder = ") }
+                userContentController.removeAllUserScripts()
+                scripts.forEach(userContentController.addUserScript)
+                userContentController.addUserScript(WKUserScript(source: SessionOrder().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
             } else if message.name == "cardPriorities",
                       message.frameInfo.isMainFrame,
                       message.frameInfo.securityOrigin.host == "127.0.0.1",

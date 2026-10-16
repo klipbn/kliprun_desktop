@@ -41,16 +41,23 @@ export function AgentTextView({ messages }: { messages: DetailMessage[] }) {
   const replies = messages.filter((message) => message.role === "assistant" && message.text.trim());
   if (!replies.length) return <p className="text-sm text-text-secondary p-4">No agent text yet.</p>;
   return <div className="space-y-3 min-w-0">
-    {replies.map((message, index) => (
-      <article key={index} className="agent-markdown rounded-md border border-border bg-surface/60 p-3 text-sm text-text-primary"
+    {replies.map((message, index) => {
+      const timestamp = message.completed ?? message.created;
+      const date = timestamp !== null && Number.isFinite(timestamp) ? new Date(timestamp) : null;
+      const exactTime = date?.toLocaleString();
+      return <article key={index} className="agent-markdown rounded-md border border-border bg-surface/60 p-3 text-sm text-text-primary"
         data-testid="agent-text-message">
+        {date && <time dateTime={date.toISOString()} title={exactTime}
+          className="block text-[11px] text-text-secondary">
+          {Date.now() - date.getTime() < 12 * 60 * 60 * 1000 ? formatRelativeTimeVerbose(timestamp) : exactTime}
+        </time>}
         <Markdown remarkPlugins={[remarkGfm]} skipHtml components={{
           a: ({ children, href }) => <a href={href} target="_blank" rel="noreferrer">{children}</a>,
           img: ({ alt }) => <span>{alt}</span>,
           table: ({ children }) => <div className="overflow-x-auto"><table>{children}</table></div>,
         }}>{message.text}</Markdown>
-      </article>
-    ))}
+      </article>;
+    })}
   </div>;
 }
 
