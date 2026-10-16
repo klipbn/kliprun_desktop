@@ -10,6 +10,7 @@ struct ContentView: View {
     @AppStorage("terminal.width") private var preferredTerminalWidth = 460.0
     @State private var dropTargetID: Int?
     @State private var dragStartExtent: Double?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var terminalOnLeft: Bool { terminalPosition == "left" }
 
     init(store: DesktopStore) {
@@ -25,37 +26,21 @@ struct ContentView: View {
                 ? TerminalPaneLayout.width(preferred: preferredTerminalWidth, available: geometry.size.width, expanded: store.terminalExpanded)
                 : TerminalPaneLayout.height(preferred: preferredTerminalHeight, available: geometry.size.height, expanded: store.terminalExpanded)) : 0
             let divider = visible && !store.terminalExpanded ? 10.0 : 0
-            // Keep both hosted views in the same hierarchy when the dock moves.
-            ZStack(alignment: .topLeading) {
-                if runtime.baseURL != nil {
-                    KlipRunWebView(store: store, runtime: runtime)
-                        .frame(width: max(0, geometry.size.width - (terminalOnLeft ? dockExtent : 0)),
-                               height: max(0, geometry.size.height - (terminalOnLeft ? 0 : dockExtent)))
-                        .offset(x: terminalOnLeft ? dockExtent : 0)
-                        .opacity(store.terminalExpanded ? 0 : 1)
-                        .allowsHitTesting(!store.terminalExpanded)
-                        .accessibilityHidden(store.terminalExpanded)
-                    if visible {
-                        terminalDock
-                            .frame(width: terminalOnLeft ? max(0, dockExtent - divider) : geometry.size.width,
-                                   height: terminalOnLeft ? geometry.size.height : max(0, dockExtent - divider))
-                            .offset(y: terminalOnLeft ? 0 : geometry.size.height - dockExtent + divider)
-                        if !store.terminalExpanded {
-                            resizeHandle(available: terminalOnLeft ? geometry.size.width : geometry.size.height)
-                                .frame(width: terminalOnLeft ? divider : geometry.size.width,
-                                       height: terminalOnLeft ? geometry.size.height : divider)
-                                .offset(x: terminalOnLeft ? dockExtent - divider : 0,
-                                        y: terminalOnLeft ? 0 : geometry.size.height - dockExtent)
-                        }
-                    }
-                } else {
-                    VStack(spacing: 10) {
-                        ProgressView()
-                        Text(runtime.error ?? "Starting KlipRun…").foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ZStack(alignment: .trailing) {
+                workspace(geometry: geometry, visible: visible, dockExtent: dockExtent, divider: divider)
+                    .disabled(store.showingSettings)
+                    .accessibilityHidden(store.showingSettings)
+                if store.showingSettings {
+                    Button { store.showingSettings = false } label: { Color.black.opacity(0.35) }
+                        .buttonStyle(.plain)
+                        .accessibilityHidden(true)
+                    SettingsView(store: store)
+                        .frame(width: min(560, geometry.size.width), height: geometry.size.height)
+                        .shadow(color: .black.opacity(0.4), radius: 24, x: -8)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
-            }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+            }
+            .animation(reduceMotion || store.preferences.reduceMotion ? nil : .easeOut(duration: 0.2), value: store.showingSettings)
         }
         .frame(minWidth: 980, minHeight: 660)
         .background(Color(red: 13 / 255, green: 17 / 255, blue: 23 / 255))
@@ -64,12 +49,41 @@ struct ContentView: View {
             dragStartExtent = nil
             store.terminalExpanded = false
         }
-        .sheet(isPresented: Binding(get: { store.showingSettings || updater.isPresented }, set: { presented in
-            if !presented { store.showingSettings = false; updater.isPresented = false }
-        })) {
-            if updater.isPresented { UpdateView(updater: updater) }
-            else { SettingsView(store: store) }
-        }
+        .sheet(isPresented: $updater.isPresented) { UpdateView(updater: updater) }
+    }
+
+    private func workspace(geometry: GeometryProxy, visible: Bool, dockExtent: Double, divider: Double) -> some View {
+        // Keep both hosted views in the same hierarchy when the dock moves.
+        ZStack(alignment: .topLeading) {
+            if runtime.baseURL != nil {
+                KlipRunWebView(store: store, runtime: runtime)
+                    .frame(width: max(0, geometry.size.width - (terminalOnLeft ? dockExtent : 0)),
+                           height: max(0, geometry.size.height - (terminalOnLeft ? 0 : dockExtent)))
+                    .offset(x: terminalOnLeft ? dockExtent : 0)
+                    .opacity(store.terminalExpanded ? 0 : 1)
+                    .allowsHitTesting(!store.terminalExpanded)
+                    .accessibilityHidden(store.terminalExpanded)
+                if visible {
+                    terminalDock
+                        .frame(width: terminalOnLeft ? max(0, dockExtent - divider) : geometry.size.width,
+                               height: terminalOnLeft ? geometry.size.height : max(0, dockExtent - divider))
+                        .offset(y: terminalOnLeft ? 0 : geometry.size.height - dockExtent + divider)
+                    if !store.terminalExpanded {
+                        resizeHandle(available: terminalOnLeft ? geometry.size.width : geometry.size.height)
+                            .frame(width: terminalOnLeft ? divider : geometry.size.width,
+                                   height: terminalOnLeft ? geometry.size.height : divider)
+                            .offset(x: terminalOnLeft ? dockExtent - divider : 0,
+                                    y: terminalOnLeft ? 0 : geometry.size.height - dockExtent)
+                    }
+                }
+            } else {
+                VStack(spacing: 10) {
+                    ProgressView()
+                    Text(runtime.error ?? "Starting KlipRun…").foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
     }
 
     private func resizeHandle(available: Double) -> some View {

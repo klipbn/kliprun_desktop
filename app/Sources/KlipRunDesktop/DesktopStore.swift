@@ -370,6 +370,18 @@ final class DesktopStore: ObservableObject {
     func zoomOut() { var zoom = interfaceZoom; zoom.decrease(); setZoom(zoom) }
     func resetZoom() { var zoom = interfaceZoom; zoom.reset(); setZoom(zoom) }
 
+    var diagnostics: String {
+        """
+        KlipRun \(updater.installedVersion)
+        macOS: \(ProcessInfo.processInfo.operatingSystemVersionString)
+        Architecture: \(AppUpdateClient.architecture)
+        Engine: \(runtime.baseURL == nil ? "offline" : "running on loopback")
+        Active terminals: \(activeTerminalCount)
+        Interface scale: \(interfaceZoom.percent)%
+        Terminal position: \(preferences.terminalPosition)
+        """
+    }
+
     private func setZoom(_ zoom: InterfaceZoom) {
         updatePreferences { $0.interfaceZoomPercent = zoom.percent }
     }
