@@ -4,6 +4,20 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.9] - 2026-10-16
+
+### Added
+
+- **Updates** beside Settings and **KlipRun → Check for Updates…** check the latest stable GitHub release, download a ZIP matching the app's architecture, and verify its SHA256 checksum. **Quit and Show Update** reveals the verified ZIP in Finder only after KlipRun exits; unzip it and replace the app in Applications while KlipRun is closed. Cancelling the active-terminal exit confirmation keeps the download ready.
+
+### Changed
+
+- Wrap toolbar controls in narrow layouts and use a compact update icon when space is limited.
+
+### Documentation
+
+- Refresh all nine demo screenshots for 0.0.9 using only fictional fixture data.
+
 ## [0.0.8] - 2026-10-16
 
 ### Added
@@ -163,4 +177,5 @@ First public macOS release.
 [0.0.6]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.6
 [0.0.7]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.7
 [0.0.8]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.8
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.8...main
+[0.0.9]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.9
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.9...main
