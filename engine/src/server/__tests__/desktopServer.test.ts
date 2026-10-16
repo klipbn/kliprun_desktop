@@ -29,6 +29,8 @@ for (const { name, root, binary } of variants) test(`${name} desktop server requ
       throw new Error(`Server did not start (exit ${child.exitCode}): stdout=${await new Response(child.stdout).text()} stderr=${await new Response(child.stderr).text()}`);
     }
     expect(response?.status).toBe(401);
+    expect((await fetch(`http://127.0.0.1:${port}/api/git/status?directory=/demo`)).status).toBe(401);
+    expect((await fetch(`http://127.0.0.1:${port}/api/git/action`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).status).toBe(401);
     const quotaURL = `http://127.0.0.1:${port}/api/quota/codex`;
     expect((await fetch(quotaURL)).status).toBe(401);
     const quota = await fetch(quotaURL, { headers: { Authorization: "Bearer testtoken" } });
