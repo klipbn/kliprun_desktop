@@ -6,14 +6,31 @@ import WebKit
 @testable import KlipRunDesktop
 
 private func updateRelease(version: String = "0.0.10", prerelease: Bool = false, draft: Bool = false,
-                           name: String? = nil, url: String? = nil,
+                           name: String? = nil, url: String? = nil, body: Any? = "- Preview release notes before downloading.",
                            digest: String = "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad") throws -> Data {
-    try JSONSerialization.data(withJSONObject: [
+    var release: [String: Any] = [
         "tag_name": "v\(version)", "prerelease": prerelease, "draft": draft,
         "assets": [["name": name ?? "KlipRun-\(version)-macos-arm64.zip",
                     "browser_download_url": url ?? "https://github.com/klipbn/kliprun_desktop/releases/download/v\(version)/KlipRun-\(version)-macos-arm64.zip",
                     "digest": digest]]
-    ])
+    ]
+    release["body"] = body
+    return try JSONSerialization.data(withJSONObject: release)
+}
+
+@Test func updateKeepsReleaseNotesWithTheirParagraphsAndLists() throws {
+    let update = try #require(try AppUpdate.available(
+        in: updateRelease(body: "\r\n## Changes\n\n- **Preview** changes.\n- Keep working.\n\nSee [release](https://example.com).\n "),
+        currentVersion: "0.0.9", architecture: "arm64"))
+    #expect(update.releaseNotes == "## Changes\n\n- **Preview** changes.\n- Keep working.\n\nSee [release](https://example.com).")
+}
+
+@Test func updateStillWorksWhenReleaseNotesAreMissingNullOrBlank() throws {
+    for body: Any? in [nil, NSNull(), "", " \n\t\r\n"] {
+        let update = try #require(try AppUpdate.available(
+            in: updateRelease(body: body), currentVersion: "0.0.9", architecture: "arm64"))
+        #expect(update.releaseNotes == "No release notes were provided for this version.")
+    }
 }
 
 @Test func updateSelectsNewerVersionNumericallyAndMatchingMacAsset() throws {
@@ -95,6 +112,7 @@ private final class UpdateURLProtocol: URLProtocol, @unchecked Sendable {
     await updater.check()
     guard case .available(let release) = updater.phase else { Issue.record("Expected an available update"); return }
     #expect(release.version == "0.0.10")
+    #expect(release.releaseNotes == "- Preview release notes before downloading.")
     #expect(!updater.prepareToQuit())
     await updater.download(to: directory)
     guard case .ready(let archive) = updater.phase else { Issue.record("Expected a verified download: \(updater.phase)"); return }
@@ -135,7 +153,8 @@ private final class UpdateURLProtocol: URLProtocol, @unchecked Sendable {
     await updater.check(background: true)
     #expect(updater.availableVersion == "0.0.10")
     #expect(!updater.isPresented)
-    guard case .available = updater.phase else { Issue.record("Background result must be ready to download"); return }
+    guard case .available(let release) = updater.phase else { Issue.record("Background result must include release notes before downloading"); return }
+    #expect(release.releaseNotes == "- Preview release notes before downloading.")
 }
 
 @MainActor @Test func backgroundChecksRepeatKeepKnownUpdateOnFailureAndStop() async throws {

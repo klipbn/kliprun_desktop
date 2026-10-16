@@ -128,7 +128,7 @@ struct UpdateView: View {
             }
         }
         .padding(24)
-        .frame(width: 460)
+        .frame(width: 540)
         .preferredColorScheme(.dark)
     }
 
@@ -139,6 +139,16 @@ struct UpdateView: View {
         case .available(let update):
             VStack(alignment: .leading, spacing: 8) {
                 Text("KlipRun \(update.version) is available.").font(.headline)
+                Text("What's New").font(.headline).padding(.top, 4)
+                ScrollView {
+                    Text(update.releaseNotes)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                }
+                .frame(height: 220)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                .accessibilityLabel("Release notes for KlipRun \(update.version)")
                 Text("Download the latest stable release from GitHub. You can keep working while it downloads.")
             }
         case .downloading:

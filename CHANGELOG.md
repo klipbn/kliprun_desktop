@@ -4,6 +4,12 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.11] - 2026-10-16
+
+### Added
+
+- Show the new release's GitHub description in **What's New** before **Download Update**, both after a manual check and when opening the background update indicator. Long notes scroll with the action buttons always visible. Releases with missing or blank descriptions show a placeholder.
+
 ## [0.0.10] - 2026-10-16
 
 ### Added
@@ -189,4 +195,5 @@ First public macOS release.
 [0.0.8]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.8
 [0.0.9]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.9
 [0.0.10]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.10
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.10...main
+[0.0.11]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.11
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.11...main

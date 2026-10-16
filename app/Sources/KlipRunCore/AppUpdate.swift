@@ -3,6 +3,7 @@ import CryptoKit
 
 public struct AppUpdate: Sendable {
     public let version: String
+    public let releaseNotes: String
     public let filename: String
     public let url: URL
     public let sha256: String
@@ -42,7 +43,10 @@ public struct AppUpdate: Sendable {
         guard let digest = asset.digest, digest.range(of: "^sha256:[0-9a-fA-F]{64}\\z", options: .regularExpression) != nil else {
             throw AppUpdateError.invalidChecksum
         }
-        return AppUpdate(version: version, filename: filename, url: asset.browserDownloadURL,
+        let notes = release.body?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return AppUpdate(version: version,
+                         releaseNotes: notes.isEmpty ? "No release notes were provided for this version." : notes,
+                         filename: filename, url: asset.browserDownloadURL,
                          sha256: String(digest.dropFirst(7)).lowercased())
     }
 
@@ -56,8 +60,9 @@ public struct AppUpdate: Sendable {
         let tagName: String
         let draft: Bool
         let prerelease: Bool
+        let body: String?
         let assets: [Asset]
-        enum CodingKeys: String, CodingKey { case tagName = "tag_name", draft, prerelease, assets }
+        enum CodingKeys: String, CodingKey { case tagName = "tag_name", draft, prerelease, body, assets }
     }
 
     private struct Asset: Decodable {
