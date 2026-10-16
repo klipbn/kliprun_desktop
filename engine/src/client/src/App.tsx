@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Building2, Columns3, Gauge, Plus, Settings2, SquareTerminal } from "lucide-react";
+import { ArrowDownToLine, BarChart3, Building2, Columns3, Gauge, Plus, Settings2, SquareTerminal } from "lucide-react";
 import type { CardPayload, ColumnKey } from "@shared/types";
 import type { TrackedCard } from "@shared/readTracker";
 import { sessionCards } from "@shared/readTracker";
@@ -187,7 +187,7 @@ export default function App() {
             <SquareTerminal className="w-3.5 h-3.5" />Terminal
           </button>
         </div>}
-        <div className="ml-auto flex items-center gap-3 2xl:ml-0 2xl:justify-end">
+        <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-3 2xl:ml-0">
           <button type="button" onClick={backToBoard} aria-pressed={page === "board"} data-testid="kanban-button" title="Kanban (Control+1)"
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${page === "board" ? "border-accent/40 bg-accent/10 text-white" : "border-border text-white hover:text-white hover:border-accent/40"}`}>
             <Columns3 className="w-3.5 h-3.5" />Kanban
@@ -214,6 +214,11 @@ export default function App() {
             aria-label="Settings" title="Settings (⌘,)"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-white hover:text-white hover:border-accent/40 transition-colors">
             <Settings2 className="w-3.5 h-3.5" /><span className="hidden 2xl:inline">Settings</span>
+          </button>}
+          {desktop && <button type="button" onClick={() => notifyNativeAction("check-updates")} data-testid="check-updates-button"
+            aria-label="Check for Updates" title="Check for Updates…"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-white hover:text-white hover:border-accent/40 transition-colors">
+            <ArrowDownToLine className="w-3.5 h-3.5" /><span className="hidden min-[1700px]:inline">Updates</span>
           </button>}
           {desktop && <ShortcutHelp />}
         </div>

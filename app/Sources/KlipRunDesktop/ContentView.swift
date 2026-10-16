@@ -4,6 +4,7 @@ import KlipRunCore
 struct ContentView: View {
     @ObservedObject var store: DesktopStore
     @ObservedObject var runtime: EngineRuntime
+    @ObservedObject var updater: AppUpdater
     private var terminalPosition: String { store.preferences.terminalPosition }
     @AppStorage("terminal.height") private var preferredTerminalHeight = 330.0
     @AppStorage("terminal.width") private var preferredTerminalWidth = 460.0
@@ -14,6 +15,7 @@ struct ContentView: View {
     init(store: DesktopStore) {
         self.store = store
         self.runtime = store.runtime
+        self.updater = store.updater
     }
 
     var body: some View {
@@ -62,8 +64,11 @@ struct ContentView: View {
             dragStartExtent = nil
             store.terminalExpanded = false
         }
-        .sheet(isPresented: $store.showingSettings) {
-            SettingsView(store: store)
+        .sheet(isPresented: Binding(get: { store.showingSettings || updater.isPresented }, set: { presented in
+            if !presented { store.showingSettings = false; updater.isPresented = false }
+        })) {
+            if updater.isPresented { UpdateView(updater: updater) }
+            else { SettingsView(store: store) }
         }
     }
 

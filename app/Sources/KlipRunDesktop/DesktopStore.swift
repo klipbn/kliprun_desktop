@@ -18,6 +18,7 @@ final class DesktopStore: ObservableObject {
     @Published var terminals: [TerminalSession] = []
     @Published var error: String?
     let runtime = EngineRuntime()
+    let updater = AppUpdater()
     weak var webView: WKWebView?
 
     private var links: [String: Int32] = [:]
@@ -347,7 +348,14 @@ final class DesktopStore: ObservableObject {
 
     func showSettings() {
         NSApp.activate(ignoringOtherApps: true)
+        updater.isPresented = false
         showingSettings = true
+    }
+
+    func checkForUpdates() {
+        NSApp.activate(ignoringOtherApps: true)
+        showingSettings = false
+        updater.show()
     }
 
     func previewNotification() {
