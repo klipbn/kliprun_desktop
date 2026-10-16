@@ -11,6 +11,12 @@ const server = Bun.serve({ hostname: "127.0.0.1", port: 18796, idleTimeout: 0, a
   const url = new URL(request.url), path = url.pathname;
   if (path === "/__preview/requests") return Response.json(requests);
   if (path.startsWith("/api/")) requests.push(path+url.search);
+  if (path === "/api/git/repositories") return Response.json({ repositories: fixture.git.repositories });
+  if (path === "/api/git/status") return Response.json({ ...fixture.git.status, root: url.searchParams.get("directory") ?? fixture.git.status.root });
+  if (path === "/api/git/history") return Response.json(fixture.git.history);
+  if (path === "/api/git/commit") return Response.json(fixture.git.commits[url.searchParams.get("revision") ?? ""] ?? { error: "Unknown demo commit" });
+  if (path === "/api/git/diff") return Response.json(fixture.git.diffs[url.searchParams.get("path") ?? ""] ?? { patch: "", binary: false, truncated: false });
+  if (path === "/api/git/action") return Response.json({ error: "Fixture preview: repositories are not modified." }, { status: 409 });
   if (path === "/api/board") return Response.json(fixture.board);
   if (path === "/api/recent-sessions") return Response.json(fixture.recent_sessions);
   if (path === "/api/stats") return Response.json(buildDashboard(fixture.statistics_dataset, parseStatsFilters(url, fixture.board.generated_at), fixture.board.generated_at));
