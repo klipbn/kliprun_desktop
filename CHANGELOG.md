@@ -4,6 +4,27 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.13] - 2026-10-16
+
+### Changed
+
+- Open Settings as a dark panel over the right side of the main window, with custom tabs, buttons, switches, and app colors. Close with Escape, the close button, or the dimmed background. Preserve all existing preferences.
+- Format **What's New** Markdown with headings, nested and numbered lists, emphasis, code, quotes, and clickable web links.
+
+### Added
+
+- **Settings → Updates** and **About**, with version and architecture, local engine status, active terminal count, app data/log shortcuts, credential-free diagnostics copying, and a short author profile linking to klipbn and the source code. Add a live terminal font preview, terminal defaults reset, scale presets, and a terminal shortcut reference.
+- Live update download progress with downloaded/total bytes and percentage when available, followed by a separate SHA256 verification stage. Reopening Updates preserves the active download.
+- Four-step installation guidance after downloading, **Show ZIP in Finder**, and an explicit reminder that downloading the archive does not install it. Keep **Quit and Show Update** and the existing active-session exit confirmation.
+
+### Fixed
+
+- Select terminal position, startup screen, default details tab, and interface scale presets by clicking anywhere inside their settings buttons, including the space around the text.
+
+### Documentation
+
+- Refresh all nine demo screenshots for 0.0.13 using fictional fixture data only.
+
 ## [0.0.12] - 2026-10-16
 
 ### Added
