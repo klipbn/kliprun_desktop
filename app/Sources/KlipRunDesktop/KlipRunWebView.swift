@@ -100,13 +100,18 @@ struct KlipRunWebView: NSViewRepresentable {
                 store.resumeSession(id)
             } else if message.name == "recentSessionsCollapsed", let collapsed = message.body as? Bool {
                 UserDefaults.standard.set(collapsed, forKey: "recentSessions.collapsed")
-            } else if message.name == "desktopAction", let action = message.body as? String {
+            } else if message.name == "desktopAction",
+                      message.frameInfo.isMainFrame,
+                      message.frameInfo.securityOrigin.host == "127.0.0.1",
+                      message.frameInfo.securityOrigin.port == loadedBaseURL?.port,
+                      let action = message.body as? String {
                 switch action {
                 case "new-opencode": store.launch(source: "opencode")
                 case "new-codex": store.launch(source: "codex")
                 case "show-terminal": store.toggleTerminal()
                 case "open-iterm": store.openSelectedInITerm()
                 case "settings": store.showSettings()
+                case "check-updates": store.checkForUpdates()
                 default: break
                 }
             }

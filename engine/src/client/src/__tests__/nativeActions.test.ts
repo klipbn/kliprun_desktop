@@ -8,5 +8,6 @@ test("desktop controls send only a named action to the native shell", () => {
   notifyNativeAction("new-opencode", host);
   notifyNativeAction("new-codex", host);
   notifyNativeAction("settings", host);
-  expect(received).toEqual(["new-opencode", "new-codex", "settings"]);
+  notifyNativeAction("check-updates", host);
+  expect(received).toEqual(["new-opencode", "new-codex", "settings", "check-updates"]);
 });

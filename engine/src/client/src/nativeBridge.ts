@@ -8,7 +8,7 @@ type NativeBridgeHost = {
   } };
 };
 
-export type DesktopAction = "new-opencode" | "new-codex" | "show-terminal" | "open-iterm" | "settings";
+export type DesktopAction = "new-opencode" | "new-codex" | "show-terminal" | "open-iterm" | "settings" | "check-updates";
 
 export interface DesktopPreferences {
   detailTab: "agent-text" | "all" | "agent";

@@ -26,7 +26,16 @@ final class DesktopAppDelegate: NSObject, NSApplicationDelegate {
             alert.messageText = "End \(activeCount) active terminal sessions?"
             alert.informativeText = "Quitting KlipRun ends agents started in this app."
             alert.addButton(withTitle: "End Sessions and Quit"); alert.addButton(withTitle: "Cancel")
-            if alert.runModal() != .alertFirstButtonReturn { return .terminateCancel }
+            if alert.runModal() != .alertFirstButtonReturn {
+                store.updater.cancelQuit()
+                return .terminateCancel
+            }
+        }
+        do { try store.updater.revealAfterExit() }
+        catch {
+            store.updater.cancelQuit()
+            NSAlert(error: error).runModal()
+            return .terminateCancel
         }
         store.stop()
         return .terminateNow
@@ -43,6 +52,7 @@ struct KlipRunApp: App {
                 CommandGroup(replacing: .appSettings) {
                     Button("Settings…") { delegate.store.showSettings() }
                         .keyboardShortcut(",", modifiers: [.command])
+                    Button("Check for Updates…") { delegate.store.checkForUpdates() }
                 }
                 TerminalCommands(store: delegate.store)
                 CommandGroup(after: .toolbar) {

@@ -6,11 +6,17 @@ KlipRun is a macOS app for following OpenCode and Codex sessions in one place. I
 
 The downloadable build is for **Apple Silicon Macs running macOS 13 or newer**.
 
-1. Download `KlipRun-0.0.8-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.9-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip it and move `KlipRun.app` to **Applications**.
 3. Open the app. The release is signed locally but is not notarized, so macOS may block the first launch. If it does, go to **System Settings → Privacy & Security → Open Anyway**, then open KlipRun again.
 
 Install and sign in to [OpenCode](https://opencode.ai/) or [Codex CLI](https://github.com/openai/codex) separately. KlipRun does not include either CLI or its credentials.
+
+### Update
+
+Click **Updates** beside Settings (a download icon in narrower windows), or choose **KlipRun → Check for Updates…**. KlipRun checks the latest stable GitHub release for a newer version matching this build's architecture. **Download Update** saves its ZIP in a separate folder in **Downloads** after verifying the release's SHA256 checksum. You can keep working during the download and reopen Updates to see its result.
+
+Choose **Quit and Show Update** when ready. If terminals are active, the usual exit confirmation appears; cancelling keeps KlipRun running and the download ready. Finder reveals the ZIP only after KlipRun exits. Unzip it, move the new `KlipRun.app` into **Applications**, confirm replacement, and launch it again. **Keep KlipRun closed while replacing the app.** Updating does not change your saved preferences or session stores. If macOS blocks the new build, use **System Settings → Privacy & Security → Open Anyway** as for the first installation.
 
 ## Screenshots
 
