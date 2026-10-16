@@ -65,9 +65,9 @@ export function createReadTracker(storage: KVStorage | null): ReadTracker {
 }
 
 /** Flatten a card tree into a list (parents first, then descendants). */
-export function sessionCards(cards: TrackedCard[] | undefined | null): TrackedCard[] {
-  const out: TrackedCard[] = [];
-  const visit = (items: TrackedCard[] | undefined | null) => {
+export function sessionCards<T extends TrackedCard & { children?: T[] }>(cards: T[] | undefined | null): T[] {
+  const out: T[] = [];
+  const visit = (items: T[] | undefined | null) => {
     for (const card of items ?? []) {
       out.push(card);
       visit(card.children);

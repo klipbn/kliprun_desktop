@@ -163,8 +163,8 @@ struct SettingsView: View {
                 }
             }
             SettingsCard(title: "Default views", subtitle: "The startup screen opens next launch. The details tab applies immediately.") {
-                choices("Startup screen", key: \.startupPage, values: [("Kanban", "/"), ("Office", "/office"), ("Statistics", "/stats"), ("Usage", "/usage")])
-                choices("Default details tab", key: \.detailTab, values: [("Agents T", "agent-text"), ("Agent", "agent")])
+                choices("Startup screen", key: \.startupPage, values: [("Kanban", "/"), ("Git", "/git"), ("Office", "/office"), ("Usage", "/usage"), ("Statistics", "/stats")])
+                choices("Default details tab", key: \.detailTab, values: [("User", "user"), ("Agents T", "agent-text"), ("Agent", "agent"), ("Models", "models"), ("Kanban", "kanban")])
             }
             SettingsCard(title: "Motion", subtitle: "KlipRun also respects the macOS Reduce Motion setting.") {
                 Toggle("Reduce Office animations", isOn: binding(\.reduceMotion))

@@ -4,6 +4,30 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.14] - 2026-10-17
+
+### Added
+
+- **Git** workspace immediately after Kanban, with repositories from active/recent sessions, a native **Open Repository** folder picker, and a remembered repository selection.
+- **Changes** with separate Staged, Unstaged, and Untracked folder trees, whole-file stage/unstage and group actions, line-numbered diffs, and commits of the staged index. Failed commits preserve the message. Support worktrees, initial commits, detached HEAD, renames, deletions, binary files, and bounded previews.
+- Paginated **History** with authors, dates, hashes, branch/tag labels, commit files, and diffs. Merge commits compare with their first parent.
+- One searchable branch popover with local/remote groups, author, commit age, and last message. Select to switch immediately, or type a new name and press Enter to create at HEAD; arrow keys, Escape, and outside-click dismissal are supported.
+- **Fetch**, fast-forward-only **Pull**, and **Push / Publish** through system Git and existing authentication. Use the configured remote automatically. Run directly without confirmation windows or success notifications; refresh silently and keep errors visible.
+- Resizable right-hand Git panel: drag its divider or use Left/Right keys, remember the width across views, and stack panels in small windows.
+- All five session details tabs as saved defaults in **Settings → Appearance → Default views**: **User**, **Agents T**, **Agent**, **Models**, and **Kanban**. Apply changes to open and newly selected details; Agents T remains the fallback.
+
+### Changed
+
+- Icon-only header controls with OpenCode/Codex logos, accessible names, and shortcut tooltips. Order primary controls as **Kanban → Git → Office → Usage → Statistics → Settings**; retain update/help utilities and the update-available indicator.
+- Navigation shortcuts follow the tab order: **Control+1** Kanban, **Control+2** Git, **Control+3** Office, **Control+4** Usage, **Control+5** Statistics. Settings remains **Command+,**; Git is also a startup-screen choice.
+- Terminal new-tab, position, expand/restore, hide, and session-tab close controls highlight on hover, with larger close hit areas and descriptive tooltips.
+- Successful local Git actions show a compact toast for 2.5 seconds without a close button or shifting the workspace. Commits retain confirmation; branch/HEAD guards reject stale operations. Git subprocesses have output/time limits, literal file-path handling, and credential-redacted errors.
+
+### Documentation
+
+- Document Git workflows, shortcuts, toolbar controls, terminal feedback, default details tabs, and installation for 0.0.14. Refresh all twelve demo screenshots using fictional fixture data only, including Git Changes, branch selection, and History.
+- Add Git integration and browser regressions for repository actions, branch selection, errors, diff rendering, resizing, keyboard controls, and small layouts; extend preference and toolbar checks.
+
 ## [0.0.13] - 2026-10-16
 
 ### Changed
@@ -243,4 +267,7 @@ First public macOS release.
 [0.0.9]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.9
 [0.0.10]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.10
 [0.0.11]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.11
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.11...main
+[0.0.12]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.12
+[0.0.13]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.13
+[0.0.14]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.14
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.14...main

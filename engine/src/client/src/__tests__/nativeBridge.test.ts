@@ -77,3 +77,25 @@ test("delivers pending desktop navigation once and ignores later events after cl
   host.dispatchEvent(new CustomEvent("kliprun:navigate", { detail: "/" }));
   expect(pages).toEqual(["/stats", "/office"]);
 });
+import { observeNativeRepository, gitRepository, saveGitRepository } from "../nativeBridge";
+
+test("repository picker publishes only absolute directory selections and unsubscribes", () => {
+  const host = new EventTarget(), received: string[] = [];
+  const stop = observeNativeRepository(path => received.push(path), host);
+  host.dispatchEvent(new CustomEvent("kliprun:repository", { detail: "/demo/project" }));
+  host.dispatchEvent(new CustomEvent("kliprun:repository", { detail: null }));
+  host.dispatchEvent(new CustomEvent("kliprun:repository", { detail: "relative/path" }));
+  stop(); host.dispatchEvent(new CustomEvent("kliprun:repository", { detail: "/other" }));
+  expect(received).toEqual(["/demo/project"]);
+});
+
+test("repository selection validates paths, prefers native preferences and persists through the bridge", () => {
+  const values: string[] = [];
+  const host = { kliprunGitRepository: "/native/project" as unknown,
+    localStorage: { getItem: () => "/stale/project", setItem: (_key: string, value: string) => values.push(`stored:${value}`) },
+    webkit: { messageHandlers: { gitRepository: { postMessage: (value: string) => values.push(`native:${value}`) } } } };
+  expect(gitRepository(host)).toBe("/native/project");
+  saveGitRepository("/new/project", host); expect(gitRepository(host)).toBe("/new/project");
+  saveGitRepository("relative", host);
+  expect(values).toEqual(["stored:/new/project", "native:/new/project"]);
+});

@@ -4117,5 +4117,259 @@
     "ses_demo_review": "critical",
     "ses_demo_search": "medium",
     "codex:00000000-0000-4000-8000-000000000001": "low"
+  },
+  "git": {
+    "repositories": [
+      "/Users/demo/Projects/atlas",
+      "/Users/demo/Projects/aurora"
+    ],
+    "status": {
+      "root": "/Users/demo/Projects/atlas",
+      "branch": "feature/search",
+      "head": "a1b2c3d111111111111111111111111111111111",
+      "unborn": false,
+      "upstream": "origin/feature/search",
+      "ahead": 2,
+      "behind": 0,
+      "remote": "origin",
+      "remotes": [
+        "origin"
+      ],
+      "branches": [
+        {
+          "name": "feature/search",
+          "remote": false,
+          "current": true,
+          "upstream": "origin/feature/search",
+          "author": "Morgan Lee",
+          "date": 1791975600000,
+          "subject": "Add project filters to search"
+        },
+        {
+          "name": "main",
+          "remote": false,
+          "current": false,
+          "upstream": "origin/main",
+          "author": "Morgan Lee",
+          "date": 1791968400000,
+          "subject": "Improve keyboard navigation"
+        },
+        {
+          "name": "feature/keyboard",
+          "remote": false,
+          "current": false,
+          "upstream": null,
+          "author": "Alex Rivera",
+          "date": 1791972000000,
+          "subject": "Handle empty search results"
+        },
+        {
+          "name": "origin/feature/search",
+          "remote": true,
+          "current": false,
+          "upstream": null,
+          "author": "Morgan Lee",
+          "date": 1791975600000,
+          "subject": "Add project filters to search"
+        },
+        {
+          "name": "origin/main",
+          "remote": true,
+          "current": false,
+          "upstream": null,
+          "author": "Morgan Lee",
+          "date": 1791968400000,
+          "subject": "Improve keyboard navigation"
+        }
+      ],
+      "files": [
+        {
+          "path": "src/api/search.ts",
+          "index": " ",
+          "worktree": "M",
+          "staged": {
+            "additions": 0,
+            "deletions": 0
+          },
+          "unstaged": {
+            "additions": 12,
+            "deletions": 4
+          }
+        },
+        {
+          "path": "src/components/SearchField.tsx",
+          "index": "M",
+          "worktree": " ",
+          "staged": {
+            "additions": 6,
+            "deletions": 2
+          },
+          "unstaged": {
+            "additions": 0,
+            "deletions": 0
+          }
+        },
+        {
+          "path": "src/api/__tests__/search.test.ts",
+          "index": "?",
+          "worktree": "?",
+          "staged": {
+            "additions": 0,
+            "deletions": 0
+          },
+          "unstaged": {
+            "additions": 0,
+            "deletions": 0
+          }
+        },
+        {
+          "path": "README.md",
+          "index": " ",
+          "worktree": "M",
+          "staged": {
+            "additions": 0,
+            "deletions": 0
+          },
+          "unstaged": {
+            "additions": 3,
+            "deletions": 1
+          }
+        }
+      ]
+    },
+    "history": {
+      "commits": [
+        {
+          "hash": "a1b2c3d111111111111111111111111111111111",
+          "subject": "Add project filters to search",
+          "author": "Morgan Lee",
+          "date": 1791975600000,
+          "refs": [
+            "HEAD -> feature/search",
+            "origin/feature/search"
+          ]
+        },
+        {
+          "hash": "b2c3d4e222222222222222222222222222222222",
+          "subject": "Handle empty search results",
+          "author": "Alex Rivera",
+          "date": 1791972000000,
+          "refs": []
+        },
+        {
+          "hash": "c3d4e5f333333333333333333333333333333333",
+          "subject": "Improve keyboard navigation",
+          "author": "Morgan Lee",
+          "date": 1791968400000,
+          "refs": [
+            "tag: v1.4.0"
+          ]
+        },
+        {
+          "hash": "d4e5f6a444444444444444444444444444444444",
+          "subject": "Create the search workspace",
+          "author": "Alex Rivera",
+          "date": 1791964800000,
+          "refs": []
+        }
+      ],
+      "hasMore": false
+    },
+    "commits": {
+      "a1b2c3d111111111111111111111111111111111": {
+        "hash": "a1b2c3d111111111111111111111111111111111",
+        "message": "Add project filters to search\n\nKeep results scoped to the selected project and handle empty queries.",
+        "files": [
+          {
+            "path": "src/api/search.ts",
+            "status": "M",
+            "additions": 12,
+            "deletions": 4
+          },
+          {
+            "path": "README.md",
+            "status": "M",
+            "additions": 3,
+            "deletions": 1
+          }
+        ]
+      },
+      "b2c3d4e222222222222222222222222222222222": {
+        "hash": "b2c3d4e222222222222222222222222222222222",
+        "message": "Handle empty search results\n\nKeep results scoped to the selected project and handle empty queries.",
+        "files": [
+          {
+            "path": "src/api/search.ts",
+            "status": "M",
+            "additions": 12,
+            "deletions": 4
+          },
+          {
+            "path": "README.md",
+            "status": "M",
+            "additions": 3,
+            "deletions": 1
+          }
+        ]
+      },
+      "c3d4e5f333333333333333333333333333333333": {
+        "hash": "c3d4e5f333333333333333333333333333333333",
+        "message": "Improve keyboard navigation\n\nKeep results scoped to the selected project and handle empty queries.",
+        "files": [
+          {
+            "path": "src/api/search.ts",
+            "status": "M",
+            "additions": 12,
+            "deletions": 4
+          },
+          {
+            "path": "README.md",
+            "status": "M",
+            "additions": 3,
+            "deletions": 1
+          }
+        ]
+      },
+      "d4e5f6a444444444444444444444444444444444": {
+        "hash": "d4e5f6a444444444444444444444444444444444",
+        "message": "Create the search workspace\n\nKeep results scoped to the selected project and handle empty queries.",
+        "files": [
+          {
+            "path": "src/api/search.ts",
+            "status": "M",
+            "additions": 12,
+            "deletions": 4
+          },
+          {
+            "path": "README.md",
+            "status": "M",
+            "additions": 3,
+            "deletions": 1
+          }
+        ]
+      }
+    },
+    "diffs": {
+      "src/api/search.ts": {
+        "patch": "diff --git a/src/api/search.ts b/src/api/search.ts\nindex b1a8c04..e9d23f7 100644\n--- a/src/api/search.ts\n+++ b/src/api/search.ts\n@@ -1,12 +1,20 @@\n import { client } from \"./client\";\n \n-export async function search(query: string) {\n-  return client.get(\"/search\", { query });\n+export interface SearchOptions {\n+  project?: string;\n+  limit?: number;\n+}\n+\n+export async function search(query: string, options: SearchOptions = {}) {\n+  const term = query.trim();\n+  if (!term) return { results: [], total: 0 };\n+\n+  return client.get(\"/search\", {\n+    query: term,\n+    project: options.project,\n+    limit: options.limit ?? 20,\n+  });\n }\n \n export function clearSearchCache() {\n-  client.clearCache();\n+  client.clearCache(\"/search\");\n }\n",
+        "binary": false,
+        "truncated": false
+      },
+      "src/components/SearchField.tsx": {
+        "patch": "diff --git a/src/components/SearchField.tsx b/src/components/SearchField.tsx\n--- a/src/components/SearchField.tsx\n+++ b/src/components/SearchField.tsx\n@@ -1,4 +1,6 @@\n export function SearchField() {\n-  return <input placeholder=\"Search\" />;\n+  return <input\n+    aria-label=\"Search projects\"\n+    placeholder=\"Search projects…\"\n+  />;\n }\n",
+        "binary": false,
+        "truncated": false
+      },
+      "src/api/__tests__/search.test.ts": {
+        "patch": "diff --git a/src/api/__tests__/search.test.ts b/src/api/__tests__/search.test.ts\nnew file mode 100644\n--- /dev/null\n+++ b/src/api/__tests__/search.test.ts\n@@ -0,0 +1,5 @@\n+import { expect, test } from \"bun:test\";\n+import { search } from \"../search\";\n+test(\"empty searches return no results\", async () => {\n+  expect(await search(\"  \")).toEqual({ results: [], total: 0 });\n+});\n",
+        "binary": false,
+        "truncated": false
+      },
+      "README.md": {
+        "patch": "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1,3 +1,5 @@\n # Atlas\n \n-Search your workspace.\n+Search your workspace by project.\n+\n+Use the project filter to narrow your results.\n",
+        "binary": false,
+        "truncated": false
+      }
+    }
   }
 }

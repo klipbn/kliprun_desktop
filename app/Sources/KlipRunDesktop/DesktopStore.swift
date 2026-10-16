@@ -169,7 +169,7 @@ final class DesktopStore: ObservableObject {
     }
 
     func showPage(_ path: String) {
-        guard ["/", "/stats", "/office", "/usage"].contains(path) else { return }
+        guard ["/", "/git", "/stats", "/office", "/usage"].contains(path) else { return }
         terminalExpanded = false
         guard webReady, let webView else { pendingWebPage = path; return }
         webView.evaluateJavaScript("window.kliprunPendingNavigation = '\(path)'; window.dispatchEvent(new CustomEvent('kliprun:navigate', { detail: '\(path)' }));")
@@ -187,6 +187,28 @@ final class DesktopStore: ObservableObject {
 
     func terminal(for id: Int?) -> TerminalSession? { terminals.first { $0.id == id } }
     var activeTerminalCount: Int { max(terminals.filter(\.isRunning).count, attachedTerminalChildCount()) }
+
+    func openRepository() {
+        guard projectPanel == nil else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.prompt = "Open Repository"
+        panel.message = "Choose a Git working tree."
+        projectPanel = panel
+        let completion: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            Task { @MainActor in
+                guard let self else { return }
+                self.projectPanel = nil
+                guard response == .OK, let path = panel.url?.path,
+                      let literal = try? String(data: JSONEncoder().encode(path), encoding: .utf8) else { return }
+                self.showPage("/git")
+                try? await self.webView?.evaluateJavaScript("window.kliprunPendingRepository = \(literal); window.dispatchEvent(new CustomEvent('kliprun:repository', { detail: \(literal) }));")
+            }
+        }
+        if let window = NSApp.keyWindow ?? NSApp.mainWindow { panel.beginSheetModal(for: window, completionHandler: completion) }
+        else { panel.begin(completionHandler: completion) }
+    }
 
     func launch(source: String) {
         guard projectPanel == nil, source == "opencode" || source == "codex" else { return }

@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import type { ColumnKey, DetailMessage, SessionDetailPayload } from "@shared/types";
 import { COLUMNS } from "@shared/types";
-import { hasDesktopBridge } from "../nativeBridge";
+import { hasDesktopBridge, type DesktopPreferences } from "../nativeBridge";
 import { resizedDetailsWidth } from "./detailsSizing";
 import { HarnessIcon } from "./HarnessIcon";
 import { useDesktopPreferences } from "../hooks/useDesktopPreferences";
@@ -27,7 +27,7 @@ import { formatDuration, formatRelativeTimeVerbose, formatTokens } from "@shared
 
 const AGENT_MESSAGE_LIMIT = 42;
 
-type TabKey = "agent-text" | "agent" | "user" | "models" | "kanban";
+type TabKey = DesktopPreferences["detailTab"];
 
 const TABS: { key: TabKey; label: string; icon: typeof MessageSquare }[] = [
   { key: "user", label: "User", icon: User },

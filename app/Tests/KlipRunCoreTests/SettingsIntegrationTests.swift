@@ -49,9 +49,13 @@ import SwiftUI
     try await click(145, 332)
     #expect(store.preferences.interfaceZoomPercent == 80)
     try await click(168, 480)
+    #expect(store.preferences.startupPage == "/git")
+    try await click(315, 480)
     #expect(store.preferences.startupPage == "/office")
-    try await click(510, 555)
-    #expect(store.preferences.detailTab == "agent")
+    for (x, tab) in [(60.0, "user"), (175.0, "agent-text"), (280.0, "agent"), (390.0, "models"), (510.0, "kanban")] {
+        try await click(x, 555)
+        #expect(store.preferences.detailTab == tab)
+    }
 }
 
 @MainActor @Test func settingsOverlayKeepsTerminalControlsEnabled() async throws {

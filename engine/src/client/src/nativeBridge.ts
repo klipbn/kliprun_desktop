@@ -5,13 +5,40 @@ type NativeBridgeHost = {
     recentSessionsCollapsed?: { postMessage: (collapsed: boolean) => void };
     desktopAction?: { postMessage: (action: string) => void };
     exportStatistics?: { postMessage: (request: { filename: string; content: string }) => void };
+    gitRepository?: { postMessage: (directory: string) => void };
   } };
 };
 
-export type DesktopAction = "new-opencode" | "new-codex" | "show-terminal" | "open-iterm" | "settings" | "check-updates";
+export type DesktopAction = "new-opencode" | "new-codex" | "show-terminal" | "open-iterm" | "settings" | "check-updates" | "open-repository";
+
+type GitRepositoryHost = NativeBridgeHost & { kliprunGitRepository?: unknown; localStorage?: { getItem(key: string): string | null; setItem(key: string, value: string): void } };
+function validRepositoryDirectory(value: unknown): value is string {
+  return typeof value === "string" && value.startsWith("/") && value.length <= 4096 && !value.includes("\0");
+}
+export function gitRepository(host: GitRepositoryHost = window): string | null {
+  if (validRepositoryDirectory(host.kliprunGitRepository)) return host.kliprunGitRepository;
+  try { const value = host.localStorage?.getItem("kliprun.git.repository"); return validRepositoryDirectory(value) ? value : null; } catch { return null; }
+}
+export function saveGitRepository(directory: string, host: GitRepositoryHost = window): void {
+  if (!validRepositoryDirectory(directory)) return;
+  host.kliprunGitRepository = directory;
+  try { host.localStorage?.setItem("kliprun.git.repository", directory); } catch { /* storage unavailable */ }
+  host.webkit?.messageHandlers?.gitRepository?.postMessage(directory);
+}
+
+export function observeNativeRepository(onSelect: (directory: string) => void,
+  host: EventTarget & { kliprunPendingRepository?: unknown } = window): () => void {
+  const select = (value: unknown) => {
+    if (validRepositoryDirectory(value)) onSelect(value);
+  };
+  const listener = (event: Event) => { delete host.kliprunPendingRepository; select((event as CustomEvent<unknown>).detail); };
+  host.addEventListener("kliprun:repository", listener);
+  if (host.kliprunPendingRepository !== undefined) { const pending = host.kliprunPendingRepository; delete host.kliprunPendingRepository; select(pending); }
+  return () => host.removeEventListener("kliprun:repository", listener);
+}
 
 export interface DesktopPreferences {
-  detailTab: "agent-text" | "agent";
+  detailTab: "user" | "agent-text" | "agent" | "models" | "kanban";
   reduceMotion: boolean;
 }
 
@@ -19,8 +46,9 @@ type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; reduceMotio
 
 export function desktopPreferences(host: PreferencesHost = typeof window === "undefined" ? {} : window as PreferencesHost): DesktopPreferences {
   const value = host.kliprunPreferences;
+  const tab = value?.detailTab;
   return {
-    detailTab: value?.detailTab === "agent" ? value.detailTab : "agent-text",
+    detailTab: tab === "user" || tab === "agent" || tab === "models" || tab === "kanban" ? tab : "agent-text",
     reduceMotion: value?.reduceMotion === true,
   };
 }
