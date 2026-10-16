@@ -10,9 +10,11 @@ final class AppUpdater: ObservableObject {
 
     @Published var isPresented = false
     @Published private(set) var phase = Phase.idle
+    @Published private(set) var availableVersion: String?
     private(set) var archiveToReveal: URL?
     let installedVersion: String
     private let client: AppUpdateClient
+    private var backgroundChecks: Task<Void, Never>?
 
     init(client: AppUpdateClient = AppUpdateClient(),
          installedVersion: String = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown") {
@@ -27,19 +29,47 @@ final class AppUpdater: ObservableObject {
         }
     }
 
+    func startBackgroundChecks(every interval: Duration = .seconds(3600)) {
+        guard backgroundChecks == nil else { return }
+        backgroundChecks = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.check(background: true)
+                do { try await Task.sleep(for: interval) }
+                catch { return }
+            }
+        }
+    }
+
+    func stopBackgroundChecks() {
+        backgroundChecks?.cancel()
+        backgroundChecks = nil
+    }
+
+    static func webScript(version: String?) -> String {
+        let literal = (try? JSONEncoder().encode(version)).flatMap { String(data: $0, encoding: .utf8) } ?? "null"
+        return "window.kliprunUpdateVersion = \(literal); window.dispatchEvent(new Event('kliprun:update'));"
+    }
+
     func show() {
         isPresented = true
         if case .ready = phase { return }
         Task { await check() }
     }
 
-    func check() async {
+    func check(background: Bool = false) async {
         guard !isBusy else { return }
+        if case .ready = phase { return }
+        if background && isPresented { return }
+        let previousPhase = phase
         phase = .checking
         do {
-            if let update = try await client.check(currentVersion: installedVersion) { phase = .available(update) }
-            else { phase = .upToDate }
-        } catch { phase = .failed(error.localizedDescription) }
+            let update = try await client.check(currentVersion: installedVersion)
+            try Task.checkCancellation()
+            availableVersion = update?.version
+            phase = update.map(Phase.available) ?? .upToDate
+        } catch {
+            phase = background && !isPresented ? previousPhase : .failed(error.localizedDescription)
+        }
     }
 
     func download(to directory: URL? = nil) async {

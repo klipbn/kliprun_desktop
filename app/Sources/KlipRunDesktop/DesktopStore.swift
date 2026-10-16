@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 import KlipRunCore
 import WebKit
@@ -18,7 +19,7 @@ final class DesktopStore: ObservableObject {
     @Published var terminals: [TerminalSession] = []
     @Published var error: String?
     let runtime = EngineRuntime()
-    let updater = AppUpdater()
+    let updater: AppUpdater
     weak var webView: WKWebView?
 
     private var links: [String: Int32] = [:]
@@ -26,6 +27,7 @@ final class DesktopStore: ObservableObject {
     let notifications: PopupNotifications
     private let defaults: UserDefaults
     private var loop: Task<Void, Never>?
+    private var updateSubscription: AnyCancellable?
     private var nextTerminalID = 1
     private var pendingWebSessionID: String?
     private var pendingWebPage: String?
@@ -35,10 +37,14 @@ final class DesktopStore: ObservableObject {
     private var projectPanel: NSOpenPanel?
     private var resumingSessions = Set<String>()
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, updater: AppUpdater = AppUpdater()) {
         self.defaults = defaults
+        self.updater = updater
         preferences = AppPreferences(defaults: defaults)
         notifications = PopupNotifications(defaults: defaults)
+        updateSubscription = updater.$availableVersion.sink { [weak self] version in
+            self?.webView?.evaluateJavaScript(AppUpdater.webScript(version: version))
+        }
     }
 
     func updatePreferences(_ change: (inout AppPreferences) -> Void) {
@@ -55,6 +61,7 @@ final class DesktopStore: ObservableObject {
 
     func start() {
         pendingWebPage = preferences.startupPage
+        updater.startBackgroundChecks()
         runtime.start()
         loop = Task { [weak self] in
             while !Task.isCancelled {
@@ -66,6 +73,7 @@ final class DesktopStore: ObservableObject {
 
     func stop() {
         loop?.cancel(); loop = nil
+        updater.stopBackgroundChecks()
         terminals.forEach { $0.terminate() }
         runtime.stop()
     }
@@ -135,6 +143,7 @@ final class DesktopStore: ObservableObject {
     func webDidFinishLoading() {
         webReady = true
         webView?.evaluateJavaScript(preferences.webScript)
+        webView?.evaluateJavaScript(AppUpdater.webScript(version: updater.availableVersion))
         publishTerminalSelection()
         if let pendingWebPage { self.pendingWebPage = nil; showPage(pendingWebPage) }
         if let pendingWebSessionID { self.pendingWebSessionID = nil; openInWeb(pendingWebSessionID) }

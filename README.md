@@ -14,7 +14,9 @@ Install and sign in to [OpenCode](https://opencode.ai/) or [Codex CLI](https://g
 
 ### Update
 
-Click **Updates** beside Settings (a download icon in narrower windows), or choose **KlipRun → Check for Updates…**. KlipRun checks the latest stable GitHub release for a newer version matching this build's architecture. **Download Update** saves its ZIP in a separate folder in **Downloads** after verifying the release's SHA256 checksum. You can keep working during the download and reopen Updates to see its result.
+KlipRun checks for updates in the background at launch and once an hour while it is running. When a newer compatible stable GitHub release is available, the button beside Settings turns amber with a dot and shows **Update available** in wider windows. Hover over it to see the version. Background checks do not open a window; a failed check keeps the last known update indicator.
+
+Click **Updates** beside Settings (a download icon in narrower windows), or choose **KlipRun → Check for Updates…**, to check manually and open the update window. **Download Update** saves its ZIP in a separate folder in **Downloads** after verifying the release's SHA256 checksum. You can keep working during the download and reopen Updates to see its result.
 
 Choose **Quit and Show Update** when ready. If terminals are active, the usual exit confirmation appears; cancelling keeps KlipRun running and the download ready. Finder reveals the ZIP only after KlipRun exits. Unzip it, move the new `KlipRun.app` into **Applications**, confirm replacement, and launch it again. **Keep KlipRun closed while replacing the app.** Updating does not change your saved preferences or session stores. If macOS blocks the new build, use **System Settings → Privacy & Security → Open Anyway** as for the first installation.
 

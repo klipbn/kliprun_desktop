@@ -4,7 +4,7 @@ import type { CardPayload, ColumnKey } from "@shared/types";
 import type { TrackedCard } from "@shared/readTracker";
 import { sessionCards } from "@shared/readTracker";
 import { linkedSessionId } from "@shared/sessionLink";
-import { hasDesktopBridge, notifyNativeAction, notifyNativeSelection, notifyNativeResume, observeNativeNavigation, observeNativeTerminalSelection, recentSessionsCollapsed, setRecentSessionsCollapsed } from "./nativeBridge";
+import { availableUpdateVersion, hasDesktopBridge, notifyNativeAction, notifyNativeSelection, notifyNativeResume, observeNativeNavigation, observeNativeTerminalSelection, observeNativeUpdate, recentSessionsCollapsed, setRecentSessionsCollapsed } from "./nativeBridge";
 import { useBoard, useNow } from "./hooks/useBoard";
 import { useDesktopPreferences } from "./hooks/useDesktopPreferences";
 import { useReadTracker } from "./hooks/useReadTracker";
@@ -54,6 +54,7 @@ export default function App() {
   const preferences = useDesktopPreferences();
   const { board, connection, error } = useBoard();
   const desktop = hasDesktopBridge();
+  const [updateVersion, setUpdateVersion] = useState(availableUpdateVersion);
   const [historyCollapsed, setHistoryCollapsed] = useState(recentSessionsCollapsed);
   const recent = useStatsRequest<{ sessions: UsageSession[] }>("/api/recent-sessions", 0);
   const now = useNow();
@@ -76,6 +77,7 @@ export default function App() {
   useEffect(() => {
     return observeNativeTerminalSelection(setActiveTerminalId);
   }, []);
+  useEffect(() => observeNativeUpdate(setUpdateVersion), []);
   useEffect(() => saveCardPriorities(priorities), [priorities]);
   useEffect(() => saveCardOrder(cardOrder), [cardOrder]);
   useEffect(() => {
@@ -216,9 +218,11 @@ export default function App() {
             <Settings2 className="w-3.5 h-3.5" /><span className="hidden 2xl:inline">Settings</span>
           </button>}
           {desktop && <button type="button" onClick={() => notifyNativeAction("check-updates")} data-testid="check-updates-button"
-            aria-label="Check for Updates" title="Check for Updates…"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs text-white hover:text-white hover:border-accent/40 transition-colors">
-            <ArrowDownToLine className="w-3.5 h-3.5" /><span className="hidden min-[1700px]:inline">Updates</span>
+            aria-label={updateVersion ? `Update available: KlipRun ${updateVersion}` : "Check for Updates"}
+            title={updateVersion ? `KlipRun ${updateVersion} is available` : "Check for Updates…"}
+            className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${updateVersion ? "border-warning/60 bg-warning/10 text-warning hover:bg-warning/20" : "border-border text-white hover:border-accent/40"}`}>
+            <ArrowDownToLine className="w-3.5 h-3.5" /><span className="hidden min-[1800px]:inline">{updateVersion ? "Update available" : "Updates"}</span>
+            {updateVersion && <span aria-hidden="true" className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-warning" />}
           </button>}
           {desktop && <ShortcutHelp />}
         </div>

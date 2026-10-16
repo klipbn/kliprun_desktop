@@ -1,5 +1,7 @@
 import Foundation
 import Testing
+import JavaScriptCore
+import WebKit
 @testable import KlipRunCore
 @testable import KlipRunDesktop
 
@@ -73,7 +75,9 @@ private final class UpdateURLProtocol: URLProtocol, @unchecked Sendable {
         let status = request.url?.absoluteString == expected || isArchive ? Int(request.value(forHTTPHeaderField: "X-Test-Status") ?? "200")! : 404
         let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: isArchive ? Data("abc".utf8) : (try? updateRelease()) ?? Data())
+        let release = request.value(forHTTPHeaderField: "X-Test-Release-File")
+            .flatMap { try? Data(contentsOf: URL(fileURLWithPath: $0)) } ?? (try? updateRelease()) ?? Data()
+        client?.urlProtocol(self, didLoad: isArchive ? Data("abc".utf8) : release)
         client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}
@@ -94,6 +98,8 @@ private final class UpdateURLProtocol: URLProtocol, @unchecked Sendable {
     #expect(!updater.prepareToQuit())
     await updater.download(to: directory)
     guard case .ready(let archive) = updater.phase else { Issue.record("Expected a verified download: \(updater.phase)"); return }
+    await updater.check(background: true)
+    #expect(updater.availableVersion == "0.0.10")
     #expect(try Data(contentsOf: archive) == Data("abc".utf8))
     #expect(updater.prepareToQuit())
     #expect(updater.archiveToReveal == archive)
@@ -118,4 +124,86 @@ private final class UpdateURLProtocol: URLProtocol, @unchecked Sendable {
     await #expect(throws: AppUpdateError.http(429)) {
         try await AppUpdateClient(session: limitedSession).check(currentVersion: "0.0.9", architecture: "arm64")
     }
+}
+
+@MainActor @Test func backgroundUpdateCheckPublishesVersionWithoutOpeningWindow() async throws {
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [UpdateURLProtocol.self]
+    let session = URLSession(configuration: config)
+    defer { session.invalidateAndCancel() }
+    let updater = AppUpdater(client: AppUpdateClient(session: session), installedVersion: "0.0.9")
+    await updater.check(background: true)
+    #expect(updater.availableVersion == "0.0.10")
+    #expect(!updater.isPresented)
+    guard case .available = updater.phase else { Issue.record("Background result must be ready to download"); return }
+}
+
+@MainActor @Test func backgroundChecksRepeatKeepKnownUpdateOnFailureAndStop() async throws {
+    let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try updateRelease().write(to: file, options: .atomic)
+    defer { try? FileManager.default.removeItem(at: file) }
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [UpdateURLProtocol.self]
+    config.httpAdditionalHeaders = ["X-Test-Release-File": file.path]
+    let session = URLSession(configuration: config)
+    defer { session.invalidateAndCancel() }
+    let updater = AppUpdater(client: AppUpdateClient(session: session), installedVersion: "0.0.9")
+    defer { updater.stopBackgroundChecks() }
+    updater.startBackgroundChecks(every: .milliseconds(20))
+    for _ in 0..<200 where updater.availableVersion != "0.0.10" { try await Task.sleep(for: .milliseconds(10)) }
+    #expect(updater.availableVersion == "0.0.10")
+    try Data("unavailable".utf8).write(to: file, options: .atomic)
+    try await Task.sleep(for: .milliseconds(100))
+    #expect(updater.availableVersion == "0.0.10")
+    #expect(!updater.isPresented)
+    try updateRelease(version: "0.0.11").write(to: file, options: .atomic)
+    for _ in 0..<200 where updater.availableVersion != "0.0.11" { try await Task.sleep(for: .milliseconds(10)) }
+    #expect(updater.availableVersion == "0.0.11")
+    updater.stopBackgroundChecks()
+    try updateRelease(version: "0.0.12").write(to: file, options: .atomic)
+    try await Task.sleep(for: .milliseconds(100))
+    #expect(updater.availableVersion == "0.0.11")
+}
+
+@MainActor @Test func updateAvailabilityScriptDeliversVersionAndClearsStaleWebState() throws {
+    let context = try #require(JSContext())
+    context.evaluateScript("var updates = []; var window = { dispatchEvent: function() { updates.push(window.kliprunUpdateVersion); } }; function Event() {}")
+    context.evaluateScript(AppUpdater.webScript(version: "0.0.10"))
+    #expect(context.evaluateScript("window.kliprunUpdateVersion")?.toString() == "0.0.10")
+    context.evaluateScript(AppUpdater.webScript(version: nil))
+    #expect(context.evaluateScript("window.kliprunUpdateVersion === null")?.toBool() == true)
+    #expect(context.evaluateScript("updates.length")?.toInt32() == 2)
+    #expect(context.exception == nil)
+}
+
+@MainActor @Test func updateIndicatorReachesMountedWebViewAndClearsWhenReleaseIsCurrent() async throws {
+    let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try updateRelease().write(to: file, options: .atomic)
+    defer { try? FileManager.default.removeItem(at: file) }
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [UpdateURLProtocol.self]
+    config.httpAdditionalHeaders = ["X-Test-Release-File": file.path]
+    let session = URLSession(configuration: config)
+    defer { session.invalidateAndCancel() }
+    let updater = AppUpdater(client: AppUpdateClient(session: session), installedVersion: "0.0.9")
+    await updater.check(background: true)
+    let store = DesktopStore(updater: updater)
+    defer { store.stop() }
+    let web = WKWebView()
+    store.webView = web
+    web.loadHTMLString("<html><body>Update bridge test</body></html>", baseURL: nil)
+    for _ in 0..<200 where web.isLoading { try await Task.sleep(for: .milliseconds(10)) }
+    store.webDidFinishLoading()
+    let mounted = try await web.evaluateJavaScript("window.kliprunUpdateVersion") as? String
+    #expect(mounted == "0.0.10")
+    try updateRelease(version: "0.0.11").write(to: file, options: .atomic)
+    await updater.check(background: true)
+    let changed = try await web.evaluateJavaScript("window.kliprunUpdateVersion") as? String
+    #expect(changed == "0.0.11")
+    try updateRelease(version: "0.0.9").write(to: file, options: .atomic)
+    await updater.check(background: true)
+    let cleared = try await web.evaluateJavaScript("window.kliprunUpdateVersion === null") as? Bool
+    #expect(cleared == true)
+    #expect(updater.availableVersion == nil)
+    #expect(!updater.isPresented)
 }
