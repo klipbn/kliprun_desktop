@@ -9,7 +9,7 @@ import { Engine } from "./classifier";
 import { StatusHistoryStore, type HistoryCard } from "./history";
 import { openTuiSessions, type TuiLiveness } from "./liveness";
 import { querySession } from "./storage/queries";
-import { branchOf } from "./vcs";
+import { repositoryOf } from "./vcs";
 import { sessionMrLinks } from "./mergeRequests";
 import { CodexAdapter } from "./codex/adapter";
 import { scanCodexCli, type CliProcess } from "./codex/liveness";
@@ -168,6 +168,17 @@ export class BoardService {
     return true;
   }
 
+  codexTerminals(): Array<{ pid: number; generation: string }> {
+    return this.codex.terminals();
+  }
+
+  observeCodexTerminalSession(pid: number, prefix: string | null, generation: string): boolean {
+    this.getBoard();
+    const resolved = this.codex.observeTerminalSession(pid, prefix, generation);
+    this.invalidate();
+    return resolved;
+  }
+
   getBoard(ifNoneMatch?: string | null): BoardResult {
     const now = Date.now();
     if (!this.cache || now - this.cache.livenessAt >= BOARD_CACHE_TTL_MS || this.livenessChanged) {
@@ -241,12 +252,14 @@ export class BoardService {
     }
     const detail = this.engine.detail(sessionId);
     const kanbanHistory: KanbanInterval[] = this.history.get(sessionId, Date.now());
+    const repository = repositoryOf(directory);
     return {
       source: "opencode",
       session_id: sessionId,
       title: row.title,
       directory,
-      branch: branchOf(directory),
+      branch: repository.branch,
+      repository_url: repository.url,
       mrs: sessionMrLinks(sessionId),
       messages: detail.messages,
       models: detail.models,

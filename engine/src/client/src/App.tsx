@@ -75,7 +75,10 @@ export default function App() {
   ]).map((card) => card.session_id) : []), [board]);
 
   useEffect(() => {
-    return observeNativeTerminalSelection(setActiveTerminalId);
+    return observeNativeTerminalSelection(id => {
+      setActiveTerminalId(id);
+      if (id) setSelectedId(id);
+    });
   }, []);
   useEffect(() => observeNativeUpdate(setUpdateVersion), []);
   useEffect(() => saveCardPriorities(priorities), [priorities]);

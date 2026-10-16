@@ -10,9 +10,9 @@ const message = (role: string, text: string): DetailMessage => ({
     duration_ms: null, skill_name: null }], error: null,
 });
 
-test("session details start on Agents T before All", () => {
+test("session details keep Agents T as default with User first and no All or iTerm2", () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, "window");
-  Object.defineProperty(globalThis, "window", { configurable: true, value: {} });
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { webkit: { messageHandlers: { desktopAction: { postMessage() {} } } } } });
   let html: string;
   try {
     html = renderToStaticMarkup(<details.DetailsPanel sessionId="demo" onClose={() => {}} />);
@@ -21,7 +21,9 @@ test("session details start on Agents T before All", () => {
     else Reflect.deleteProperty(globalThis, "window");
   }
   expect(html).toContain("Agents T");
-  expect(html.indexOf("Agents T")).toBeLessThan(html.indexOf(">All<"));
+  expect(html.indexOf('data-testid="tab-user"')).toBeLessThan(html.indexOf('data-testid="tab-agent-text"'));
+  expect(html).not.toContain('data-testid="tab-all"');
+  expect(html).not.toContain("iTerm2");
   expect(html).toContain('aria-pressed="true" data-testid="tab-agent-text"');
 });
 

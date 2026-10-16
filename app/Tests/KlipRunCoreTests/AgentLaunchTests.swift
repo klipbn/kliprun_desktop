@@ -13,7 +13,7 @@ import Testing
 @Test func codexLaunchUsesConfiguredWrapperWhenAvailable() {
     let launch = AgentLaunch.make(source: "codex", home: "/Users/test", inherited: [:],
                                   isExecutable: { $0 == "/Users/test/.local/bin/codex-vk" })
-    #expect(launch?.arguments == ["-lic", "exec codex-vk"])
+    #expect(launch?.arguments == ["-lic", "exec codex-vk -c 'tui.terminal_title=[\"session-id\"]'"])
     #expect(AgentLaunch.make(source: "unknown", home: "/Users/test", inherited: [:]) == nil)
 }
 
@@ -27,7 +27,7 @@ import Testing
 @Test func resumeUsesTheOriginalHarnessAndExactSession() {
     let id = "01900000-0000-7000-8000-000000000001"
     let codex = AgentLaunch.make(source: "codex", home: "/Users/test", inherited: [:], sessionID: "codex:\(id)", isExecutable: { _ in true })
-    #expect(codex?.arguments == ["-lic", "exec codex-vk resume \(id)"])
+    #expect(codex?.arguments == ["-lic", "exec codex-vk -c 'tui.terminal_title=[\"session-id\"]' resume \(id)"])
     let opencode = AgentLaunch.make(source: "opencode", home: "/Users/test", inherited: [:], sessionID: "ses_abc-123")
     #expect(opencode?.arguments == ["-lic", "exec opencode --session ses_abc-123"])
 }

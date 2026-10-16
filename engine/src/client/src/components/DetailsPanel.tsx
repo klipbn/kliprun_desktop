@@ -19,20 +19,20 @@ import {
 } from "lucide-react";
 import type { ColumnKey, DetailMessage, SessionDetailPayload } from "@shared/types";
 import { COLUMNS } from "@shared/types";
-import { hasDesktopBridge, notifyNativeAction } from "../nativeBridge";
+import { hasDesktopBridge } from "../nativeBridge";
 import { resizedDetailsWidth } from "./detailsSizing";
+import { HarnessIcon } from "./HarnessIcon";
 import { useDesktopPreferences } from "../hooks/useDesktopPreferences";
 import { formatDuration, formatRelativeTimeVerbose, formatTokens } from "@shared/format";
 
 const AGENT_MESSAGE_LIMIT = 42;
 
-type TabKey = "agent-text" | "all" | "agent" | "user" | "models" | "kanban";
+type TabKey = "agent-text" | "agent" | "user" | "models" | "kanban";
 
 const TABS: { key: TabKey; label: string; icon: typeof MessageSquare }[] = [
-  { key: "agent-text", label: "Agents T", icon: MessageSquare },
-  { key: "all", label: "All", icon: MessageSquare },
-  { key: "agent", label: "Agent", icon: Terminal },
   { key: "user", label: "User", icon: User },
+  { key: "agent-text", label: "Agents T", icon: MessageSquare },
+  { key: "agent", label: "Agent", icon: Terminal },
   { key: "models", label: "Models", icon: Cpu },
   { key: "kanban", label: "Kanban", icon: History },
 ];
@@ -280,8 +280,6 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
         return agent.slice(0, AGENT_MESSAGE_LIMIT);
       case "user":
         return user;
-      case "all":
-        return [...user, ...agent.slice(0, AGENT_MESSAGE_LIMIT)];
       default:
         return [];
     }
@@ -322,10 +320,9 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
         <h2 className="text-sm font-medium truncate flex-1 text-white" title={detail?.title ?? sessionId}>
           {detail?.title ?? sessionId}
         </h2>
-        {detail && <span className="text-[10px] text-text-secondary shrink-0">{detail.source === "codex" ? "Codex CLI" : "OpenCode"}</span>}
-        {hasDesktopBridge() && <button type="button" onClick={() => notifyNativeAction("open-iterm")}
-          className="px-1.5 py-1 rounded border border-border text-[10px] text-text-secondary hover:text-accent hover:border-accent/40"
-          aria-label="Open selected session in iTerm2">iTerm2</button>}
+        {detail && <span className="inline-flex items-center gap-1 text-[10px] text-text-secondary shrink-0">
+          <HarnessIcon source={detail.source} />{detail.source === "codex" ? "Codex CLI" : "OpenCode"}
+        </span>}
         <button
           type="button"
           onClick={onClose}
@@ -337,15 +334,20 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
       </div>
       {detail && detail.directory && (
         <div className="shrink-0 px-3 py-1.5 text-xs text-text-secondary border-b border-border flex items-center gap-2 min-w-0">
-          <span className="truncate" title={detail.directory}>
+          <span className="truncate flex-1 min-w-0" title={detail.directory}>
             {detail.directory}
           </span>
-          {detail.branch && (
-            <span className="flex items-center gap-0.5 text-accent shrink-0" title={`git branch: ${detail.branch}`}>
-              <GitBranch className="w-3 h-3" />
-              {detail.branch}
+          {(detail.branch || detail.repository_url) && (detail.repository_url ? (
+            <a href={detail.repository_url} target="_blank" rel="noreferrer" title={detail.branch ? `Open branch ${detail.branch} in browser` : "Open repository in browser"}
+              className="flex items-center gap-0.5 text-accent min-w-0 max-w-[50%] hover:underline" data-testid="repository-link">
+              <GitBranch className="w-3 h-3 shrink-0" />
+              <span className="truncate">{detail.branch ?? "Repository"}</span>
+            </a>
+          ) : (
+            <span className="flex items-center gap-0.5 text-accent min-w-0 max-w-[50%]" title={`git branch: ${detail.branch}`}>
+              <GitBranch className="w-3 h-3 shrink-0" /><span className="truncate">{detail.branch}</span>
             </span>
-          )}
+          ))}
         </div>
       )}
       {detail?.exists && detail.mrs.length > 0 && (
@@ -389,7 +391,7 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
         {detail && !detail.exists && (
           <p className="text-sm text-text-secondary p-4">Session not found in the database.</p>
         )}
-        {detail?.exists && (tab === "all" || tab === "agent" || tab === "user") &&
+        {detail?.exists && (tab === "agent" || tab === "user") &&
           (filtered.length === 0 ? (
             <p className="text-sm text-text-secondary p-4">No messages in this tab.</p>
           ) : (
@@ -397,7 +399,10 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
           ))}
         {detail?.exists && tab === "models" && <ModelsView detail={detail} />}
         {detail?.exists && tab === "agent-text" && <AgentTextView messages={detail.messages} />}
-        {detail?.exists && tab === "kanban" && <KanbanHistory detail={detail} />}
+        {detail?.exists && tab === "kanban" && <>
+          <p className="text-xs text-text-secondary">Status history and time spent in each state.</p>
+          <KanbanHistory detail={detail} />
+        </>}
       </div>
     </aside>
   );

@@ -3326,6 +3326,7 @@
     "title": "Implement search API",
     "directory": "/Users/demo/Projects/atlas",
     "branch": "feature/demo-api",
+    "repository_url": "https://github.com/demo/atlas/tree/feature%2Fdemo-api",
     "mrs": [],
     "messages": [
       {

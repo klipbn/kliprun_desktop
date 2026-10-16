@@ -56,7 +56,7 @@ export interface CardPayload {
   subagent_errors: number;
   subagent_error_notes: string[];
   children: CardPayload[];
-  /** Present when a live terminal needs an explicit chat choice. Null means unresolved. */
+  /** Live terminal metadata. A null session_id means its chat is not yet confirmed. */
   terminal?: {
     pid: number;
     generation: string;
@@ -131,6 +131,7 @@ export interface SessionDetailPayload {
   title: string;
   directory: string;
   branch: string | null;
+  repository_url?: string | null;
   mrs: MrLink[];
   messages: DetailMessage[];
   models: ModelUsageSummary[];

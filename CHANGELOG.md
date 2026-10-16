@@ -4,6 +4,32 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.12] - 2026-10-16
+
+### Added
+
+- Click the current Git branch in session details to open it on GitHub or GitLab. Links use the branch's tracking remote, or origin, and support SSH remotes and worktrees. A branch without a remote remains plain text.
+- Recognizable Codex and OpenCode icons beside harness names on session cards and in details.
+
+### Changed
+
+- New embedded Codex tabs identify their current chat automatically, including after `/new` and `/resume`. Remove the manual chat selector; ambiguous or unavailable IDs remain unlinked instead of selecting a guessed session.
+- Simplify session details: remove **iTerm2** and **All**, and order tabs as **User → Agents T → Agent → Models → Kanban**. **Agents T** remains the default; a saved **All** preference now falls back to it.
+- Explain the Kanban tab with **Status history and time spent in each state.**
+
+### Fixed
+
+- Switching terminal tabs updates the right-hand session details as well as the card highlight. Tabs without a confirmed session keep the current details open.
+- Read the current Git branch on each refresh, removing the previous ten-second delay after a checkout. Resolve relative worktree paths and keep detached HEAD from displaying a parent repository's branch.
+
+### Compatibility
+
+- On Codex 0.163, the per-launch terminal-title setting uses an embedded backend rather than automatically reusing the shared daemon. Existing daemon sessions keep running, and configuration and chat history stay shared. Existing or external terminals without the title signal still require confirmed process evidence.
+
+### Documentation
+
+- Refresh all nine demo screenshots for 0.0.12 using fictional fixture data only.
+
 ## [0.0.11] - 2026-10-16
 
 ### Added

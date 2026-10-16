@@ -85,10 +85,29 @@ final class DesktopStore: ObservableObject {
             let (snapshot, notificationSnapshot) = try await api.board()
             board = snapshot
             error = nil
-            let linkPayload: TerminalLinks = try await api.get("api/terminal-links")
-            links = Dictionary(uniqueKeysWithValues: linkPayload.links.map { ($0.session_id, $0.pid) })
+            var linkPayload: TerminalLinks = try await api.get("api/terminal-links")
             let parents = terminals.contains(where: \.isRunning) ? processParents() : [:]
+            var reported = false
+            for terminal in terminals where terminal.isRunning && terminal.hasCodexSessionTitle {
+                let processes = (linkPayload.codex_terminals ?? []).filter {
+                    ProcessTree.owns(pid: $0.pid, terminalPID: terminal.pid, parents: parents)
+                }
+                guard processes.count == 1, let process = processes.first else { continue }
+                let prefix = terminal.codexSessionPrefix
+                let observation = "\(process.pid):\(process.generation):\(prefix ?? "")"
+                guard terminal.reportedCodexObservation != observation else { continue }
+                let resolved = try await api.observeCodexSession(process, prefix: prefix)
+                // The TUI may switch chats while the request is in flight.
+                if resolved && terminal.codexSessionPrefix == prefix { terminal.reportedCodexObservation = observation }
+                reported = true
+            }
+            if reported { linkPayload = try await api.get("api/terminal-links") }
+            links = Dictionary(uniqueKeysWithValues: linkPayload.links.map { ($0.session_id, $0.pid) })
             for terminal in terminals where terminal.isRunning {
+                if terminal.hasCodexSessionTitle && terminal.reportedCodexObservation == nil {
+                    terminal.updateSessionLink(observed: [])
+                    continue
+                }
                 let observed = Set(linkPayload.links.filter {
                     ProcessTree.owns(pid: $0.pid, terminalPID: terminal.pid, parents: parents)
                 }.map(\.session_id))
