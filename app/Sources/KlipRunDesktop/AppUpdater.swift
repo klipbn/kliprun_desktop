@@ -11,6 +11,7 @@ final class AppUpdater: ObservableObject {
     @Published var isPresented = false
     @Published private(set) var phase = Phase.idle
     @Published private(set) var availableVersion: String?
+    @Published private(set) var downloadProgress = AppUpdateProgress.downloading(received: 0, total: nil)
     private(set) var archiveToReveal: URL?
     let installedVersion: String
     private let client: AppUpdateClient
@@ -74,11 +75,16 @@ final class AppUpdater: ObservableObject {
 
     func download(to directory: URL? = nil) async {
         guard case .available(let update) = phase else { return }
+        downloadProgress = .downloading(received: 0, total: nil)
         phase = .downloading
         do {
             let downloads = try directory ?? FileManager.default.url(for: .downloadsDirectory, in: .userDomainMask,
                                                                      appropriateFor: nil, create: true)
-            let archive = try await client.download(update, to: downloads)
+            let archive = try await client.download(update, to: downloads) { [weak self] progress in
+                guard let self, case .downloading = self.phase else { return }
+                if case .verifying = self.downloadProgress { return }
+                self.downloadProgress = progress
+            }
             phase = .ready(archive)
         } catch { phase = .failed(error.localizedDescription) }
     }
@@ -97,79 +103,5 @@ final class AppUpdater: ObservableObject {
         try UpdateHandoff.launch(after: ProcessInfo.processInfo.processIdentifier,
                                  command: ["/usr/bin/open", "-R", archiveToReveal.path])
         self.archiveToReveal = nil
-    }
-}
-
-struct UpdateView: View {
-    @ObservedObject var updater: AppUpdater
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Label("KlipRun Updates", systemImage: "arrow.down.circle").font(.title2.bold())
-            Text("Installed version: \(updater.installedVersion)").foregroundStyle(.secondary)
-            content.frame(maxWidth: .infinity, alignment: .leading)
-            HStack {
-                Button("Close") { updater.isPresented = false }.keyboardShortcut(.cancelAction)
-                Spacer()
-                switch updater.phase {
-                case .available:
-                    Button("Download Update") { Task { await updater.download() } }.keyboardShortcut(.defaultAction)
-                case .ready:
-                    Button("Quit and Show Update") {
-                        if updater.prepareToQuit() {
-                            updater.isPresented = false
-                            NSApp.terminate(nil)
-                        }
-                    }.keyboardShortcut(.defaultAction)
-                case .failed:
-                    Button("Try Again") { Task { await updater.check() } }.keyboardShortcut(.defaultAction)
-                default: EmptyView()
-                }
-            }
-        }
-        .padding(24)
-        .frame(width: 540)
-        .preferredColorScheme(.dark)
-    }
-
-    @ViewBuilder private var content: some View {
-        switch updater.phase {
-        case .idle, .checking:
-            HStack { ProgressView().controlSize(.small); Text("Checking for updates…") }
-        case .available(let update):
-            VStack(alignment: .leading, spacing: 8) {
-                Text("KlipRun \(update.version) is available.").font(.headline)
-                Text("What's New").font(.headline).padding(.top, 4)
-                ScrollView {
-                    Text(update.releaseNotes)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
-                }
-                .frame(height: 220)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-                .accessibilityLabel("Release notes for KlipRun \(update.version)")
-                Text("Download the latest stable release from GitHub. You can keep working while it downloads.")
-            }
-        case .downloading:
-            VStack(alignment: .leading, spacing: 8) {
-                HStack { ProgressView().controlSize(.small); Text("Downloading and verifying SHA256…") }
-                Text("This may take a few minutes. You can close this window and return later.").foregroundStyle(.secondary)
-            }
-        case .ready(let archive):
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Your update is ready.").font(.headline)
-                Text("Quit KlipRun to reveal the verified ZIP in Finder. Unzip it, then replace KlipRun.app in Applications and open it again.")
-                Text("Quitting ends agents started in this app. Keep KlipRun closed while replacing it.").foregroundStyle(.secondary)
-                Text(archive.deletingLastPathComponent().path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-            }
-        case .upToDate:
-            Text("KlipRun is up to date.").font(.headline)
-        case .failed(let message):
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Could not update KlipRun.").font(.headline)
-                Text(message).foregroundStyle(.secondary)
-            }
-        }
     }
 }

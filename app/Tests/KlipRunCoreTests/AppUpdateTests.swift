@@ -2,8 +2,65 @@ import Foundation
 import Testing
 import JavaScriptCore
 import WebKit
+import AppKit
+import CryptoKit
 @testable import KlipRunCore
 @testable import KlipRunDesktop
+
+@MainActor @Test func releaseNotesRenderHeadingsListsCodeAndLinksWithoutMarkdownMarkers() throws {
+    let rendered = ReleaseNotesView.render("## Changes\n\n- **Readable** notes\n- Use `code`\n\nSee [release](https://example.com).\n\n```sh\necho hello\n```")
+    #expect(rendered.string.contains("Changes"))
+    #expect(!rendered.string.contains("##"))
+    #expect(!rendered.string.contains("**"))
+    #expect(rendered.string.contains("• Readable notes"))
+    #expect(rendered.string.contains("• Use code"))
+    #expect(rendered.string.contains("echo hello"))
+    let heading = (rendered.string as NSString).range(of: "Changes").location
+    let body = (rendered.string as NSString).range(of: "notes").location
+    let headingFont = try #require(rendered.attribute(.font, at: heading, effectiveRange: nil) as? NSFont)
+    let bodyFont = try #require(rendered.attribute(.font, at: body, effectiveRange: nil) as? NSFont)
+    #expect(headingFont.pointSize > bodyFont.pointSize)
+    let link = (rendered.string as NSString).range(of: "release").location
+    #expect((rendered.attribute(.link, at: link, effectiveRange: nil) as? URL)?.absoluteString == "https://example.com")
+}
+
+@MainActor @Test func downloadReportsByteProgressThenVerificationBeforeSaving() async throws {
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [UpdateURLProtocol.self]
+    config.httpAdditionalHeaders = ["X-Test-Chunked": "true"]
+    let session = URLSession(configuration: config)
+    defer { session.invalidateAndCancel() }
+    let client = AppUpdateClient(session: session)
+    let update = try #require(try await client.check(currentVersion: "0.0.9", architecture: "arm64"))
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    var events: [AppUpdateProgress] = []
+    let archive = try await client.download(update, to: directory) { events.append($0) }
+    #expect(events.contains { event in
+        guard case .downloading(let received, let total) = event else { return false }
+        return received > 0 && received < 1_048_576 && total == 1_048_576
+    })
+    #expect(events.last == .verifying)
+    #expect(try Data(contentsOf: archive) == Data(repeating: 97, count: 1_048_576))
+}
+
+@Test func updateProgressHandlesUnknownLengthAndBoundsPercentages() {
+    #expect(AppUpdateProgress.downloading(received: 25, total: 100).fraction == 0.25)
+    #expect(AppUpdateProgress.downloading(received: 125, total: 100).fraction == 1)
+    #expect(AppUpdateProgress.downloading(received: 5, total: nil).fraction == nil)
+    #expect(AppUpdateProgress.downloading(received: 5, total: 0).fraction == nil)
+    #expect(AppUpdateProgress.verifying.fraction == nil)
+}
+
+@MainActor @Test func releaseNotesKeepNestedAndOrderedListsAndRejectLocalLinks() {
+    let rendered = ReleaseNotesView.render("1. First\n2. Second\n   - Nested\n\n[Unsafe](file:///tmp/secret)\n\n> Quoted **text**")
+    #expect(rendered.string.contains("1. First\n2. Second\n• Nested"))
+    let nested = (rendered.string as NSString).range(of: "Nested").location
+    let paragraph = rendered.attribute(.paragraphStyle, at: nested, effectiveRange: nil) as? NSParagraphStyle
+    #expect(paragraph?.headIndent == 40)
+    let unsafe = (rendered.string as NSString).range(of: "Unsafe").location
+    #expect(rendered.attribute(.link, at: unsafe, effectiveRange: nil) == nil)
+}
 
 private func updateRelease(version: String = "0.0.10", prerelease: Bool = false, draft: Bool = false,
                            name: String? = nil, url: String? = nil, body: Any? = "- Preview release notes before downloading.",
@@ -89,12 +146,27 @@ private final class UpdateURLProtocol: URLProtocol, @unchecked Sendable {
     override func startLoading() {
         let expected = "https://api.github.com/repos/klipbn/kliprun_desktop/releases/latest"
         let isArchive = request.url?.absoluteString == "https://github.com/klipbn/kliprun_desktop/releases/download/v0.0.10/KlipRun-0.0.10-macos-arm64.zip"
+        let chunked = request.value(forHTTPHeaderField: "X-Test-Chunked") == "true"
         let status = request.url?.absoluteString == expected || isArchive ? Int(request.value(forHTTPHeaderField: "X-Test-Status") ?? "200")! : 404
-        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!
+        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil,
+                                       headerFields: isArchive ? ["Content-Length": chunked ? "1048576" : "3"] : nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        if isArchive, chunked {
+            client?.urlProtocol(self, didLoad: Data(repeating: 97, count: 524_288))
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.2) { [self] in
+                client?.urlProtocol(self, didLoad: Data(repeating: 97, count: 524_288))
+                client?.urlProtocolDidFinishLoading(self)
+            }
+            return
+        }
         let release = request.value(forHTTPHeaderField: "X-Test-Release-File")
             .flatMap { try? Data(contentsOf: URL(fileURLWithPath: $0)) } ?? (try? updateRelease()) ?? Data()
-        client?.urlProtocol(self, didLoad: isArchive ? Data("abc".utf8) : release)
+        var payload = release
+        if chunked {
+            let digest = SHA256.hash(data: Data(repeating: 97, count: 1_048_576)).map { String(format: "%02x", $0) }.joined()
+            payload = (try? updateRelease(digest: "sha256:\(digest)")) ?? Data()
+        }
+        client?.urlProtocol(self, didLoad: isArchive ? Data("abc".utf8) : payload)
         client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}

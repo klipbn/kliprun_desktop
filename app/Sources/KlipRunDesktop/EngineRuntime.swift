@@ -6,6 +6,8 @@ final class EngineRuntime: ObservableObject {
     @Published private(set) var baseURL: URL?
     @Published private(set) var error: String?
     let token = UUID().uuidString + UUID().uuidString
+    let stateDirectory = ProcessInfo.processInfo.environment["KLIPRUN_DESKTOP_STATE_HOME"].map { URL(fileURLWithPath: $0, isDirectory: true) }
+        ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/KlipRun Desktop")
     private var process: Process?
     private var output: FileHandle?
     private var errorLog: FileHandle?
@@ -22,8 +24,7 @@ final class EngineRuntime: ObservableObject {
         guard !bun.isEmpty, FileManager.default.fileExists(atPath: engine.appendingPathComponent("src/server/index.ts").path) else {
             error = "KlipRun engine is missing from the app bundle"; return
         }
-        let support = ProcessInfo.processInfo.environment["KLIPRUN_DESKTOP_STATE_HOME"].map { URL(fileURLWithPath: $0, isDirectory: true) }
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/KlipRun Desktop")
+        let support = stateDirectory
         do { try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true) }
         catch { self.error = error.localizedDescription; return }
         let child = Process()

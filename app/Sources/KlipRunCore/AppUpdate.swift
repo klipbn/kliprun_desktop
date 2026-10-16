@@ -96,18 +96,50 @@ public struct AppUpdateClient: Sendable {
         return try AppUpdate.available(in: data, currentVersion: currentVersion, architecture: architecture)
     }
 
-    public func download(_ update: AppUpdate, to directory: URL) async throws -> URL {
+    public func download(_ update: AppUpdate, to directory: URL,
+                         progress: @escaping @MainActor @Sendable (AppUpdateProgress) -> Void = { _ in }) async throws -> URL {
         let request = URLRequest(url: update.url, timeoutInterval: 300)
-        let (archive, response) = try await session.download(for: request)
+        let delegate = UpdateDownloadDelegate(progress: progress)
+        let (archive, response) = try await session.download(for: request, delegate: delegate)
         defer { try? FileManager.default.removeItem(at: archive) }
         try checkResponse(response)
         try Task.checkCancellation()
+        // Publish the final byte count even for very small downloads or unknown content lengths.
+        let bytes = (try FileManager.default.attributesOfItem(atPath: archive.path)[.size] as? NSNumber)?.int64Value ?? 0
+        await progress(.downloading(received: bytes, total: response.expectedContentLength > 0 ? response.expectedContentLength : nil))
+        await progress(.verifying)
         return try update.saveVerifiedArchive(archive, in: directory)
     }
 
     private func checkResponse(_ response: URLResponse) throws {
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status == 200 else { throw AppUpdateError.http(status) }
+    }
+}
+
+public enum AppUpdateProgress: Sendable, Equatable {
+    case downloading(received: Int64, total: Int64?)
+    case verifying
+
+    public var fraction: Double? {
+        guard case .downloading(let received, let total?) = self, total > 0 else { return nil }
+        return min(1, max(0, Double(received) / Double(total)))
+    }
+}
+
+// The observation is assigned synchronously when the single task is created, before it starts.
+private final class UpdateDownloadDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    let progress: @MainActor @Sendable (AppUpdateProgress) -> Void
+    private var observation: NSKeyValueObservation?
+
+    init(progress: @escaping @MainActor @Sendable (AppUpdateProgress) -> Void) { self.progress = progress }
+
+    func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        observation = task.observe(\.countOfBytesReceived, options: [.new]) { [progress] task, _ in
+            let total = task.countOfBytesExpectedToReceive
+            let value = AppUpdateProgress.downloading(received: task.countOfBytesReceived, total: total > 0 ? total : nil)
+            Task { @MainActor in progress(value) }
+        }
     }
 }
 
