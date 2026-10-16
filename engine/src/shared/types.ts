@@ -56,6 +56,13 @@ export interface CardPayload {
   subagent_errors: number;
   subagent_error_notes: string[];
   children: CardPayload[];
+  /** Present when a live terminal needs an explicit chat choice. Null means unresolved. */
+  terminal?: {
+    pid: number;
+    generation: string;
+    session_id: string | null;
+    candidates: Array<{ session_id: string; title: string }>;
+  };
 }
 
 export interface BoardColumn {

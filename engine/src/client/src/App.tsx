@@ -134,6 +134,7 @@ export default function App() {
     (id: string) => {
       // A new idle completion needs marking even when its details are already selected.
       const card = board ? findCard(board, id) : null;
+      if (card?.terminal?.session_id === null) return;
       if (card?.column === "idle") markRead(card);
       notifyNativeSelection(id);
       setSelectedId(id);

@@ -37,4 +37,15 @@ export function registerHealthRoute(app: Hono, service: BoardService) {
 
 export function registerTerminalLinksRoute(app: Hono, service: BoardService) {
   app.get("/api/terminal-links", c => c.json({ links: service.terminalLinks() }));
+  app.post("/api/codex/terminal-session", async c => {
+    const body = await c.req.json().catch(() => null);
+    if (!body || !Number.isSafeInteger(body.pid) || body.pid <= 0 || typeof body.generation !== "string" || body.generation.length > 128 ||
+      (body.session_id !== null && (typeof body.session_id !== "string" || !/^codex:[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(body.session_id)))) {
+      return c.json({ error: "Invalid terminal session selection" }, 400);
+    }
+    if (!service.selectCodexTerminalSession(body.pid, body.session_id, body.generation)) {
+      return c.json({ error: "Terminal or session changed; refresh the board and try again" }, 409);
+    }
+    return c.json({ ok: true });
+  });
 }

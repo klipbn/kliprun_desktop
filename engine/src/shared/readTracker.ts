@@ -16,6 +16,7 @@ export interface TrackedCard {
   finished_at?: number | null;
   parent_id?: string | null;
   children?: TrackedCard[];
+  terminal?: { session_id: string | null };
 }
 
 export interface ReadTracker {
@@ -88,6 +89,7 @@ export interface ActivityCounts {
 export function boardActivityCounts(cards: TrackedCard[], tracker: ReadTracker): ActivityCounts {
   const counts: ActivityCounts = { running: 0, unread: 0, agents_running: 0, subagents_running: 0 };
   for (const card of cards) {
+    if (card.terminal?.session_id === null) continue;
     if (card.column === "running") {
       counts.running += 1;
       if (card.parent_id) counts.subagents_running += 1;

@@ -4,6 +4,9 @@ import { codexHome, isTuiThread, type CodexThread } from "./storage";
 
 export interface CliProcess {
   pid: string;
+  startedAt?: string;
+  /** A choice made explicitly in KlipRun, never inferred from daemon ownership. */
+  selectedSessionId?: string;
   cwd: string;
   rollouts: string[];
   /** Session writer files held open by this terminal's Codex process. */
@@ -67,8 +70,14 @@ export async function scanCodexCli(): Promise<CliProcess[]> {
   const pids = parseCliProcesses(ps).slice(0, 100);
   if (!pids.length) return [];
   const daemonPids = parseDaemonProcesses(ps).slice(0, 20);
+  const starts = await command(["ps", "-p", pids.join(","), "-o", "pid=,lstart="]);
+  const generations = new Map(starts.trim().split("\n").map(line => {
+    const match = line.trim().match(/^(\d+)\s+(.+)$/);
+    return match ? [match[1], match[2]] : ["", ""];
+  }));
   const output = await command(["lsof", "-a", "-p", [...pids, ...daemonPids].join(","), "-Fpnf"]);
-  return parseCodexFiles(output, pids, daemonPids, codexHome());
+  return parseCodexFiles(output, pids, daemonPids, codexHome()).filter(p => generations.has(p.pid))
+    .map(p => ({ ...p, startedAt: generations.get(p.pid)! }));
 }
 
 /** Read only open descriptors: stale writer files left on disk are not evidence. */
@@ -105,10 +114,7 @@ export function matchCliSessions(processes: CliProcess[], candidates: CodexThrea
   const selected = new Map<string, CodexThread>();
   const diagnostics: string[] = [];
   const matches = processes.map(process => {
-    const rollouts = process.rollouts.map(canonicalPath);
-    const direct = candidates.filter(row =>
-      (rollouts.includes(canonicalPath(row.rollout_path)) || process.writerSessionIds?.includes(row.id)) && !row.source.startsWith("{"),
-    );
+    const direct = identifiedCliSessions(process, candidates);
     return { process, cwd: canonicalPath(process.cwd), direct };
   });
   // Reserve exact matches first so the same session cannot fill another window.
@@ -120,8 +126,7 @@ export function matchCliSessions(processes: CliProcess[], candidates: CodexThrea
     const sameDirectory = candidates.filter(row => isTuiThread(row) && canonicalPath(row.cwd) === cwd);
     const loaded = sameDirectory.filter(row => !selected.has(row.id) &&
       unmatched.some(({ process }) => process.daemonSessionIds?.includes(row.id)));
-    // Match board membership as a set; do not invent individual PID-to-session links.
-    // Every remaining window must see the same live set, with one session per window.
+    // Shared ownership establishes a set, never an individual terminal link.
     if (loaded.length === unmatched.length && unmatched.every(({ process, direct }) =>
       !direct.length && loaded.every(row => process.daemonSessionIds?.includes(row.id)))) {
       for (const row of loaded) selected.set(row.id, row);
@@ -134,4 +139,12 @@ export function matchCliSessions(processes: CliProcess[], candidates: CodexThrea
     }
   }
   return { threads: [...selected.values()], diagnostics };
+}
+
+/** Exact descriptors take precedence over a previous explicit choice. */
+export function identifiedCliSessions<T extends { id: string; rollout_path: string; source?: string }>(process: CliProcess, candidates: T[]): T[] {
+  const rollouts = process.rollouts.map(canonicalPath);
+  const direct = candidates.filter(row => !row.source?.startsWith("{") &&
+    (rollouts.includes(canonicalPath(row.rollout_path)) || process.writerSessionIds?.includes(row.id)));
+  return direct.length ? direct : candidates.filter(row => row.id === process.selectedSessionId);
 }

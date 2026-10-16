@@ -86,6 +86,10 @@ describe("sessionCards", () => {
 });
 
 describe("boardActivityCounts", () => {
+  test("unresolved terminal cards do not count as unread sessions", () => {
+    const unresolved = { ...card("codex-terminal:10", "idle"), terminal: { session_id: null } };
+    expect(boardActivityCounts([unresolved], createReadTracker(null))).toEqual({ running: 0, unread: 0, agents_running: 0, subagents_running: 0 });
+  });
   test("counts running and unread idle", () => {
     const tracker = createReadTracker(memoryStorage());
     const readIdle = card("ses_read", "idle", { finished_at: 10 });

@@ -33,7 +33,7 @@ describe("Codex CLI membership", () => {
     // Closing a window and unloading its thread leaves the other card visible.
     expect(matchCliSessions([{ ...processes[0], daemonSessionIds: [id] }], candidates).threads.map(row => row.id)).toEqual([id]);
   });
-  test("does not guess when daemon-loaded sessions and unmatched windows differ", () => {
+  test("keeps terminal links unresolved when daemon-loaded sessions and windows differ", () => {
     const candidates = [thread(), thread({ id: "second" }), thread({ id: "third" })];
     for (const loadedIds of [[id], [id, "second", "third"]]) {
       const processes = [cli(), cli("11")].map(process => ({ ...process, daemonSessionIds: loadedIds }));
@@ -227,6 +227,17 @@ function database(dir: string) {
 }
 
 describe("Codex storage and adapter", () => {
+  test("keeps live terminals visible while session metadata is unavailable", () => {
+    const adapter = new CodexAdapter(temp());
+    adapter.setProcesses([cli(), cli("11")]);
+    expect(adapter.cards(t)).toMatchObject([
+      { session_id: "codex-terminal:10", terminal: { session_id: null, candidates: [] } },
+      { session_id: "codex-terminal:11", terminal: { session_id: null, candidates: [] } },
+    ]);
+    expect(adapter.terminalLinks()).toEqual([]);
+    expect(adapter.diagnostics.length).toBeGreaterThan(0);
+    adapter.close();
+  });
   test("uses the current Codex name and refreshes it on the next board read", () => {
     const dir = temp(); const { db } = database(dir);
     db.exec("ALTER TABLE threads ADD COLUMN name TEXT");
@@ -258,7 +269,7 @@ describe("Codex storage and adapter", () => {
     expect(adapter.cards(t).map(card => card.session_id)).toEqual([`codex:${id}`]);
     expect(adapter.diagnostics).toEqual([]);
     adapter.setProcesses([cli()]);
-    expect(adapter.cards(t + 1)).toEqual([]);
+    expect(adapter.cards(t + 1)).toMatchObject([{ terminal: { session_id: null } }]);
     adapter.close();
   });
   test("shows a daemon-backed CLI session recorded as vscode with originator codex-tui", () => {
@@ -272,6 +283,56 @@ describe("Codex storage and adapter", () => {
     const adapter = new CodexAdapter(dir); adapter.setProcesses([cli()]);
     expect(adapter.cards(t)).toMatchObject([{ session_id: `codex:${id}`, source: "codex", title: "Daemon TUI", column: "running" }]);
     expect(adapter.diagnostics).toEqual([]);
+    adapter.close();
+  });
+  test("shows one unresolved terminal card and uses only an explicitly selected chat", () => {
+    const dir = temp(); const { db } = database(dir);
+    db.exec("ALTER TABLE threads ADD COLUMN originator TEXT");
+    const second = "01900000-0000-7000-8000-000000000002";
+    const desktop = "01900000-0000-7000-8000-000000000003";
+    const elsewhere = "01900000-0000-7000-8000-000000000004";
+    const rollout = join(dir, "session.jsonl");
+    writeFileSync(rollout, event("event_msg", { type: "task_started" }));
+    for (const [key, originator, cwd] of [[id, "codex-tui", "/project"], [second, "codex-tui", "/project"],
+      ["history", "codex-tui", "/project"], [desktop, "codex-desktop", "/project"], [elsewhere, "codex-tui", "/other"]]) {
+      db.query("INSERT INTO threads VALUES (?,?,?,?,?,?,?,?,?)").run(key, cwd, key, "vscode", rollout, t / 1000, 0, null, originator);
+    }
+    db.close();
+    const adapter = new CodexAdapter(dir);
+    const process = { ...cli(), startedAt: "generation-1", daemonSessionIds: [id, second, desktop, elsewhere] };
+    adapter.setProcesses([process]);
+    const unresolved = adapter.cards(t);
+    expect(unresolved).toHaveLength(1);
+    expect(unresolved[0]).toMatchObject({ stage: "Status unknown", terminal: { pid: 10, session_id: null,
+      candidates: [{ session_id: `codex:${id}` }, { session_id: `codex:${second}` }] } });
+    expect(adapter.terminalLinks()).toEqual([]);
+    expect(adapter.selectTerminalSession(10, `codex:${second}`, "generation-1")).toBe(true);
+    expect(adapter.cards(t + 1).map(card => card.session_id)).toEqual([`codex:${second}`]);
+    expect(adapter.terminalLinks()).toEqual([{ session_id: `codex:${second}`, pid: 10 }]);
+    adapter.setProcesses([process]);
+    expect(adapter.cards(t + 2).map(card => card.session_id)).toEqual([`codex:${second}`]);
+    adapter.setProcesses([{ ...process, daemonSessionIds: [id] }]);
+    expect(adapter.cards(t + 2).map(card => card.session_id)).toEqual([`codex:${second}`]);
+    adapter.setProcesses([process]);
+    expect(adapter.selectTerminalSession(10, `codex:${desktop}`, "generation-1")).toBe(false);
+    expect(adapter.selectTerminalSession(10, `codex:${elsewhere}`, "generation-1")).toBe(false);
+    expect(adapter.selectTerminalSession(99, `codex:${id}`, "generation-1")).toBe(false);
+    adapter.setProcesses([{ ...process, startedAt: "generation-2" }]);
+    expect(adapter.cards(t + 3)[0]?.terminal?.session_id).toBe(null);
+    expect(adapter.selectTerminalSession(10, `codex:${second}`, "generation-1")).toBe(false);
+    expect(adapter.selectTerminalSession(10, `codex:${second}`, "generation-2")).toBe(true);
+    adapter.setProcesses([{ ...process, startedAt: "generation-2", writerSessionIds: [id] }]);
+    expect(adapter.cards(t + 4).map(card => card.session_id)).toEqual([`codex:${id}`]);
+    adapter.setProcesses([{ ...process, startedAt: "generation-2" }]);
+    expect(adapter.cards(t + 5)[0]?.terminal?.session_id).toBe(null);
+    adapter.setProcesses([process, { ...process, pid: "11" }]);
+    expect(adapter.cards(t + 6)).toHaveLength(2);
+    expect(adapter.terminalLinks()).toEqual([]);
+    expect(adapter.selectTerminalSession(10, `codex:${second}`, "generation-1")).toBe(true);
+    adapter.cards(t + 7);
+    expect(adapter.selectTerminalSession(11, `codex:${second}`, "generation-1")).toBe(false);
+    adapter.setProcesses([]);
+    expect(adapter.cards(t + 8)).toEqual([]);
     adapter.close();
   });
   test("shows a working code-mode daemon session persisted as codex_hermes_monitor", () => {
@@ -296,7 +357,7 @@ describe("Codex storage and adapter", () => {
     db.close();
     const adapter = new CodexAdapter(dir);
     adapter.setProcesses([cli(), { ...cli("11"), cwd: "/other" }]);
-    expect(adapter.cards(t).map(card => card.title)).toEqual(["healthy"]);
+    expect(adapter.cards(t)).toMatchObject([{ title: "healthy" }, { terminal: { pid: 11, session_id: null } }]);
     adapter.close();
   });
   test("keeps context usage when the journal model falls outside the bounded tail", () => {
@@ -344,15 +405,15 @@ describe("Codex storage and adapter", () => {
     adapter.close();
     expect(readFileSync(path)).toEqual(before);
   });
-  test("missing and incompatible databases produce diagnostics, not crashes or files", () => {
+  test("missing and incompatible databases leave a terminal card with diagnostics", () => {
     const dir = temp();
     const adapter = new CodexAdapter(dir);
     adapter.setProcesses([cli()]);
-    expect(adapter.cards(t)).toEqual([]);
+    expect(adapter.cards(t)).toMatchObject([{ terminal: { session_id: null, candidates: [] } }]);
     expect(adapter.diagnostics.length).toBeGreaterThan(0);
     const db = new Database(join(dir, "state_5.sqlite"));
     db.exec("CREATE TABLE threads (id TEXT)"); db.close();
-    expect(adapter.cards(t + 1)).toEqual([]);
+    expect(adapter.cards(t + 1)).toMatchObject([{ terminal: { session_id: null, candidates: [] } }]);
     expect(adapter.diagnostics.length).toBeGreaterThan(0);
     adapter.close();
   });

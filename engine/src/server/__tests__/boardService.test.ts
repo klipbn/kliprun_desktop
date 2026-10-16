@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { BoardService } from "../boardService";
 import { CodexAdapter } from "../codex/adapter";
 import { StatusHistoryStore } from "../history";
-import { registerBoardRoute, registerSessionRoute } from "../routes/api";
+import { registerBoardRoute, registerSessionRoute, registerTerminalLinksRoute } from "../routes/api";
 import { closeAllSSEConnections, registerStreamRoute } from "../routes/stream";
 import { Watcher } from "../watcher";
 import type { UsageObservation } from "@shared/usage";
@@ -43,7 +43,7 @@ function fixture(observe?: (observation: UsageObservation) => void) {
     historyCards: () => [{ sessionId: "ses_test", directory: home, column: "running" }],
     setTuiLiveness: () => false, sessionDirectory: () => home, detail: () => ({ messages: [], models: [] }) };
   const service = new BoardService({ codex, history: new StatusHistoryStore(":memory:"), engine, observe }); services.push(service);
-  const app = new Hono(); registerBoardRoute(app, service); registerSessionRoute(app, service);
+  const app = new Hono(); registerBoardRoute(app, service); registerSessionRoute(app, service); registerTerminalLinksRoute(app, service);
   return { app, service, codex, home, rollout, event, engine, id: `codex:${id}` };
 }
 
@@ -69,6 +69,33 @@ test("historical Codex details remain available after the terminal exits", () =>
   const { service, codex, id, home } = fixture();
   service.getBoard(); codex.setProcesses([]); service.invalidate();
   expect(service.getSessionDetail(id)).toMatchObject({ exists: true, title: "Codex fixture", directory: home });
+});
+
+test("explicit terminal chat selection resolves one card without recording placeholder statistics", async () => {
+  const observations: UsageObservation[] = [];
+  const { app, service, home, rollout, id } = fixture(value => observations.push(value));
+  const second = "01900000-0000-7000-8000-000000000002";
+  const db = new Database(join(home, "state_5.sqlite"));
+  db.query("INSERT INTO threads VALUES (?,?,?,?,?,?,?)").run(second, home, "Other chat", "cli", rollout, Date.now() / 1000, 0);
+  db.close();
+  service.codex.setProcesses([{ pid: "10", cwd: home, rollouts: [], daemonSessionIds: [id.slice(6), second] }]);
+  service.invalidate();
+  const unresolved = service.getBoard().data.columns.idle.cards[0];
+  expect(unresolved.terminal?.session_id).toBe(null);
+  const select = (payload: unknown) => app.request("/api/codex/terminal-session", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  });
+  expect((await select({ pid: 10, generation: "", session_id: id })).status).toBe(200);
+  expect(service.getBoard().data.columns.running.cards.map(card => card.session_id)).toEqual(["ses_test", id]);
+  expect(service.terminalLinks()).toContainEqual({ session_id: id, pid: 10 });
+  expect(service.history.get(unresolved.session_id, Date.now())).toEqual([]);
+  expect(observations.flatMap(value => value.cards).some(card => card.session_id === unresolved.session_id)).toBe(false);
+  expect((await select({ pid: 10, generation: "old-process", session_id: id })).status).toBe(409);
+  expect((await select({ pid: 999, generation: "", session_id: id })).status).toBe(409);
+  expect((await select({ pid: 10, generation: "", session_id: "codex:../invalid" })).status).toBe(400);
+  expect((await select({ pid: 10, generation: "" })).status).toBe(400);
+  expect((await select({ pid: 10, generation: "", session_id: null })).status).toBe(200);
+  expect(service.getBoard().data.columns.idle.cards[0].terminal?.session_id).toBe(null);
 });
 
 test("combined API counts both sources, serves namespaced details, updates ETag and history", async () => {
@@ -159,6 +186,37 @@ test("Codex disappearance closes its observed interval without removing OpenCode
   expect(service.history.get(id, Date.now())[0].current).toBe(false);
 });
 
+test("failed Codex scan preserves cards and history until a successful scan confirms exit", async () => {
+  const { engine, codex, home, rollout, id } = fixture();
+  let fail = false;
+  let exited = false;
+  const service = new BoardService({ engine, codex, history: new StatusHistoryStore(":memory:"),
+    scanLiveness: async () => ({ directories: new Set([home]), sessionIds: new Set(["ses_test"]),
+      waitingIds: new Set(), fallbackDirectories: new Set(), sessionDirectories: new Map() }),
+    scanCodex: async () => {
+      if (fail) throw new Error("CLI process scan unavailable");
+      return exited ? [] : [{ pid: "10", cwd: home, rollouts: [rollout] }];
+    },
+  });
+  services.push(service);
+  await service.refreshLivenessNow();
+  const initial = service.getBoard();
+  expect(initial.data.columns.running.count).toBe(2);
+  fail = true;
+  await service.refreshLivenessNow();
+  expect(service.getBoard(initial.etag).notModified).toBe(true);
+  expect(service.history.get(id, Date.now()).at(-1)?.current).toBe(true);
+  expect(service.codexDiagnostics()).toContain("Codex CLI process scan unavailable");
+  fail = false;
+  await service.refreshLivenessNow();
+  expect(service.getBoard().data.columns.running.count).toBe(2);
+  expect(service.codexDiagnostics()).not.toContain("Codex CLI process scan unavailable");
+  exited = true;
+  await service.refreshLivenessNow();
+  expect(service.getBoard().data.columns.running.cards.map(card => card.session_id)).toEqual(["ses_test"]);
+  expect(service.history.get(id, Date.now()).at(-1)?.current).toBe(false);
+});
+
 test("Hermes status replacement pushes SSE and refreshes the board without a journal change", async () => {
   const { app, service, home, id } = fixture();
   const base = join(home, "hermes");
@@ -193,6 +251,7 @@ test("unavailable Codex storage leaves OpenCode usable", () => {
   const { service, home } = fixture();
   rmSync(join(home, "state_5.sqlite"));
   expect(service.getBoard().data.columns.running.cards.map(c => c.source)).toEqual(["opencode"]);
+  expect(service.getBoard().data.columns.idle.cards[0]?.terminal?.session_id).toBe(null);
   expect(service.codex.diagnostics.length).toBeGreaterThan(0);
 });
 
