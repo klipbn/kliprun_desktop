@@ -2,6 +2,27 @@ import Foundation
 import Testing
 @testable import KlipRunCore
 
+@Test(arguments: ["user", "agent-text", "agent", "models", "kanban"])
+func everyDetailsTabCanBeSavedAsDefault(_ tab: String) {
+    let suite = "local.kliprun.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    var preferences = AppPreferences(defaults: defaults)
+    preferences.detailTab = tab
+    preferences.save(to: defaults)
+    #expect(AppPreferences(defaults: defaults).detailTab == tab)
+}
+
+@Test func gitStartupPageSurvivesPreferenceValidation() {
+    let suite = "local.kliprun.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    var settings = AppPreferences(defaults: defaults)
+    settings.startupPage = "/git"
+    settings.save(to: defaults)
+    #expect(AppPreferences(defaults: defaults).startupPage == "/git")
+}
+
 @Test func settingsRoundTripAndInvalidValuesRecoverSafely() {
     let suite = "local.kliprun.tests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suite)!

@@ -10,6 +10,18 @@ const message = (role: string, text: string): DetailMessage => ({
     duration_ms: null, skill_name: null }], error: null,
 });
 
+test.each(["user", "agent-text", "agent", "models", "kanban"])("details open the configured %s tab", tab => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { kliprunPreferences: { detailTab: tab } } });
+  try {
+    const html = renderToStaticMarkup(<details.DetailsPanel sessionId="demo" onClose={() => {}} />);
+    expect(html).toContain(`aria-pressed="true" data-testid="tab-${tab}"`);
+  } finally {
+    if (original) Object.defineProperty(globalThis, "window", original);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
+});
+
 test("session details keep Agents T as default with User first and no All or iTerm2", () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, "window");
   Object.defineProperty(globalThis, "window", { configurable: true, value: { webkit: { messageHandlers: { desktopAction: { postMessage() {} } } } } });

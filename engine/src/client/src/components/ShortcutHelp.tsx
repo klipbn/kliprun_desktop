@@ -3,7 +3,7 @@ import { CircleHelp, X } from "lucide-react";
 
 const groups = [
   { title: "Navigate", shortcuts: [
-    ["Kanban board", "⌃ 1"], ["Statistics", "⌃ 2"], ["Office", "⌃ 3"], ["Usage", "⌃ 4"],
+    ["Kanban board", "⌃ 1"], ["Git", "⌃ 2"], ["Office", "⌃ 3"], ["Usage", "⌃ 4"], ["Statistics", "⌃ 5"],
     ["Settings", "⌘ ,"],
   ] },
   { title: "Terminals", shortcuts: [
@@ -24,7 +24,7 @@ export function ShortcutHelp() {
   const dialog = useRef<HTMLDialogElement>(null);
   return <>
     <button type="button" onClick={() => dialog.current?.showModal()} aria-label="Keyboard shortcuts" title="Keyboard shortcuts"
-      className="flex items-center justify-center w-8 h-8 rounded-md border border-border text-white hover:text-white hover:border-accent/40 transition-colors"
+      className="flex items-center justify-center w-8 h-8 rounded-md border border-border text-white hover:text-white hover:border-accent/40 hover:bg-white/10 transition-colors"
       data-testid="keyboard-shortcuts-button">
       <CircleHelp className="w-4 h-4" />
     </button>

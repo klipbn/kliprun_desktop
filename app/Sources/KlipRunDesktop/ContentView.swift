@@ -130,30 +130,37 @@ struct ContentView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .frame(width: 28)
+                .modifier(TerminalControlHighlight())
+                .accessibilityIdentifier("terminal-new-menu")
+                .accessibilityLabel("New terminal tab")
                 .help("New terminal tab")
                 Button { store.updatePreferences { $0.terminalPosition = terminalOnLeft ? "bottom" : "left" } } label: {
                     Image(systemName: terminalOnLeft ? "rectangle.bottomthird.inset.filled" : "sidebar.left")
-                        .frame(width: 22, height: 22)
+                        .modifier(TerminalControlHighlight())
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("terminal-position-toggle")
                 .accessibilityLabel(terminalOnLeft ? "Move terminal to bottom" : "Move terminal to left")
                 .help(terminalOnLeft ? "Move terminal to bottom" : "Move terminal to left")
                 Button { store.toggleTerminalExpanded() } label: {
-                    if terminalOnLeft {
-                        Image(systemName: store.terminalExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                    } else {
-                        Label(store.terminalExpanded ? "Restore" : "Expand",
-                          systemImage: store.terminalExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                    }
+                    Group {
+                        if terminalOnLeft {
+                            Image(systemName: store.terminalExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                        } else {
+                            Label(store.terminalExpanded ? "Restore" : "Expand",
+                              systemImage: store.terminalExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                        }
+                    }.modifier(TerminalControlHighlight())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("terminal-expand-toggle")
                 .accessibilityLabel(store.terminalExpanded ? "Restore terminal" : "Expand terminal")
                 .help(store.terminalExpanded ? "Restore terminal panel (⌘↩)" : "Fill the window with the terminal (⌘↩)")
                 Button { store.hideTerminal() } label: {
                     Image(systemName: terminalOnLeft ? "chevron.left" : "chevron.down")
-                }.buttonStyle(.plain).help("Hide terminal")
+                        .modifier(TerminalControlHighlight())
+                }.buttonStyle(.plain).accessibilityIdentifier("terminal-hide")
+                    .accessibilityLabel("Hide terminal").help("Hide terminal")
             }
             .font(.system(size: CGFloat(11 * store.interfaceZoom.factor)))
             .padding(.horizontal, 10)
@@ -177,7 +184,9 @@ struct ContentView: View {
             .foregroundStyle(.white)
             Button { store.closeTerminal(terminal.id) } label: {
                 Image(systemName: "xmark").font(.system(size: 9))
-            }.buttonStyle(.plain).help("Close \(terminal.title)")
+                    .modifier(TerminalControlHighlight(compact: true))
+            }.buttonStyle(.plain).accessibilityIdentifier("terminal-close-\(terminal.id)")
+                .accessibilityLabel("Close \(terminal.title)").help("Close \(terminal.title)")
         }
         .padding(.horizontal, 8).padding(.vertical, 6)
         .background(selected ? Color.white.opacity(0.10) : Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 5))

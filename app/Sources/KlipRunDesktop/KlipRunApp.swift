@@ -66,12 +66,14 @@ struct KlipRunApp: App {
                 CommandMenu("Navigate") {
                     Button("Kanban Board") { delegate.store.showPage("/") }
                         .keyboardShortcut("1", modifiers: [.control])
-                    Button("Statistics") { delegate.store.showPage("/stats") }
+                    Button("Git") { delegate.store.showPage("/git") }
                         .keyboardShortcut("2", modifiers: [.control])
                     Button("Office") { delegate.store.showPage("/office") }
                         .keyboardShortcut("3", modifiers: [.control])
                     Button("Usage") { delegate.store.showPage("/usage") }
                         .keyboardShortcut("4", modifiers: [.control])
+                    Button("Statistics") { delegate.store.showPage("/stats") }
+                        .keyboardShortcut("5", modifiers: [.control])
                 }
                 CommandMenu("Agents") {
                     Button("New Terminal") { delegate.store.chooseNewTerminal() }

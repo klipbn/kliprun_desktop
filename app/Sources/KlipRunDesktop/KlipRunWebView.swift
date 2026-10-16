@@ -26,6 +26,11 @@ struct KlipRunWebView: NSViewRepresentable {
         configuration.userContentController.addUserScript(WKUserScript(source: AppUpdater.webScript(version: store.updater.availableVersion), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "desktopAction")
         configuration.userContentController.add(context.coordinator, name: "exportStatistics")
+        configuration.userContentController.add(context.coordinator, name: "gitRepository")
+        if let repository = UserDefaults.standard.string(forKey: "git.repository"),
+           let data = try? JSONEncoder().encode(repository), let literal = String(data: data, encoding: .utf8) {
+            configuration.userContentController.addUserScript(WKUserScript(source: "window.kliprunGitRepository = \(literal);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
@@ -54,6 +59,7 @@ struct KlipRunWebView: NSViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "cardPriorities")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "desktopAction")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "exportStatistics")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "gitRepository")
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
     }
@@ -74,6 +80,18 @@ struct KlipRunWebView: NSViewRepresentable {
                let filename = body["filename"], let content = body["content"],
                let request = StatisticsExport(filename: filename, content: content) {
                 saveStatistics(request, webView: message.webView)
+            } else if message.name == "gitRepository",
+                      message.frameInfo.isMainFrame,
+                      message.frameInfo.securityOrigin.host == "127.0.0.1",
+                      message.frameInfo.securityOrigin.port == loadedBaseURL?.port,
+                      let directory = message.body as? String,
+                      directory.hasPrefix("/"), directory.utf8.count <= 4096, !directory.utf8.contains(0),
+                      let data = try? JSONEncoder().encode(directory), let literal = String(data: data, encoding: .utf8) {
+                UserDefaults.standard.set(directory, forKey: "git.repository")
+                let scripts = userContentController.userScripts.filter { !$0.source.hasPrefix("window.kliprunGitRepository = ") }
+                userContentController.removeAllUserScripts()
+                scripts.forEach(userContentController.addUserScript)
+                userContentController.addUserScript(WKUserScript(source: "window.kliprunGitRepository = \(literal);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
             } else if message.name == "cardOrder",
                       message.frameInfo.isMainFrame,
                       message.frameInfo.securityOrigin.host == "127.0.0.1",
@@ -113,6 +131,7 @@ struct KlipRunWebView: NSViewRepresentable {
                 case "open-iterm": store.openSelectedInITerm()
                 case "settings": store.showSettings()
                 case "check-updates": store.checkForUpdates()
+                case "open-repository": store.openRepository()
                 default: break
                 }
             }

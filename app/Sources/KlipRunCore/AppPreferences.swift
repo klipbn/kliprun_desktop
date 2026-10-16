@@ -32,8 +32,8 @@ public struct AppPreferences: Equatable {
         value.terminalFontSize = bounded(terminalFontSize, 10...24, fallback: 13).rounded()
         value.interfaceZoomPercent = InterfaceZoom(percent: interfaceZoomPercent).percent
         if !["bottom", "left"].contains(terminalPosition) { value.terminalPosition = "bottom" }
-        if !["/", "/office", "/stats", "/usage"].contains(startupPage) { value.startupPage = "/" }
-        if !["agent-text", "agent"].contains(detailTab) { value.detailTab = "agent-text" }
+        if !["/", "/git", "/office", "/stats", "/usage"].contains(startupPage) { value.startupPage = "/" }
+        if !["user", "agent-text", "agent", "models", "kanban"].contains(detailTab) { value.detailTab = "agent-text" }
         return value
     }
 
