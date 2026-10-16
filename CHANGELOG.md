@@ -4,6 +4,22 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-10-16
+
+### Added
+
+- **Current chat** selector on unresolved Codex terminal cards: explicitly choose or clear the chat open in a terminal. Choices last while that process runs; conflicting exact process evidence takes precedence.
+
+### Fixed
+
+- Preserve Codex cards and their status history when a process scan temporarily fails; remove them after a successful scan confirms the terminals exited.
+- Show one card per live Codex terminal, keeping previous daemon-loaded chats off the board. Exclude unlinked cards from session statistics and unread counts.
+- Keep terminal cards visible with an unknown status while session metadata is unavailable.
+
+### Documentation
+
+- Refresh all nine demo screenshots for 0.0.8 using only fictional fixture data.
+
 ## [0.0.7] - 2026-10-16
 
 ### Added
@@ -146,4 +162,5 @@ First public macOS release.
 [0.0.5]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.5
 [0.0.6]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.6
 [0.0.7]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.7
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.7...main
+[0.0.8]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.8
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.8...main

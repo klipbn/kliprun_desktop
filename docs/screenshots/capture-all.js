@@ -10,7 +10,7 @@ async (page, directory = "docs/screenshots") => {
     await page.goto(`${base}${path}`);
     if (!path.startsWith("/__demo/")) {
       await page.locator('[data-testid="version"]').waitFor();
-      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.7") throw new Error("Build the 0.0.7 client before capturing.");
+      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.8") throw new Error("Build the 0.0.8 client before capturing.");
     }
   }
   async function sidebar(expanded) {

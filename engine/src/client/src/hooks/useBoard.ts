@@ -42,7 +42,9 @@ export function useBoard(pollMs = 2000) {
   useEffect(() => {
     void fetchBoard();
     const poll = setInterval(() => void fetchBoard(), pollMs);
-    return () => clearInterval(poll);
+    const refresh = () => void fetchBoard();
+    window.addEventListener("kliprun:board-refresh", refresh);
+    return () => { clearInterval(poll); window.removeEventListener("kliprun:board-refresh", refresh); };
   }, [fetchBoard, pollMs]);
 
   useEffect(() => {

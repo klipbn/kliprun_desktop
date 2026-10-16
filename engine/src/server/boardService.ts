@@ -111,7 +111,7 @@ export class BoardService {
         this.codex.setProcesses(codex.value);
         this.codexScanError = null;
       } else {
-        this.codex.setProcesses([]);
+        // A failed scan cannot confirm that the previously observed terminals exited.
         this.codexScanError = "Codex CLI process scan unavailable";
       }
       this.cache = null;
@@ -161,6 +161,13 @@ export class BoardService {
     return [...openCode, ...this.codex.terminalLinks()].filter(link => visible.has(link.session_id));
   }
 
+  selectCodexTerminalSession(pid: number, sessionId: string | null, generation: string): boolean {
+    this.getBoard();
+    if (!this.codex.selectTerminalSession(pid, sessionId, generation)) return false;
+    this.invalidate();
+    return true;
+  }
+
   getBoard(ifNoneMatch?: string | null): BoardResult {
     const now = Date.now();
     if (!this.cache || now - this.cache.livenessAt >= BOARD_CACHE_TTL_MS || this.livenessChanged) {
@@ -185,11 +192,12 @@ export class BoardService {
         console.warn("[board] OpenCode rebuild failed:", error instanceof Error ? error.message : error);
       }
       const codex = this.codex.cards(now);
+      const codexSessions = codex.filter(card => card.terminal?.session_id !== null);
       const openCodeHistory = this.engine.historyCards();
-      const intervals = this.history.record([...openCodeHistory, ...codex.map(card => ({ sessionId: card.session_id, directory: card.directory, column: card.column }))], now);
+      const intervals = this.history.record([...openCodeHistory, ...codexSessions.map(card => ({ sessionId: card.session_id, directory: card.directory, column: card.column }))], now);
       this.observe?.({ at: now, intervals, cards: [
         ...openCodeHistory.map(card => ({ session_id: card.sessionId, source: "opencode" as const, parent_id: card.parent_id ?? null, title: card.title ?? "Session", directory: card.directory, agent: card.agent ?? null, model: card.model ?? null })),
-        ...codex.map(card => ({ session_id: card.session_id, source: "codex" as const, parent_id: null, title: card.title, directory: card.directory, agent: card.agent?.name ?? null, model: this.codex.usageModel(card) })),
+        ...codexSessions.map(card => ({ session_id: card.session_id, source: "codex" as const, parent_id: null, title: card.title, directory: card.directory, agent: card.agent?.name ?? null, model: this.codex.usageModel(card) })),
       ] });
       const data = combineBoard(this.engine.board(now), codex, now);
       const running = data.columns.running.cards;

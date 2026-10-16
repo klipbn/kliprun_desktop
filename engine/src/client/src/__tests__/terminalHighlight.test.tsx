@@ -29,3 +29,17 @@ test("session card exposes the selected priority and all priority choices", () =
   expect(html).toContain("Medium");
   expect(html).toContain("Low");
 });
+
+test("unresolved terminal offers a chat choice without claiming a session status", () => {
+  const unresolved = { ...card, session_id: "codex-terminal:10", title: "Codex · work", column: "idle" as const,
+    stage: "Status unknown", terminal: { pid: 10, generation: "generation-1", session_id: null,
+      candidates: [{ session_id: "codex:first", title: "First chat" }, { session_id: "codex:second", title: "Second chat" }] } };
+  const html = renderToStaticMarkup(<SessionCard card={unresolved} depth={0} selectedId={null}
+    activeTerminalId={null} now={0} isRead={() => false} priorities={{}} onPriorityChange={() => {}} onSelect={() => {}} />);
+  expect(html).toContain('aria-label="Current chat"');
+  expect(html).toContain("Choose current chat");
+  expect(html).toContain("First chat");
+  expect(html).toContain("Second chat");
+  expect(html).toContain("Session not linked");
+  expect(html).not.toContain('data-testid="card-icon-unread"');
+});

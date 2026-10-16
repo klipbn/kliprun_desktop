@@ -89,6 +89,7 @@ export class CodexStorage {
       for (const row of db.query<CodexThread, [string]>(`SELECT ${fields} FROM threads WHERE archived = 0 AND cwd = ? AND ${cliSource} LIMIT 2`).all(cwd)) rows.set(row.id, row);
     }
     for (const process of processes.filter(p => directories.includes(p.cwd))) {
+      if (process.selectedSessionId) referencedIds.add(process.selectedSessionId);
       for (const id of [...(process.writerSessionIds ?? []), ...(process.daemonSessionIds ?? [])]) referencedIds.add(id);
       for (const path of process.rollouts.slice(0, 4)) {
         const id = basename(path).match(/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})\.jsonl$/i)?.[1];
