@@ -6,7 +6,7 @@ KlipRun is a macOS app for following OpenCode and Codex sessions in one place. I
 
 The downloadable build is for **Apple Silicon Macs running macOS 13 or newer**.
 
-1. Download `KlipRun-0.0.7-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.8-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip it and move `KlipRun.app` to **Applications**.
 3. Open the app. The release is signed locally but is not notarized, so macOS may block the first launch. If it does, go to **System Settings → Privacy & Security → Open Anyway**, then open KlipRun again.
 
@@ -68,6 +68,10 @@ Browse recent OpenCode and Codex sessions, inspect their details, and resume the
 - **Settings → Notifications** controls the coworker popup, with separate **Response ready** and **Needs your input** switches. **Sound** offers installed macOS system sounds, **Preview sound**, and **None** for silence. The selected sound plays when a popup appears, including **Show preview**. Display duration and popup position controls are in the same section.
 
 KlipRun reads existing OpenCode and Codex session data without changing their stores. Its bundled engine runs on a random local loopback port and requires an app-generated token. App preferences and its own state live in `~/Library/Application Support/KlipRun Desktop`.
+
+If a Codex process scan temporarily fails, the board keeps the last observed sessions until a successful scan updates which terminals are running.
+
+Codex shows one card per live terminal. When the shared daemon keeps multiple chats loaded and the current chat cannot be identified, the card displays **Session not linked**. Use **Current chat** to choose the chat open in that terminal; its title, status and details then appear on the card. You can change or clear the choice. It lasts while that terminal process runs; conflicting exact process evidence takes precedence. Unlinked terminal cards do not contribute session history, usage statistics or unread counts.
 
 Usage reads OpenCode's `auth.json` beside its database (normally `~/.local/share/opencode/auth.json`, honoring `XDG_DATA_HOME`) and Codex's `auth.json` in `CODEX_HOME` (normally `~/.codex`). The local engine makes read-only requests directly to the providers' quota APIs; credentials stay in the engine and are never sent to the web interface. OpenAI subscription limits require a ChatGPT sign-in; API-key-only accounts cannot provide them. For an expired sign-in, open the corresponding agent to renew it, then refresh Usage. Last successful balances stay in memory while the app runs; on a provider failure they are marked **Cached**. Missing or unsupported limits stay unknown. OpenCode and Codex may use different OpenAI accounts; cards are separate sources, not additive allowances. Statistics remains the place for historical token consumption.
 
