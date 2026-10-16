@@ -6,7 +6,7 @@ KlipRun is a macOS app for following OpenCode and Codex sessions in one place. I
 
 The downloadable build is for **Apple Silicon Macs running macOS 13 or newer**.
 
-1. Download `KlipRun-0.0.6-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.7-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip it and move `KlipRun.app` to **Applications**.
 3. Open the app. The release is signed locally but is not notarized, so macOS may block the first launch. If it does, go to **System Settings → Privacy & Security → Open Anyway**, then open KlipRun again.
 
@@ -44,9 +44,10 @@ Browse recent OpenCode and Codex sessions, inspect their details, and resume the
 
 ## Use
 
-- **Kanban** shows active sessions and those needing attention. Click a card to inspect its activity.
-- **Running** keeps cards in arrival order while they stay in the column; new arrivals appear at the bottom.
+- **Kanban** shows active sessions and those needing attention. Click a card to inspect its activity. **Agents T** shows the time of each reply: relative age below 12 hours, then exact local date and time. Hover over a relative age to see the exact time.
+- **Running** uses arrival order until you reorder cards manually; new arrivals appear after the saved cards.
 - Set **Critical**, **Medium**, or **Low** priority by clicking the small flag beside a Kanban card’s title. Priorities are saved in macOS preferences for each session and restored across app launches.
+- Drag any part of a top-level Kanban card to move it up or down within **IDLE**, **RUNNING**, or **NEEDS ATTENTION**. Focus the card and press **↑/↓** to reorder with the keyboard. Each column remembers its order across app launches; child sessions stay with their parent.
 - **Recent Sessions** on the left lists the latest 50 top-level sessions. Click a title for details or **Resume in Terminal** to continue the same Codex or OpenCode session in its original folder. An existing matching tab is selected when available. The panel remembers whether it is collapsed.
 - **Kanban** next to **Statistics** returns to the board from any view. **Office** shows the same agents as animated coworkers; the coworker matching the selected terminal has a blue outline and a **Terminal** badge, just like the board card.
 - **Statistics** opens on the last 30 days. Daily and Weekly token heatmaps, token composition, peak-day and leading-model/project highlights, trends, work patterns, and task rankings share the same date and source filters. Choose a token type, click a day or week to explore it, and use **Back to previous range** to return. The task list includes calls and tokens per call. **Last 90 days** reveals longer-term patterns; **Export daily CSV** saves exact totals through the macOS save dialog.
@@ -54,6 +55,8 @@ Browse recent OpenCode and Codex sessions, inspect their details, and resume the
 - The **bottom status bar** shows compact remaining-limit bars and percentages for up to six connected providers. Available 5-hour and weekly windows appear separately; other periods keep their own labels. Hover for reset times or click a provider to open Usage. Cached balances and pending resets are marked in gray. The limits wrap onto another row in narrow windows.
 - **New OpenCode** and **New Codex** ask you to choose a project folder, then start the agent in the terminal panel.
 - **⌘T** lets you choose OpenCode, Codex, or a plain terminal. A plain terminal opens in the selected tab's folder, or your home folder when no tab is selected.
+- Drag terminal tabs left or right to reorder them. **⌘1–9** follows the new order. Hover over a tab to see the full folder path it was launched from.
+- Clicking a session card switches an already visible terminal when its session is known. Codex clients using a shared daemon may not expose an exact process link. For an existing unlinked tab, select its card, then right-click the tab and choose **Link to Selected Session**. The explicit link lasts for that tab; a conflicting exact process link takes precedence. **Resume in Terminal** preserves the requested session link even when process descriptors are unavailable.
 - Click **Terminal** to show or hide the terminal area. Tabs keep running while hidden. Closing an active tab or quitting the app asks before ending its process.
 - Use the position button beside **+** in the terminal toolbar to switch between **Move terminal to left** and **Move terminal to bottom**. Drag the divider to adjust the pane; its position, bottom height, and left width are remembered independently. Moving the panel keeps the current terminal and dashboard view open.
 - Exiting an agent or shell automatically closes its terminal tab. The terminal area hides after the last tab exits.

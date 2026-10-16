@@ -104,7 +104,7 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
         activeTerminal ? "bg-accent/10 ring-2 ring-accent shadow-[0_0_18px_rgba(88,166,255,0.28)]" :
         selected ? "bg-background ring-2 ring-accent/70" : "bg-surface hover:bg-background"
       } transition-colors p-2.5 flex flex-col gap-1 animate-fade-in cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-accent ${
-        depth > 0 ? "ml-3 border-dashed" : ""
+        depth > 0 ? "border-dashed" : ""
       }`}
     >
       <div className="flex items-center gap-2 w-full min-w-0">
@@ -139,7 +139,7 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
         </span>
       </div>
 
-      <div className="flex items-center gap-2 pl-6 w-full min-w-0 text-xs">
+      <div className="flex flex-wrap items-center gap-2 pl-6 w-full min-w-0 text-xs">
         <span className="px-1.5 py-0.5 rounded text-[10px] border border-border text-text-secondary shrink-0" data-testid="card-source">
           {card.source === "codex" ? "Codex CLI" : "OpenCode"}
         </span>
@@ -153,7 +153,7 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
           {actionLine}
         </span>
         {card.agent && card.source !== "codex" && (
-          <span className="px-1.5 py-0.5 rounded text-[10px] bg-surface border border-border text-text-secondary shrink-0">
+          <span className="max-w-full truncate px-1.5 py-0.5 rounded text-[10px] bg-surface border border-border text-text-secondary shrink-0">
             {card.agent.name}
           </span>
         )}
@@ -165,17 +165,17 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
             rel="noreferrer"
             title={mr.url}
             onClick={(event) => event.stopPropagation()}
-            className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-accent/10 border border-accent/40 text-accent hover:bg-accent/20 shrink-0"
+            className="flex items-center gap-0.5 min-w-0 max-w-full px-1.5 py-0.5 rounded text-[10px] bg-accent/10 border border-accent/40 text-accent hover:bg-accent/20"
             data-testid="card-mr"
           >
-            <GitMerge className="w-3 h-3" />
-            {mr.label}
+            <GitMerge className="w-3 h-3 shrink-0" />
+            <span className="truncate">{mr.label}</span>
           </a>
         ))}
       </div>
 
       {(durationMs !== null || (!context && card.tokens_total !== null) || card.branch || card.subagent_count > 0) && (
-        <div className="flex items-center gap-3 pl-6 text-[11px] text-text-secondary min-w-0">
+        <div className="flex flex-wrap items-center gap-3 pl-6 text-[11px] text-text-secondary min-w-0">
           {durationMs !== null && <span data-testid="card-duration">{formatDuration(durationMs)}</span>}
           {!context && card.tokens_total !== null && (
             <span title={`Context tokens (${card.model_ref ?? "unknown model"})`}>
@@ -183,7 +183,7 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
             </span>
           )}
           {card.branch && (
-            <span className="flex items-center gap-0.5 min-w-0" title={`git branch: ${card.branch}`}>
+            <span className="flex items-center gap-0.5 min-w-0 max-w-full" title={`git branch: ${card.branch}`}>
               <GitBranch className="w-3 h-3 shrink-0" />
               <span className="truncate">{card.branch}</span>
             </span>

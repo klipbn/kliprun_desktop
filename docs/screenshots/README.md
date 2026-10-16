@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All nine images were refreshed from **KlipRun Desktop 0.0.6** on **2026-10-15**. Session IDs, titles, project paths, models, priority flags, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All nine images were refreshed from **KlipRun Desktop 0.0.7** on **2026-10-16**. Session IDs, titles, project paths, models, priority flags, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -18,6 +18,6 @@ The fixture API covers `/api/board`, `/api/session/:id`, `/api/recent-sessions`,
 
 Build the client with `cd engine/src/client && bun run build`, then start `bun docs/screenshots/preview.ts` from the repository root. The fixture-only server binds to `127.0.0.1:18796` and serves the built client without starting a live engine.
 
-[`capture-all.js`](capture-all.js) is an async Playwright callback taking `(page, outputDirectory = "docs/screenshots")`. It captures all nine images, checks the UI version and provider names, and rejects external requests. Invoke it with a directory on the Playwright host, or run from the repository root to use the default directory. The 0.0.6 capture made **zero external requests**. [`capture-usage.js`](capture-usage.js) remains available for capturing Usage alone.
+[`capture-all.js`](capture-all.js) is an async Playwright callback taking `(page, outputDirectory = "docs/screenshots")`. It captures all nine images, checks the UI version and provider names, and rejects external requests. Invoke it with a directory on the Playwright host, or run from the repository root to use the default directory. The 0.0.7 capture made **zero external requests**. [`capture-usage.js`](capture-usage.js) remains available for capturing Usage alone.
 
 `desktop-terminal.png` combines the current `kanban-details.png` capture with [`terminal-demo.html`](terminal-demo.html), available at `/__demo/terminal-demo.html`. The terminal transcript and tabs are static fictional content with white tab labels; this composition never launches an agent or captures a real terminal.

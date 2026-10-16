@@ -80,9 +80,10 @@ final class DesktopStore: ObservableObject {
             links = Dictionary(uniqueKeysWithValues: linkPayload.links.map { ($0.session_id, $0.pid) })
             let parents = terminals.contains(where: \.isRunning) ? processParents() : [:]
             for terminal in terminals where terminal.isRunning {
-                terminal.sessionID = linkPayload.links.first(where: {
+                let observed = Set(linkPayload.links.filter {
                     ProcessTree.owns(pid: $0.pid, terminalPID: terminal.pid, parents: parents)
-                })?.session_id
+                }.map(\.session_id))
+                terminal.updateSessionLink(observed: observed)
             }
             publishTerminalSelection()
             if let selectedID, let terminalID = ownedTerminals()[selectedID] {
@@ -258,6 +259,26 @@ final class DesktopStore: ObservableObject {
         dock.remove(id, availableIDs: terminals.map(\.id))
         terminalDock = dock
         if terminals.isEmpty { terminalExpanded = false }
+    }
+
+    func moveTerminal(_ id: Int, to targetID: Int) {
+        guard id != targetID, let from = terminals.firstIndex(where: { $0.id == id }),
+              let to = terminals.firstIndex(where: { $0.id == targetID }) else { return }
+        let terminal = terminals.remove(at: from)
+        terminals.insert(terminal, at: to)
+    }
+
+    func linkTerminalToSelectedSession(_ id: Int) {
+        guard let selectedID, let terminal = terminal(for: id), terminal.isRunning else { return }
+        // Explicit user evidence is scoped to this running tab, never guessed from its folder.
+        for other in terminals where other.id != id && other.explicitSessionID == selectedID {
+            other.explicitSessionID = nil
+            if other.sessionID == selectedID { other.sessionID = nil }
+        }
+        terminal.explicitSessionID = selectedID
+        terminal.sessionID = selectedID
+        selectWebSession(selectedID)
+        publishTerminalSelection()
     }
 
     func selectTerminalTab(_ id: Int) {

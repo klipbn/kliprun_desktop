@@ -4,6 +4,25 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-10-16
+
+### Added
+
+- Timestamp each **Agents T** reply: relative age for the first 12 hours, then exact local date and time; hover over any age to see its exact time.
+- Show the terminal’s full launch folder path when hovering over its tab.
+- Drag terminal tabs by their title or background to reorder them; keep the close button separate and numbered keyboard shortcuts in the new order.
+- Reorder top-level Kanban cards within each status column by dragging anywhere on the card, with a full-card drag preview, or using Up/Down keys. Save each column's order across app launches.
+- **Link to Selected Session** in the terminal tab context menu for Codex daemon clients that do not expose an exact process-to-session link.
+
+### Fixed
+
+- Keep MR badges and metadata icons within narrow session cards: wrap rows, truncate long MR labels, and avoid double indentation of child cards.
+- Preserve explicit resumed or user-linked session identities when terminal process descriptors are unavailable. Prefer conflicting exact process evidence and leave multiple observed sessions unresolved.
+
+### Documentation
+
+- Refresh all nine demo screenshots for 0.0.7 using only fictional fixture data.
+
 ## [0.0.6] - 2026-10-15
 
 ### Added
@@ -126,4 +145,5 @@ First public macOS release.
 [0.0.4]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.4
 [0.0.5]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.5
 [0.0.6]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.6
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.6...main
+[0.0.7]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.7
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.7...main

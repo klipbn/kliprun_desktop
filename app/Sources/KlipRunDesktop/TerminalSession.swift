@@ -14,6 +14,7 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
     @Published var title: String
     private var titleState: TerminalTitle
     @Published var isRunning = true
+    var explicitSessionID: String?
     var sessionID: String?
     var pid: Int32 { view.process?.shellPid ?? 0 }
 
@@ -22,6 +23,8 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
                                             inherited: ProcessInfo.processInfo.environment, sessionID: resumeSessionID) else { return nil }
         self.id = id; self.source = source; self.directory = directory
         self.resumeSessionID = resumeSessionID
+        self.explicitSessionID = resumeSessionID
+        self.sessionID = resumeSessionID
         self.onExit = onExit
         let initialTitle = "\(source == "codex" ? "Codex" : source == "opencode" ? "OpenCode" : "Terminal") · \((directory as NSString).lastPathComponent)"
         title = initialTitle
@@ -41,6 +44,18 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
         view.processDelegate = self
         view.startProcess(executable: "/bin/zsh", args: launch.arguments,
                           environment: launch.environment.map { "\($0.key)=\($0.value)" }, currentDirectory: directory)
+    }
+
+    func updateSessionLink(observed: Set<String>) {
+        if observed.count == 1 {
+            let observedID = observed.first!
+            if explicitSessionID != observedID { explicitSessionID = nil }
+            sessionID = observedID
+        } else if observed.isEmpty {
+            sessionID = explicitSessionID
+        } else {
+            sessionID = nil
+        }
     }
 
     func terminate() { if isRunning { view.terminate() } }

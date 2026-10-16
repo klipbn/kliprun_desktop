@@ -7,6 +7,7 @@ struct ContentView: View {
     private var terminalPosition: String { store.preferences.terminalPosition }
     @AppStorage("terminal.height") private var preferredTerminalHeight = 330.0
     @AppStorage("terminal.width") private var preferredTerminalWidth = 460.0
+    @State private var dropTargetID: Int?
     @State private var dragStartExtent: Double?
     private var terminalOnLeft: Bool { terminalPosition == "left" }
 
@@ -150,20 +151,38 @@ struct ContentView: View {
     private func terminalTab(_ terminal: TerminalSession) -> some View {
         let selected = store.selectedTerminalID == terminal.id
         return HStack(spacing: 3) {
-            Button {
-                store.selectTerminalTab(terminal.id)
-            } label: {
-                HStack(spacing: 5) {
-                    Circle().fill(terminal.isRunning ? .green : .gray).frame(width: 6, height: 6)
-                    Text(terminal.title).lineLimit(1).frame(maxWidth: 190)
-                }
-                .foregroundStyle(.white)
-            }.buttonStyle(.plain).accessibilityLabel("Open tab \(terminal.title)")
+            HStack(spacing: 5) {
+                Circle().fill(terminal.isRunning ? .green : .gray).frame(width: 6, height: 6)
+                Text(terminal.title).lineLimit(1).frame(maxWidth: 190)
+            }
+            .foregroundStyle(.white)
             Button { store.closeTerminal(terminal.id) } label: {
                 Image(systemName: "xmark").font(.system(size: 9))
             }.buttonStyle(.plain).help("Close \(terminal.title)")
         }
         .padding(.horizontal, 8).padding(.vertical, 6)
         .background(selected ? Color.white.opacity(0.10) : Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 5))
+        .overlay(RoundedRectangle(cornerRadius: 5).stroke(dropTargetID == terminal.id ? Color.accentColor : .clear, lineWidth: 2))
+        .contentShape(Rectangle())
+        .onTapGesture { store.selectTerminalTab(terminal.id) }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Terminal tab \(terminal.title)")
+        .accessibilityAction(named: "Open tab") { store.selectTerminalTab(terminal.id) }
+        .draggable("kliprun-terminal:\(terminal.id)")
+        .dropDestination(for: String.self) { items, _ in
+            guard let value = items.first, value.hasPrefix("kliprun-terminal:"),
+                  let id = Int(value.dropFirst("kliprun-terminal:".count)),
+                  store.terminal(for: id) != nil else { return false }
+            store.moveTerminal(id, to: terminal.id)
+            dropTargetID = nil
+            return true
+        } isTargeted: { targeted in
+            dropTargetID = targeted ? terminal.id : nil
+        }
+        .contextMenu {
+            Button("Link to Selected Session") { store.linkTerminalToSelectedSession(terminal.id) }
+                .disabled(store.selectedID == nil || !terminal.isRunning)
+        }
+        .help(terminal.directory)
     }
 }
