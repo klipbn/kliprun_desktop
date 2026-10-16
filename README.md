@@ -6,7 +6,7 @@ KlipRun is a macOS app for following OpenCode and Codex sessions in one place. I
 
 The downloadable build is for **Apple Silicon Macs running macOS 13 or newer**.
 
-1. Download `KlipRun-0.0.11-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.12-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip it and move `KlipRun.app` to **Applications**.
 3. Open the app. The release is signed locally but is not notarized, so macOS may block the first launch. If it does, go to **System Settings → Privacy & Security → Open Anyway**, then open KlipRun again.
 
@@ -64,7 +64,9 @@ Browse recent OpenCode and Codex sessions, inspect their details, and resume the
 - **New OpenCode** and **New Codex** ask you to choose a project folder, then start the agent in the terminal panel.
 - **⌘T** lets you choose OpenCode, Codex, or a plain terminal. A plain terminal opens in the selected tab's folder, or your home folder when no tab is selected.
 - Drag terminal tabs left or right to reorder them. **⌘1–9** follows the new order. Hover over a tab to see the full folder path it was launched from.
-- Clicking a session card switches an already visible terminal when its session is known. Codex clients using a shared daemon may not expose an exact process link. For an existing unlinked tab, select its card, then right-click the tab and choose **Link to Selected Session**. The explicit link lasts for that tab; a conflicting exact process link takes precedence. **Resume in Terminal** preserves the requested session link even when process descriptors are unavailable.
+- Switching terminal tabs also opens the matching session in the details panel. Tabs without a known session keep the current details open.
+- Clicking a session card switches an already visible terminal when its session is known. New Codex tabs request the current chat ID through Codex's terminal-title setting, so the card follows `/new` and `/resume` automatically without a chat selector. KlipRun resolves shortened IDs only when they match exactly one stored session. Tab labels keep their project name and can still be renamed. Existing or external terminals without that signal use confirmed process links; ambiguous cards show **Connecting session…**. **Resume in Terminal** preserves the requested session link until the terminal reports its current chat.
+- On Codex 0.163, this per-launch title setting uses an embedded backend instead of automatically reusing the shared daemon. Existing daemon sessions keep running; user configuration and chat history stay shared.
 - Click **Terminal** to show or hide the terminal area. Tabs keep running while hidden. Closing an active tab or quitting the app asks before ending its process.
 - Use the position button beside **+** in the terminal toolbar to switch between **Move terminal to left** and **Move terminal to bottom**. Drag the divider to adjust the pane; its position, bottom height, and left width are remembered independently. Moving the panel keeps the current terminal and dashboard view open.
 - Exiting an agent or shell automatically closes its terminal tab. The terminal area hides after the last tab exits.
@@ -72,7 +74,7 @@ Browse recent OpenCode and Codex sessions, inspect their details, and resume the
 - Click **?** in the upper-right corner for every keyboard shortcut. Open **Settings** with the neighboring button or **⌘,**. Settings are saved between launches.
 - **Settings → Terminal** adjusts mouse-wheel speed from **1–10×** (default **5×**), smooth scrolling for trackpads and Magic Mouse independently (default **1×**), terminal font size (**10–24 pt**), and left/bottom placement. Speed and font changes apply to all open terminals immediately and to newly opened tabs. Wheel speed also applies when Codex/OpenCode handles scrolling itself; generated input remains rate-limited.
 - **Settings → Appearance** controls interface scale independently of the terminal font, the next launch's startup screen, the default details tab, and reduced Office animations. The macOS Reduce Motion setting is also respected.
-- Session details default to **Agents T**, the first tab before **All**. It shows only agent text, with Markdown headings, lists, links, tables, and code blocks; tool calls and technical metadata remain in the other tabs. You can choose **All** or **Agent** as the default in Settings.
+- Session details use **User → Agents T → Agent → Models → Kanban**. **Agents T** remains the default, with readable agent replies and Markdown; Settings also offers **Agent**. **Kanban** shows status history and time spent in each state. Harness icons distinguish Codex and OpenCode on cards and in details. Click the current Git branch to open it on GitHub or GitLab; without a remote, the branch stays plain text. The branch follows the repository's current `HEAD`, including worktrees.
 - **Settings → Notifications** controls the coworker popup, with separate **Response ready** and **Needs your input** switches. **Sound** offers installed macOS system sounds, **Preview sound**, and **None** for silence. The selected sound plays when a popup appears, including **Show preview**. Display duration and popup position controls are in the same section.
 
 KlipRun reads existing OpenCode and Codex session data without changing their stores. Its bundled engine runs on a random local loopback port and requires an app-generated token. App preferences and its own state live in `~/Library/Application Support/KlipRun Desktop`.
