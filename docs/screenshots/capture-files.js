@@ -25,8 +25,11 @@ async (page, directory = "docs/screenshots", fixture) => {
     await page.locator('button[aria-label="Preview Markdown"]:visible').click();
     await page.getByRole("heading", { name: "Atlas search", exact: true }).waitFor();
     await page.screenshot({ path: `${directory}/git-markdown.png`, animations: "disabled" });
+    await page.getByRole("treeitem", { name: "Open file notebooks/activity.ipynb", exact: true }).click();
+    await page.getByRole("heading", { name: "Atlas project activity", exact: true }).waitFor();
+    await page.screenshot({ path: `${directory}/git-notebook.png`, animations: "disabled" });
     if (external.length) throw new Error("Capture made external requests");
-    return { captures: ["git-files.png", "git-markdown.png"], externalRequests: 0 };
+    return { captures: ["git-files.png", "git-markdown.png", "git-notebook.png"], externalRequests: 0 };
   } finally {
     page.off("request", watch); await page.unroute(`${base}/api/git/files?*`, list); await page.unroute(`${base}/api/git/file?*`, read);
   }

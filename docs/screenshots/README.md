@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All sixteen images were captured from **KlipRun Desktop 0.0.20** on **2026-10-17**. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All seventeen images were captured from **KlipRun Desktop 0.0.21** on **2026-10-17**. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -14,6 +14,7 @@ All sixteen images were captured from **KlipRun Desktop 0.0.20** on **2026-10-17
 | [`usage.png`](usage.png) | 1600 × 900 | Compact provider rows with colored status dots and white limit/reset labels |
 | [`git-files.png`](git-files.png) | 1440 × 900 | Repository tree on the right, preview/permanent file tabs and highlighted Python source |
 | [`git-markdown.png`](git-markdown.png) | 1440 × 900 | Rendered Markdown with source/preview toggle and per-file editor status |
+| [`git-notebook.png`](git-notebook.png) | 1440 × 900 | Jupyter Markdown/code cells with saved tables, text, and an embedded image |
 | [`git-changes.png`](git-changes.png) | 1440 × 900 | Fictional changes in List/Path/None mode, staging controls, and a line-numbered diff |
 | [`git-repository.png`](git-repository.png) | 1440 × 900 | Searchable repository dropdown with fictional project names and paths |
 | [`git-changes-settings.png`](git-changes-settings.png) | 1440 × 900 | Changes settings menu with List/Tree, Path/Name, and three grouping choices |
@@ -22,6 +23,8 @@ All sixteen images were captured from **KlipRun Desktop 0.0.20** on **2026-10-17
 | [`shortcuts.png`](shortcuts.png) | 1600 × 1000 | Current in-app keyboard shortcut dialog |
 
 The fixture API covers `/api/board`, `/api/session/:id`, `/api/recent-sessions`, `/api/stats`, `/api/stats/sessions`, `/api/stats/session/:id`, `/api/stats/office-usage`, and `/api/quota/:provider`. Statistics uses `statistics_dataset`, a fictional 60-day event and observation history, through the production aggregators. The `card_priorities` map supplies only fictional session IDs. The selected details session is `ses_demo_search`, matching the fixture’s `details` payload.
+
+`git.text_files["notebooks/activity.ipynb"]` is a fictional notebook with Markdown, Python cells, saved tables, text, and an embedded PNG. [`../../scripts/git-notebook.test.js`](../../scripts/git-notebook.test.js) is a Playwright callback `(page, base = "http://127.0.0.1:18796")` checking its default preview, saved outputs, JSON editing and save, invalid JSON fallback, metadata preservation, inactive HTML scripts and remote images, and layouts at 1440, 720, and 500 pixels. Its saves stay in memory.
 
 Recent Sessions uses an in-memory `UsageStore` populated only from the fixture's `recent_sessions.sessions`. The preview applies the production query parser and metadata search/pagination to this fictional index. [`../../scripts/recent-sessions.test.js`](../../scripts/recent-sessions.test.js) covers search, combined filters, empty results, collapse/restore, resume, compact layouts, and paginated selection followed by Git navigation. Its pagination response is synthetic; no agent is launched.
 
@@ -47,4 +50,4 @@ The Office image now shows the Shared loft floor plan with the same fictional se
 
 [`../../scripts/git-review-layout.test.js`](../../scripts/git-review-layout.test.js) checks the compact repository toolbar, staging controls before filenames, loaded-commit search, keyboard navigation, automatic first-file diffs, persistent close, and small layouts using fixture data without Git writes.
 
-[`capture-files.js`](capture-files.js) takes `(page, outputDirectory, fixture)` and captures Files and Markdown from `git.text_files` in `mock-api.json`, with all file reads intercepted and no writes. All sixteen images were refreshed for 0.0.20.
+[`capture-files.js`](capture-files.js) takes `(page, outputDirectory, fixture)` and captures Files, Markdown, and Jupyter Notebook from `git.text_files` in `mock-api.json`, with all file reads intercepted and no writes. All seventeen images were refreshed for 0.0.21.
