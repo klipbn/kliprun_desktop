@@ -52,7 +52,7 @@ import SwiftUI
     #expect(store.preferences.startupPage == "/git")
     try await click(315, 480)
     #expect(store.preferences.startupPage == "/office")
-    for (x, tab) in [(60.0, "user"), (175.0, "agent-text"), (280.0, "agent"), (390.0, "models"), (510.0, "kanban")] {
+    for (x, tab) in [(60.0, "user"), (175.0, "agent-text"), (280.0, "agent"), (390.0, "models"), (480.0, "kanban")] {
         try await click(x, 555)
         #expect(store.preferences.detailTab == tab)
     }
@@ -123,6 +123,8 @@ import SwiftUI
     #expect(terminal.view.preciseScrollSensitivity == 2)
     #expect(terminal.view.font.pointSize == 18)
     #expect(terminal.pid == originalPID)
+    store.updatePreferences { $0.theme = "paper" }
+    #expect(terminal.view.nativeBackgroundColor.redComponent > 0.9)
     store.zoomIn()
     #expect(store.interfaceZoom.percent == 110)
     #expect(terminal.view.font.pointSize == 18)
@@ -133,6 +135,7 @@ import SwiftUI
     #expect(newTerminal.view.scrollSensitivity == 8)
     #expect(newTerminal.view.preciseScrollSensitivity == 2)
     #expect(newTerminal.view.font.pointSize == 18)
+    #expect(newTerminal.view.nativeBackgroundColor.redComponent > 0.9)
     #expect(DesktopStore(defaults: defaults).preferences == store.preferences)
     store.stop()
     for _ in 0..<50 where store.terminals.contains(where: \.isRunning) {

@@ -54,6 +54,10 @@ struct KlipRunApp: App {
                         .keyboardShortcut(",", modifiers: [.command])
                     Button("Check for Updates…") { delegate.store.checkForUpdates() }
                 }
+                CommandGroup(replacing: .help) {
+                    Link("KlipRun Help", destination: URL(string: "https://github.com/klipbn/kliprun_desktop#readme")!)
+                    Link("Report an Issue…", destination: URL(string: "https://github.com/klipbn/kliprun_desktop/issues/new")!)
+                }
                 TerminalCommands(store: delegate.store)
                 CommandGroup(after: .toolbar) {
                     Button("Zoom In") { delegate.store.zoomIn() }

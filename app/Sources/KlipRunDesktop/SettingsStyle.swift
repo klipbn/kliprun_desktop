@@ -1,10 +1,28 @@
 import SwiftUI
+import KlipRunCore
 
 enum SettingsStyle {
-    static let background = Color(red: 13 / 255, green: 17 / 255, blue: 23 / 255)
-    static let surface = Color(red: 22 / 255, green: 27 / 255, blue: 34 / 255)
-    static let border = Color(red: 48 / 255, green: 54 / 255, blue: 61 / 255)
-    static let accent = Color(red: 88 / 255, green: 166 / 255, blue: 1)
+    private static var colors: (UInt32, UInt32, UInt32, UInt32) {
+        switch AppPreferences().theme {
+        case "ember": (0x0d1016, 0x1f2127, 0x3f4043, 0x5ac1fe)
+        case "dusk": (0x242835, 0x353944, 0x53565d, 0x72cffe)
+        case "graphite": (0x282c33, 0x2f343e, 0x464b57, 0x74ade8)
+        case "daybreak": (0xfcfcfc, 0xececed, 0xcfd1d2, 0x3b9ee5)
+        case "paper": (0xfafafa, 0xebebec, 0xc9c9ca, 0x5c78e2)
+        default: (0x0d1117, 0x161b22, 0x30363d, 0x58a6ff)
+        }
+    }
+
+    private static func color(_ hex: UInt32) -> Color {
+        Color(red: Double((hex >> 16) & 0xff) / 255,
+              green: Double((hex >> 8) & 0xff) / 255,
+              blue: Double(hex & 0xff) / 255)
+    }
+
+    static var background: Color { color(colors.0) }
+    static var surface: Color { color(colors.1) }
+    static var border: Color { color(colors.2) }
+    static var accent: Color { color(colors.3) }
 }
 
 struct SettingsButtonStyle: ButtonStyle {
@@ -15,7 +33,7 @@ struct SettingsButtonStyle: ButtonStyle {
             .font(.system(size: 12, weight: .medium))
             .padding(.horizontal, 12).padding(.vertical, 8)
             .foregroundStyle(primary ? SettingsStyle.accent : Color.primary)
-            .background(primary ? SettingsStyle.accent.opacity(configuration.isPressed ? 0.25 : 0.12) : Color.white.opacity(configuration.isPressed ? 0.10 : 0.04),
+            .background(primary ? SettingsStyle.accent.opacity(configuration.isPressed ? 0.25 : 0.12) : Color.primary.opacity(configuration.isPressed ? 0.10 : 0.04),
                         in: RoundedRectangle(cornerRadius: 7))
             .overlay(RoundedRectangle(cornerRadius: 7).stroke(primary ? SettingsStyle.accent.opacity(0.45) : SettingsStyle.border))
             .opacity(enabled ? 1 : 0.4)

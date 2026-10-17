@@ -8,6 +8,7 @@ public struct AppPreferences: Equatable {
     public var terminalPosition: String
     public var startupPage: String
     public var detailTab: String
+    public var theme: String
     public var reduceMotion: Bool
 
     public init(defaults: UserDefaults = .standard) {
@@ -18,6 +19,7 @@ public struct AppPreferences: Equatable {
         terminalPosition = defaults.string(forKey: "terminal.position") ?? "bottom"
         startupPage = defaults.string(forKey: "appearance.startupPage") ?? "/"
         detailTab = defaults.string(forKey: "appearance.detailTab") ?? "agent-text"
+        theme = defaults.string(forKey: "appearance.theme") ?? "default"
         reduceMotion = defaults.bool(forKey: "appearance.reduceMotion")
         self = validated()
     }
@@ -34,6 +36,7 @@ public struct AppPreferences: Equatable {
         if !["bottom", "left"].contains(terminalPosition) { value.terminalPosition = "bottom" }
         if !["/", "/git", "/office", "/stats", "/usage"].contains(startupPage) { value.startupPage = "/" }
         if !["user", "agent-text", "agent", "models", "kanban"].contains(detailTab) { value.detailTab = "agent-text" }
+        if !["default", "ember", "dusk", "graphite", "daybreak", "paper"].contains(theme) { value.theme = "default" }
         return value
     }
 
@@ -46,12 +49,13 @@ public struct AppPreferences: Equatable {
         defaults.set(value.terminalPosition, forKey: "terminal.position")
         defaults.set(value.startupPage, forKey: "appearance.startupPage")
         defaults.set(value.detailTab, forKey: "appearance.detailTab")
+        defaults.set(value.theme, forKey: "appearance.theme")
         defaults.set(value.reduceMotion, forKey: "appearance.reduceMotion")
     }
 
     public var webScript: String {
         // Only validated enum values and booleans cross into the web view.
         let value = validated()
-        return "window.kliprunPreferences = {detailTab: '\(value.detailTab)', reduceMotion: \(value.reduceMotion)}; window.dispatchEvent(new Event('kliprun:preferences'));"
+        return "window.kliprunPreferences = {detailTab: '\(value.detailTab)', theme: '\(value.theme)', reduceMotion: \(value.reduceMotion)}; window.dispatchEvent(new Event('kliprun:preferences'));"
     }
 }

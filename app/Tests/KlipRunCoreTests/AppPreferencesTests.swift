@@ -2,6 +2,27 @@ import Foundation
 import Testing
 @testable import KlipRunCore
 
+@Test(arguments: ["default", "ember", "dusk", "graphite", "daybreak", "paper"])
+func themesPersistAndReachTheWebView(_ theme: String) {
+    let suite = "local.kliprun.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    var preferences = AppPreferences(defaults: defaults)
+    preferences.theme = theme
+    preferences.save(to: defaults)
+    let restored = AppPreferences(defaults: defaults)
+    #expect(restored.theme == theme)
+    #expect(restored.webScript.contains("theme: '\(theme)'"))
+}
+
+@Test func invalidThemeFallsBackToDefault() {
+    let suite = "local.kliprun.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    defaults.set("invalid'javascript", forKey: "appearance.theme")
+    #expect(AppPreferences(defaults: defaults).theme == "default")
+}
+
 @Test(arguments: ["user", "agent-text", "agent", "models", "kanban"])
 func everyDetailsTabCanBeSavedAsDefault(_ tab: String) {
     let suite = "local.kliprun.tests.\(UUID().uuidString)"

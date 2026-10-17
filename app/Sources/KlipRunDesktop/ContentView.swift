@@ -52,8 +52,8 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 980, minHeight: 660)
-        .background(Color(red: 13 / 255, green: 17 / 255, blue: 23 / 255))
-        .preferredColorScheme(.dark)
+        .background(SettingsStyle.background)
+        .preferredColorScheme(["daybreak", "paper"].contains(store.preferences.theme) ? .light : .dark)
         .onChange(of: terminalPosition) { _ in
             dragStartExtent = nil
             store.terminalExpanded = false
@@ -116,7 +116,7 @@ struct ContentView: View {
     private var terminalDock: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Image(systemName: "terminal").foregroundStyle(Color(red: 88 / 255, green: 166 / 255, blue: 1))
+                Image(systemName: "terminal").foregroundStyle(SettingsStyle.accent)
                 ScrollViewReader { reader in
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 4) {
@@ -173,13 +173,13 @@ struct ContentView: View {
             .font(.system(size: CGFloat(11 * store.interfaceZoom.factor)))
             .padding(.horizontal, 10)
             .frame(height: 36)
-            .background(Color(red: 22 / 255, green: 27 / 255, blue: 34 / 255))
+            .background(SettingsStyle.surface)
             Divider()
             if let terminal = store.terminal(for: store.selectedTerminalID) {
                 TerminalPane(session: terminal)
             }
         }
-        .background(Color(red: 13 / 255, green: 17 / 255, blue: 23 / 255))
+        .background(SettingsStyle.background)
     }
 
     private func terminalTab(_ terminal: TerminalSession) -> some View {
@@ -189,7 +189,7 @@ struct ContentView: View {
                 Circle().fill(terminal.isRunning ? .green : .gray).frame(width: 6, height: 6)
                 Text(terminal.title).lineLimit(1).frame(maxWidth: 190)
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
             Button { store.closeTerminal(terminal.id) } label: {
                 Image(systemName: "xmark").font(.system(size: 9))
                     .modifier(TerminalControlHighlight(compact: true))
@@ -197,7 +197,7 @@ struct ContentView: View {
                 .accessibilityLabel("Close \(terminal.title)").help("Close \(terminal.title)")
         }
         .padding(.horizontal, 8).padding(.vertical, 6)
-        .background(selected ? Color.white.opacity(0.10) : Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 5))
+        .background(selected ? Color.primary.opacity(0.10) : Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(dropTargetID == terminal.id ? Color.accentColor : .clear, lineWidth: 2))
         .contentShape(Rectangle())
         .onTapGesture { store.selectTerminalTab(terminal.id) }

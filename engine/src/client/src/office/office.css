@@ -1,5 +1,5 @@
 .office-view { position: relative; }
-.office-page { flex: 1; min-width: 0; overflow: auto; scrollbar-gutter: stable; padding: 30px clamp(16px, 4vw, 56px) 16px; background: radial-gradient(ellipse at top, #17233366, transparent 65%), #0d1117; }
+.office-page { flex: 1; min-width: 0; overflow: auto; scrollbar-gutter: stable; padding: 30px clamp(16px, 4vw, 56px) 16px; background: radial-gradient(ellipse at top, #17233366, transparent 65%), var(--theme-background); }
 .office-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; max-width: 1600px; margin: 0 auto 25px; }
 .office-eyebrow { color: #93a2b7; font: 10px ui-monospace, monospace; letter-spacing: 2px; margin-bottom: 10px; }
 .office-heading h2 { font-size: clamp(21px, 2.5vw, 32px); font-weight: 650; letter-spacing: -.8px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }

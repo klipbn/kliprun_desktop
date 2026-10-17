@@ -8,6 +8,7 @@ struct SettingsView: View {
     @ObservedObject private var updater: AppUpdater
     @State private var section = "Terminal"
     @State private var copied = false
+    @State private var themeMenuOpen = false
     private let sections = [("Terminal", "terminal"), ("Appearance", "paintpalette"), ("Notifications", "bell"),
                             ("Updates", "arrow.down.circle"), ("About", "info.circle")]
 
@@ -91,7 +92,7 @@ struct SettingsView: View {
         .tint(SettingsStyle.accent)
         .background(SettingsStyle.background)
         .overlay(alignment: .leading) { Rectangle().fill(SettingsStyle.border).frame(width: 1) }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(["daybreak", "paper"].contains(store.preferences.theme) ? .light : .dark)
         .accessibilityIdentifier("settings-panel")
     }
 
@@ -169,7 +170,41 @@ struct SettingsView: View {
             SettingsCard(title: "Motion", subtitle: "KlipRun also respects the macOS Reduce Motion setting.") {
                 Toggle("Reduce Office animations", isOn: binding(\.reduceMotion))
             }
+            SettingsCard(title: "Select Theme", subtitle: "Choose an interface palette. Changes apply immediately.") {
+                Button { themeMenuOpen.toggle() } label: {
+                    HStack(spacing: 8) {
+                        Text(themeOptions.first { $0.0 == store.preferences.theme }?.1 ?? "Default")
+                        Spacer()
+                        Image(systemName: "chevron.down").font(.system(size: 10)).foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 10).frame(height: 32)
+                    .background(SettingsStyle.background, in: RoundedRectangle(cornerRadius: 5))
+                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(themeMenuOpen ? SettingsStyle.accent : SettingsStyle.border))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Theme")
+                .accessibilityIdentifier("theme-trigger")
+                .popover(isPresented: $themeMenuOpen, arrowEdge: .bottom) {
+                    VStack(spacing: 2) {
+                        ForEach(themeOptions, id: \.0) { value, label in
+                            ThemeOptionRow(label: label, selected: store.preferences.theme == value) {
+                                store.updatePreferences { $0.theme = value }
+                                themeMenuOpen = false
+                            }
+                            .accessibilityIdentifier("theme-option-\(value)")
+                        }
+                    }
+                    .padding(5)
+                    .frame(width: 220)
+                    .background(SettingsStyle.surface)
+                }
+            }
         }
+    }
+
+    private var themeOptions: [(String, String)] {
+        [("default", "Default"), ("ember", "Ember"), ("dusk", "Dusk"),
+         ("graphite", "Graphite"), ("daybreak", "Daybreak"), ("paper", "Paper")]
     }
 
     private var about: some View {
@@ -226,5 +261,29 @@ struct SettingsView: View {
 
     private func shortcut(_ title: String, _ keys: String) -> some View {
         HStack { Text(title).foregroundStyle(.secondary); Spacer(); Text(keys).monospacedDigit() }
+    }
+}
+
+private struct ThemeOptionRow: View {
+    let label: String
+    let selected: Bool
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Text(label).font(.system(size: 12, weight: .medium))
+                Spacer()
+                if selected { Image(systemName: "checkmark").font(.system(size: 10)).foregroundStyle(SettingsStyle.accent) }
+            }
+            .padding(.horizontal, 9).frame(height: 30)
+            .foregroundStyle(.primary)
+            .background(hovered ? SettingsStyle.accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 4))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

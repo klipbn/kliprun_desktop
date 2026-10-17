@@ -28,9 +28,19 @@ test("desktop preferences are delivered initially and live, with validated defau
   stop();
   host.dispatchEvent(new Event("kliprun:preferences"));
   expect(values).toEqual([
-    { detailTab: "agent-text", reduceMotion: true }, { detailTab: "agent", reduceMotion: false },
-    { detailTab: "agent-text", reduceMotion: false },
+    { detailTab: "agent-text", theme: "default", reduceMotion: true }, { detailTab: "agent", theme: "default", reduceMotion: false },
+    { detailTab: "agent-text", theme: "default", reduceMotion: false },
   ]);
+});
+
+test("theme preference accepts only known themes", () => {
+  const host = Object.assign(new EventTarget(), { kliprunPreferences: { theme: "ember" } });
+  const themes: string[] = [];
+  const stop = observeNativePreferences(value => themes.push(value.theme), host);
+  host.kliprunPreferences = { theme: "unexpected" };
+  host.dispatchEvent(new Event("kliprun:preferences"));
+  stop();
+  expect(themes).toEqual(["ember", "default"]);
 });
 
 test("reports the exact selected session to the desktop shell", () => {
