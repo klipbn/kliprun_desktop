@@ -27,11 +27,11 @@ export function compare(current: number | null, previous: number | null): string
   if (Math.abs(delta) < 0.5) return "No change";
   return `${delta > 0 ? "+" : "−"}${Math.abs(delta).toLocaleString("en-US", { maximumFractionDigits: 0 })}% vs. previous period`;
 }
-export const TOKEN_PARTS: Array<{ key: Exclude<keyof UsageTokens, "total">; label: string; color: string }> = [
-  { key: "input", label: "Uncached input", color: "#58a6ff" },
-  { key: "cache_read", label: "Cache read", color: "#3fb950" },
-  { key: "cache_write", label: "Cache write", color: "#56d4dd" },
-  { key: "output", label: "Output", color: "#bc8cff" },
-  { key: "reasoning", label: "Reasoning", color: "#d29922" },
-  { key: "other", label: "Other", color: "#8b949e" },
+export const TOKEN_PARTS: Array<{ key: Exclude<keyof UsageTokens, "total">; label: string; color: string; description: string }> = [
+  { key: "input", label: "Uncached input", color: "#58a6ff", description: "Input tokens processed without reading or writing the cache." },
+  { key: "cache_read", label: "Cached input", color: "#3fb950", description: "Input tokens reused from the cache (cache read)." },
+  { key: "cache_write", label: "Cache write", color: "#56d4dd", description: "Input tokens written to the cache." },
+  { key: "output", label: "Output", color: "#bc8cff", description: "Generated output, excluding separately recorded reasoning." },
+  { key: "reasoning", label: "Reasoning", color: "#d29922", description: "Separately recorded reasoning tokens." },
+  { key: "other", label: "Other", color: "#8b949e", description: "Recorded tokens without a reliable category." },
 ];

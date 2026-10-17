@@ -12,7 +12,7 @@ test("token mix distinguishes total cache share from the input cache ratio and c
   expect(html).toContain("40%");
   expect(html).toContain("<b>50%</b>");
   expect(html).toContain("<b>250</b>");
-  expect(html).toContain("Cache read: 400");
+  expect(html).toContain("Cached input: 400");
 });
 test("an empty token mix has unknown ratios instead of fabricated efficiency", () => {
   const html = renderToStaticMarkup(<TokenMix summary={{ ...summary, calls: 0,

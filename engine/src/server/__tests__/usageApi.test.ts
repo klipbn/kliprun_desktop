@@ -16,6 +16,12 @@ function fixture() {
   const app = new Hono(); registerStatsRoutes(app, service);
   return { service, app };
 }
+test("statistics accepts latest-session sorting with a bounded selectable count", async () => {
+  const { app } = fixture();
+  const response = await app.request("/api/stats/sessions?from=0&to=300&timezone=UTC&sort=recent&limit=5");
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ rows: [], page: 1, limit: 5 });
+});
 test("recent sessions include both harnesses, newest first, without child sessions", async () => {
   const { app } = fixture();
   await app.request("/api/stats?from=0&to=300");

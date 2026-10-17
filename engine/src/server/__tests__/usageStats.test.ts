@@ -25,6 +25,19 @@ const data = { sessions, events, intervals, attributions: [
 ], observed_at: 200, sources: [] };
 
 describe("usage aggregation", () => {
+  test("latest sessions ignore idle observations, limit after sorting, and keep subagent totals", () => {
+    const recent = { ...sessions[0], id: "ses_recent", title: "Recent", updated_at: 190 };
+    const dataset = { ...data, sessions: [...sessions, recent], events: [...events,
+      { ...events[0], id: "recent", session_id: recent.id, at: 190, tokens: tokens(5), model: "openai/c" }],
+    };
+    const result = rankSessions(dataset, filters, "recent", 1, 1);
+    expect(result.total).toBe(2);
+    expect(result.rows.map(row => row.id)).toEqual(["ses_recent"]);
+    const second = rankSessions(dataset, filters, "recent", 2, 1);
+    expect(second.rows[0]).toMatchObject({ id: "ses_root", subagents: 1, tokens: { total: 150 }, calls: 2 });
+    expect(rankSessions(dataset, { ...filters, models: ["openai/b"] }, "recent", 1, 10).rows.map(row => row.id)).toEqual(["ses_root"]);
+    expect(rankSessions(dataset, { ...filters, from: 180 }, "recent", 1, 10).rows.map(row => row.id)).toEqual(["ses_recent"]);
+  });
   test("token heatmaps preserve timezone boundaries, zero days and filtered totals independently of chart granularity", () => {
     const from = Date.parse("2026-03-07T05:00:00Z"), to = Date.parse("2026-03-10T04:00:00Z");
     const dated = [
