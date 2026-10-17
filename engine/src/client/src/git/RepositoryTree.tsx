@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { Braces, ChevronDown, ChevronRight, ChevronsDownUp, Code2, Database, FileCode2, FileText, Folder, FolderOpen, Search, X } from "lucide-react";
+import { Braces, ChevronDown, ChevronRight, ChevronsDownUp, Code2, Database, FileCode2, FileText, Folder, FolderOpen, Notebook, Search, X } from "lucide-react";
 import "./repositoryTree.css";
 
 type Node = { name: string; path: string; children?: Node[]; status?: string };
@@ -50,8 +50,8 @@ function initialExpanded(tree: Node[], selected: string | null): Set<string> {
 }
 function FileIcon({ path }: { path: string }) {
   const extension = path.split(".").pop()?.toLowerCase();
-  const kind = extension === "py" || extension === "pyi" ? "python" : extension === "sql" ? "sql" : extension === "md" || extension === "mdx" ? "markdown" : /^(js|jsx|mjs|cjs)$/.test(extension ?? "") ? "javascript" : /^(ts|tsx)$/.test(extension ?? "") ? "typescript" : extension === "json" || extension === "jsonc" ? "json" : "text";
-  const Icon = kind === "sql" ? Database : kind === "json" ? Braces : kind === "markdown" || kind === "text" ? FileText : kind === "python" ? Code2 : FileCode2;
+  const kind = extension === "ipynb" ? "notebook" : extension === "py" || extension === "pyi" ? "python" : extension === "sql" ? "sql" : extension === "md" || extension === "mdx" ? "markdown" : /^(js|jsx|mjs|cjs)$/.test(extension ?? "") ? "javascript" : /^(ts|tsx)$/.test(extension ?? "") ? "typescript" : extension === "json" || extension === "jsonc" ? "json" : "text";
+  const Icon = kind === "notebook" ? Notebook : kind === "sql" ? Database : kind === "json" ? Braces : kind === "markdown" || kind === "text" ? FileText : kind === "python" ? Code2 : FileCode2;
   return <Icon size={15} className={`repository-file-icon is-${kind}`} aria-hidden="true" />;
 }
 const emptyStatuses: Record<string, string> = {};
