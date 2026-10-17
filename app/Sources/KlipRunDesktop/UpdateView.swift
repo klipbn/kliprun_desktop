@@ -47,7 +47,8 @@ struct UpdateView: View {
         case .ready:
             Button("Install and Restart") {
                 if updater.prepareToQuit() {
-                    NSApp.terminate(nil)
+                    // AppKit ignores termination while the Updates sheet is still attached.
+                    DispatchQueue.main.async { NSApp.terminate(nil) }
                 }
             }.buttonStyle(SettingsButtonStyle(primary: true)).keyboardShortcut(.defaultAction)
         case .installed:

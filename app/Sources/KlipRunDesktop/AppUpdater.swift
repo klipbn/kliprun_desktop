@@ -114,6 +114,7 @@ final class AppUpdater: ObservableObject {
     func prepareToQuit() -> Bool {
         guard case .ready = phase, installation != nil else { return false }
         installOnExit = true
+        isPresented = false
         return true
     }
 

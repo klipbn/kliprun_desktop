@@ -127,6 +127,111 @@ private func updateRelease(version: String = "0.0.10", prerelease: Bool = false,
     return try JSONSerialization.data(withJSONObject: release)
 }
 
+@MainActor private final class UpdateQuitProbe: NSObject, NSApplicationDelegate {
+    var requests = 0
+    var sheetWasVisible = false
+    var wasPreparedToInstall = false
+    weak var window: NSWindow?
+    weak var updater: AppUpdater?
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        requests += 1
+        sheetWasVisible = window?.attachedSheet != nil
+        wasPreparedToInstall = updater?.installOnExit == true
+        updater?.cancelQuit()
+        // Exercise AppKit's termination path without exiting the test runner.
+        return .terminateCancel
+    }
+}
+
+@MainActor @Test func installAndRestartButtonReachesTerminationAfterClosingSheet() async throws {
+    // Other UI tests open sheets too; AppKit termination needs its own application process.
+    if ProcessInfo.processInfo.environment["KLIPRUN_UPDATE_UI_CHILD"] != "1" {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: CommandLine.arguments[0])
+        var arguments = ["--testing-library", "swift-testing", "--filter", "installAndRestartButtonReachesTerminationAfterClosingSheet"]
+        if let index = CommandLine.arguments.firstIndex(of: "--test-bundle-path") {
+            arguments = ["--test-bundle-path", CommandLine.arguments[index + 1]] + arguments
+        }
+        process.arguments = arguments
+        process.environment = ProcessInfo.processInfo.environment.merging(["KLIPRUN_UPDATE_UI_CHILD": "1"]) { _, child in child }
+        let output = Pipe(); process.standardOutput = output; process.standardError = output
+        try process.run()
+        let log = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        let report = String(decoding: log, as: UTF8.self)
+        #expect(process.terminationStatus == 0, "\(report)")
+        #expect(report.contains("Test run with 1 test"), "\(report)")
+        return
+    }
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let source = directory.appendingPathComponent("KlipRun.app"), destination = directory.appendingPathComponent("Installed.app")
+    try fixtureApp(source, version: "0.0.10"); try fixtureApp(destination, version: "0.0.9")
+    let archive = directory.appendingPathComponent("fixture.zip"), release = directory.appendingPathComponent("release.json")
+    let zip = Process(); zip.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+    zip.arguments = ["-c", "-k", "--keepParent", source.path, archive.path]; try zip.run(); zip.waitUntilExit()
+    let digest = SHA256.hash(data: try Data(contentsOf: archive)).map { String(format: "%02x", $0) }.joined()
+    try updateRelease(digest: "sha256:\(digest)").write(to: release)
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [UpdateURLProtocol.self]
+    config.httpAdditionalHeaders = ["X-Test-Archive-File": archive.path, "X-Test-Release-File": release.path]
+    let session = URLSession(configuration: config)
+    defer { session.invalidateAndCancel() }
+    let suite = "local.kliprun.update-tests.\(UUID().uuidString)", defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let updater = AppUpdater(client: AppUpdateClient(session: session), installedVersion: "0.0.9", applicationURL: destination, defaults: defaults)
+    await updater.check(); await updater.download(to: directory)
+    guard case .ready = updater.phase else { Issue.record("Expected a prepared update: \(updater.phase)"); return }
+    let store = DesktopStore(defaults: defaults, updater: updater)
+    let probe = UpdateQuitProbe(); probe.updater = updater
+    let previousDelegate = NSApplication.shared.delegate
+    NSApplication.shared.delegate = probe
+    defer { NSApplication.shared.delegate = previousDelegate }
+    for embedded in [false, true] {
+        let content = embedded ? AnyView(UpdateView(updater: updater, embedded: true).padding(20)) : AnyView(ContentView(store: store))
+        let host = NSHostingView(rootView: content)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: embedded ? 560 : 980, height: 660),
+                              styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+        window.contentView = host
+        window.makeKeyAndOrderFront(nil)
+        probe.window = window
+        defer {
+            if let sheet = window.attachedSheet { window.endSheet(sheet) }
+            updater.isPresented = false
+            window.orderOut(nil)
+        }
+        for height: CGFloat in [660, 900] {
+            window.setContentSize(NSSize(width: embedded ? 560 : 980, height: height))
+            host.layoutSubtreeIfNeeded()
+            updater.isPresented = !embedded
+            if !embedded {
+                for _ in 0..<100 where window.attachedSheet == nil { try await Task.sleep(for: .milliseconds(20)) }
+            }
+            let panel = embedded ? window : try #require(window.attachedSheet)
+            try await Task.sleep(for: .milliseconds(300))
+            panel.makeKeyAndOrderFront(nil)
+            let panelContent = try #require(panel.contentView)
+            let point = panelContent.convert(NSPoint(x: panelContent.bounds.width - 100,
+                y: panelContent.isFlipped ? panelContent.bounds.height - 36 : 36), to: nil)
+            let previousRequests = probe.requests
+            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                let event = try #require(NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: panel.windowNumber,
+                    context: nil, eventNumber: 1, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0))
+                NSApplication.shared.sendEvent(event)
+            }
+            for _ in 0..<100 where probe.requests == previousRequests { try await Task.sleep(for: .milliseconds(20)) }
+            #expect(probe.requests == previousRequests + 1)
+            #expect(!probe.sheetWasVisible)
+            #expect(probe.wasPreparedToInstall)
+            #expect(!updater.installOnExit)
+            guard case .ready = updater.phase else { Issue.record("Cancelled restart must keep the update ready"); return }
+        }
+    }
+}
+
 @Test func updateKeepsReleaseNotesWithTheirParagraphsAndLists() throws {
     let update = try #require(try AppUpdate.available(
         in: updateRelease(body: "\r\n## Changes\n\n- **Preview** changes.\n- Keep working.\n\nSee [release](https://example.com).\n "),
@@ -254,7 +359,9 @@ private final class UpdateURLProtocol: URLProtocol, @unchecked Sendable {
     guard case .ready = updater.phase else { Issue.record("Expected a prepared update: \(updater.phase)"); return }
     await updater.check(background: true)
     #expect(updater.availableVersion == "0.0.10")
+    updater.isPresented = true
     #expect(updater.prepareToQuit())
+    #expect(!updater.isPresented)
     updater.cancelQuit()
     #expect(!updater.installOnExit)
     guard case .ready = updater.phase else { Issue.record("Cancelled exit must keep the download ready"); return }

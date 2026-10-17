@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All fourteen images were captured from **KlipRun Desktop 0.0.17** on **2026-10-17**. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All fourteen images were captured from **KlipRun Desktop 0.0.18** on **2026-10-17**. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
