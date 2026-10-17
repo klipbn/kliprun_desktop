@@ -4,6 +4,7 @@ import JavaScriptCore
 import WebKit
 import AppKit
 import CryptoKit
+import SwiftUI
 @testable import KlipRunCore
 @testable import KlipRunDesktop
 
@@ -60,6 +61,57 @@ import CryptoKit
     #expect(paragraph?.headIndent == 40)
     let unsafe = (rendered.string as NSString).range(of: "Unsafe").location
     #expect(rendered.attribute(.link, at: unsafe, effectiveRange: nil) == nil)
+}
+
+@MainActor @Test func updateDialogUsesMainWindowHeightAndGivesExtraSpaceToReleaseNotes() async throws {
+    let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let notes = "## Changes\n\n" + (1...100).map { "- Release detail \($0): improve the desktop experience." }.joined(separator: "\n")
+    try updateRelease(body: notes).write(to: file)
+    defer { try? FileManager.default.removeItem(at: file) }
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [UpdateURLProtocol.self]
+    config.httpAdditionalHeaders = ["X-Test-Release-File": file.path]
+    let session = URLSession(configuration: config)
+    defer { session.invalidateAndCancel() }
+    let updater = AppUpdater(client: AppUpdateClient(session: session), installedVersion: "0.0.9")
+    await updater.check()
+    guard case .available = updater.phase else { Issue.record("Expected an available update"); return }
+    let suite = "local.kliprun.tests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let store = DesktopStore(defaults: defaults, updater: updater)
+    let host = NSHostingView(rootView: ContentView(store: store))
+    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 980, height: 660),
+                          styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+    window.contentView = host
+    window.orderFront(nil)
+    defer {
+        if let sheet = window.attachedSheet { window.endSheet(sheet) }
+        updater.isPresented = false
+        window.orderOut(nil)
+    }
+    host.layoutSubtreeIfNeeded()
+    updater.isPresented = true
+    for _ in 0..<100 where window.attachedSheet == nil { try await Task.sleep(for: .milliseconds(20)) }
+    let sheet = try #require(window.attachedSheet)
+    func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+    var viewportHeights: [CGFloat] = []
+    for height: CGFloat in [660, 900] {
+        window.setContentSize(NSSize(width: 980, height: height))
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(300))
+        let sheetContent = try #require(sheet.contentView)
+        sheetContent.layoutSubtreeIfNeeded()
+        #expect(abs(sheetContent.bounds.height - host.bounds.height) <= 2)
+        let scroll = try #require(descendants(sheetContent).compactMap { $0 as? NSScrollView }.first {
+            ($0.documentView as? NSTextView)?.string.contains("Release detail 100") == true
+        })
+        viewportHeights.append(scroll.contentView.bounds.height)
+        #expect(scroll.documentView!.bounds.height > scroll.contentView.bounds.height)
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: scroll.documentView!.bounds.height))
+        #expect(scroll.contentView.bounds.origin.y > 0)
+    }
+    #expect(abs(viewportHeights[1] - viewportHeights[0] - 240) <= 2)
 }
 
 private func updateRelease(version: String = "0.0.10", prerelease: Bool = false, draft: Bool = false,
