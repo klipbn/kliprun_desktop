@@ -16,7 +16,11 @@ export interface CodexThread {
   model_provider?: string | null;
   /** TUI clients using the shared app-server may persist source=vscode. */
   originator?: string | null;
+  parent_thread_id?: string | null;
+  agent_nickname?: string | null;
 }
+
+const SPAWN_PARENT_SQL = "json_extract(CASE WHEN json_valid(source) THEN source END, '$.subagent.thread_spawn.parent_thread_id')";
 
 export function codexHome(): string {
   return process.env.KLIPRUN_BUN_CODEX_HOME ?? process.env.CODEX_HOME ?? join(homedir(), ".codex");
@@ -68,7 +72,8 @@ export class CodexStorage {
   private fields(): string {
     const hasOriginator = this.columns.has("originator");
     const title = this.columns.has("name") ? "COALESCE(NULLIF(TRIM(name), ''), title) AS title" : "title";
-    return `id, cwd, ${title}, source, rollout_path, updated_at, ${this.columns.has("model") ? "model" : "NULL AS model"}, ${this.columns.has("model_provider") ? "model_provider" : "NULL AS model_provider"}, ${hasOriginator ? "originator" : "NULL AS originator"}`;
+    const nickname = "json_extract(CASE WHEN json_valid(source) THEN source END, '$.subagent.thread_spawn.agent_nickname')";
+    return `id, cwd, ${title}, source, rollout_path, updated_at, ${this.columns.has("model") ? "model" : "NULL AS model"}, ${this.columns.has("model_provider") ? "model_provider" : "NULL AS model_provider"}, ${hasOriginator ? "originator" : "NULL AS originator"}, ${SPAWN_PARENT_SQL} AS parent_thread_id, ${this.columns.has("agent_nickname") ? `COALESCE(agent_nickname, ${nickname})` : nickname} AS agent_nickname`;
   }
 
   thread(id: string): CodexThread | null {
@@ -110,7 +115,23 @@ export class CodexStorage {
       const row = db.query<CodexThread, [string]>(`SELECT ${fields} FROM threads WHERE id = ? AND archived = 0 LIMIT 1`).get(id);
       if (row) rows.set(row.id, row);
     }
-    return [...rows.values()].filter(row =>
+    return this.validThreads([...rows.values()]);
+  }
+
+  /** Descendants belong to a confirmed terminal session, never to its PID. */
+  descendants(roots: string[]): CodexThread[] {
+    if (!roots.length) return [];
+    const db = this.connect();
+    const rows = db.query<CodexThread, [string]>(`WITH RECURSIVE family(id) AS (
+      SELECT value FROM json_each(?)
+      UNION
+      SELECT threads.id FROM threads JOIN family ON ${SPAWN_PARENT_SQL} = family.id WHERE archived = 0
+    ) SELECT ${this.fields()} FROM threads WHERE id IN (SELECT id FROM family)`).all(JSON.stringify(roots));
+    return this.validThreads(rows.filter(row => !roots.includes(row.id)));
+  }
+
+  private validThreads(rows: CodexThread[]): CodexThread[] {
+    return rows.filter(row =>
       [row.id, row.cwd, row.title, row.source, row.rollout_path].every(value => typeof value === "string") &&
       typeof row.updated_at === "number" && Number.isFinite(row.updated_at) && row.updated_at >= 0,
     ).map(row => ({ ...row, model: typeof row.model === "string" ? row.model : null }));
