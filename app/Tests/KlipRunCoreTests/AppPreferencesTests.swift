@@ -2,6 +2,51 @@ import Foundation
 import Testing
 @testable import KlipRunCore
 
+@Test func freshAppearanceUsesGraphiteAndLeftWhileExplicitChoicesSurvive() {
+    let suite = "local.kliprun.appearance-defaults.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let fresh = AppPreferences(defaults: defaults)
+    #expect(fresh.theme == "graphite")
+    #expect(fresh.terminalPosition == "left")
+    defaults.set("default", forKey: "appearance.theme")
+    defaults.set("bottom", forKey: "terminal.position")
+    let existing = AppPreferences(defaults: defaults)
+    #expect(existing.theme == "default")
+    #expect(existing.terminalPosition == "bottom")
+    defaults.set("invalid", forKey: "terminal.position")
+    #expect(AppPreferences(defaults: defaults).terminalPosition == "left")
+}
+
+@Test(arguments: ["default", "robot", "astronaut", "knight", "wizard", "explorer"])
+func klopikSkinPersistsAndReachesTheWebView(_ skin: String) {
+    let suite = "local.kliprun.skins.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    var preferences = AppPreferences(defaults: defaults)
+    #expect(preferences.klopikSkin == "default")
+    preferences.klopikSkin = skin
+    preferences.save(to: defaults)
+    let restored = AppPreferences(defaults: defaults)
+    #expect(restored.klopikSkin == skin)
+    #expect(restored.webScript.contains("klopikSkin: '\(skin)'"))
+    defaults.set("bad'javascript", forKey: "appearance.klopikSkin")
+    #expect(AppPreferences(defaults: defaults).klopikSkin == "default")
+}
+
+@Test func sessionsStartupIsSavedWithoutOverridingExistingKanbanChoice() {
+    let suite = "local.kliprun.startup.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    #expect(AppPreferences(defaults: defaults).startupPage == "/sessions")
+    defaults.set("/", forKey: "appearance.startupPage")
+    #expect(AppPreferences(defaults: defaults).startupPage == "/")
+    var preferences = AppPreferences(defaults: defaults)
+    preferences.startupPage = "/sessions"
+    preferences.save(to: defaults)
+    #expect(AppPreferences(defaults: defaults).startupPage == "/sessions")
+}
+
 @Test(arguments: ["default", "ember", "dusk", "graphite", "daybreak", "paper"])
 func themesPersistAndReachTheWebView(_ theme: String) {
     let suite = "local.kliprun.tests.\(UUID().uuidString)"
@@ -15,12 +60,12 @@ func themesPersistAndReachTheWebView(_ theme: String) {
     #expect(restored.webScript.contains("theme: '\(theme)'"))
 }
 
-@Test func invalidThemeFallsBackToDefault() {
+@Test func invalidThemeFallsBackToGraphite() {
     let suite = "local.kliprun.tests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suite)!
     defer { defaults.removePersistentDomain(forName: suite) }
     defaults.set("invalid'javascript", forKey: "appearance.theme")
-    #expect(AppPreferences(defaults: defaults).theme == "default")
+    #expect(AppPreferences(defaults: defaults).theme == "graphite")
 }
 
 @Test(arguments: ["user", "agent-text", "agent", "models", "kanban"])

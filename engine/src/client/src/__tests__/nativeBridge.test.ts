@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { exportStatisticsCSV, notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection, observeNativePreferences, observeNativeUpdate } from "../nativeBridge";
+import { desktopPreferences, exportStatisticsCSV, notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection, observeNativePreferences, observeNativeUpdate } from "../nativeBridge";
 
 test("update availability arrives initially and live and stops after cleanup", () => {
   const host = Object.assign(new EventTarget(), { kliprunUpdateVersion: "0.0.10" as unknown });
@@ -28,8 +28,8 @@ test("desktop preferences are delivered initially and live, with validated defau
   stop();
   host.dispatchEvent(new Event("kliprun:preferences"));
   expect(values).toEqual([
-    { detailTab: "agent-text", theme: "default", reduceMotion: true }, { detailTab: "agent", theme: "default", reduceMotion: false },
-    { detailTab: "agent-text", theme: "default", reduceMotion: false },
+    { detailTab: "agent-text", theme: "graphite", klopikSkin: "default", reduceMotion: true }, { detailTab: "agent", theme: "graphite", klopikSkin: "default", reduceMotion: false },
+    { detailTab: "agent-text", theme: "graphite", klopikSkin: "default", reduceMotion: false },
   ]);
 });
 
@@ -40,7 +40,7 @@ test("theme preference accepts only known themes", () => {
   host.kliprunPreferences = { theme: "unexpected" };
   host.dispatchEvent(new Event("kliprun:preferences"));
   stop();
-  expect(themes).toEqual(["ember", "default"]);
+  expect(themes).toEqual(["ember", "graphite"]);
 });
 
 test("reports the exact selected session to the desktop shell", () => {
@@ -108,4 +108,9 @@ test("repository selection validates paths, prefers native preferences and persi
   saveGitRepository("/new/project", host); expect(gitRepository(host)).toBe("/new/project");
   saveGitRepository("relative", host);
   expect(values).toEqual(["stored:/new/project", "native:/new/project"]);
+});
+
+test("fresh web preferences use Graphite while explicit Midnight keeps its legacy key", () => {
+  expect(desktopPreferences({}).theme).toBe("graphite");
+  expect(desktopPreferences({ kliprunPreferences: { theme: "default" } }).theme).toBe("default");
 });

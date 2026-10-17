@@ -1,6 +1,6 @@
 // Playwright callback against the fixture-only preview at 127.0.0.1:18796.
-async (page) => {
-  const base='http://127.0.0.1:18796',errors=[],external=[];
+async (page, base='http://127.0.0.1:18796') => {
+  const errors=[],external=[];
   const assert=(ok,message)=>{if(!ok)throw new Error(message)};
   const clone=value=>JSON.parse(JSON.stringify(value));
   let board, original;

@@ -53,7 +53,7 @@ export class StatsService {
     if (this.closed || this.failure) return;
     void this.ready.then(() => { if (!this.closed && !this.failure) this.worker.postMessage({ op: "observe", data: observation }); }).catch(() => {});
   }
-  async query(op: "dashboard" | "sessions" | "detail" | "office" | "recent", filters: StatsFilters | null, extra: Record<string, unknown> = {}): Promise<unknown> {
+  async query(op: "dashboard" | "sessions" | "detail" | "office" | "recent" | "catalog", filters: StatsFilters | null, extra: Record<string, unknown> = {}): Promise<unknown> {
     await this.ready;
     if (this.closed) throw new Error("Statistics service stopped");
     return this.send(op, { filters, ...extra });
@@ -69,6 +69,10 @@ export class StatsService {
 }
 
 export function registerStatsRoutes(app: Hono, service: StatsService): void {
+  app.get("/api/session-catalog", async c => {
+    try { c.header("Cache-Control", "no-store"); return c.json(await service.query("catalog", null)); }
+    catch { return c.json({ error: "Sessions temporarily unavailable" }, 503); }
+  });
   app.get("/api/recent-sessions", async c => {
     let recent;
     try { recent = parseRecentSessionsQuery(new URL(c.req.url)); }

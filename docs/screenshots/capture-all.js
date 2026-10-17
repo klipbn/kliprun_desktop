@@ -1,6 +1,5 @@
 // Playwright callback. Serve preview.ts first; all session and priority data come from mock-api.json.
-async (page, directory = "docs/screenshots") => {
-  const base = "http://127.0.0.1:18796";
+async (page, directory = "docs/screenshots", base = "http://127.0.0.1:18796") => {
   const captures = [];
   const external = [];
   const watch = request => { if (!request.url().startsWith(`${base}/`)) external.push(request.url()); };
@@ -10,12 +9,8 @@ async (page, directory = "docs/screenshots") => {
     await page.goto(`${base}${path}`);
     if (!path.startsWith("/__demo/")) {
       await page.locator('[data-testid="version"]').waitFor();
-      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.21") throw new Error("Build the 0.0.21 client before capturing.");
+      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.22") throw new Error("Build the 0.0.22 client before capturing.");
     }
-  }
-  async function sidebar(expanded) {
-    const button = page.getByRole("button", { name: expanded ? "Show recent sessions" : "Hide recent sessions", exact: true });
-    if (await button.count()) await button.click();
   }
   async function save(name) {
     await page.evaluate(() => document.fonts.ready);
@@ -24,21 +19,24 @@ async (page, directory = "docs/screenshots") => {
   }
   try {
     await visit("/", 1440, 900);
-    await page.evaluate(() => localStorage.removeItem("kliprun.recent-sessions.width"));
-    await page.reload();
     await page.locator('[data-testid="card-ses_demo_search"]').waitFor();
-    await sidebar(false);
     await save("kanban");
     await page.getByRole("button", { name: "Implement search API", exact: true }).click();
     await page.locator(".agent-markdown").first().waitFor();
     await save("kanban-details");
-    await page.setViewportSize({ width: 1600, height: 1000 });
-    await sidebar(true);
-    await page.getByRole("button", { name: "Filter sessions", exact: true }).click();
-    await page.getByRole("separator", { name: "Resize recent sessions", exact: true }).focus();
-    for (let step = 0; step < 4; step++) await page.keyboard.press("ArrowRight");
-    await page.getByRole("searchbox", { name: "Search sessions", exact: true }).focus();
-    await save("recent-sessions");
+    await visit("/sessions", 1440, 900);
+    await page.evaluate(async () => {
+      const {sessions} = await (await fetch('/api/session-catalog')).json();
+      const id = title => sessions.find(s => s.title === title).id;
+      localStorage.setItem('kliprun.sessionWorkspace',JSON.stringify({version:1,
+        projects:[{id:'atlas',name:'atlas',groups:[]},{id:'aurora',name:'aurora',groups:[{id:'research',name:'Research'},{id:'work',name:'Work'}]}],
+        assignments:{[id('Implement search API')]:{projectId:'atlas',groupId:null},[id('Review database migration')]:{projectId:'aurora',groupId:'research'},[id('Investigate flaky tests')]:{projectId:'aurora',groupId:'research'},[id('Refine onboarding UI')]:{projectId:'aurora',groupId:'work'},[id('Draft release notes')]:{projectId:'aurora',groupId:null}},
+        favorites:[id('Draft release notes')],collapsed:[],sidebarCollapsed:false}));
+    });
+    await page.reload(); await page.locator('.sw-row').first().waitFor();
+    await save('sessions');
+    await page.locator('#sw-projects button').filter({hasText:'aurora'}).click();
+    await save('session-groups');
     await visit("/office", 1600, 1200);
     await page.evaluate(() => localStorage.removeItem("kliprun.officePreferences"));
     await page.reload();

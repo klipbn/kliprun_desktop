@@ -8,7 +8,7 @@ export interface Furniture extends Point { id: string; kind: 'desk' | 'bench' | 
 export interface OfficeSpot { point: Point; area: OfficeArea; teamId: string; parentId: string | null; leader: boolean }
 export interface OfficeRoom extends Rect { id: string; label: string; kind: 'work' | 'waiting' | 'lounge' }
 export interface OfficeWorld {
-  width: number; height: number; entry: Point; rooms: OfficeRoom[]; furniture: Furniture[]; obstacles: Rect[];
+  width: number; height: number; entry: Point; exit: Point; rooms: OfficeRoom[]; furniture: Furniture[]; obstacles: Rect[];
   spots: Map<string, OfficeSpot>;
 }
 
@@ -48,7 +48,7 @@ export function buildOfficeLayout(cards: CardPayload[], placements: Map<string, 
   const compact = ratio > 3;
   const width = Math.max(ratio < 1.4 ? 960 : 1200, compact ? ratio * 390 : 0);
   const margin = 36, gap = 30, top = 105;
-  const world: OfficeWorld = { width, height: 0, entry: { x: 65, y: 0 }, rooms: [], furniture: [], obstacles: [], spots: new Map() };
+  const world: OfficeWorld = { width, height: 0, entry: { x: 65, y: 0 }, exit: { x: width / 2, y: 0 }, rooms: [], furniture: [], obstacles: [], spots: new Map() };
   const workWidth = plan === 'studio' ? width * .57 : width * .64;
   const sideWidth = width - workWidth - margin * 2 - gap * (plan === 'studio' ? 2 : 1);
   const workX = plan === 'studio' ? margin + sideWidth * .48 + gap : margin;
@@ -76,6 +76,7 @@ export function buildOfficeLayout(cards: CardPayload[], placements: Map<string, 
   const sideHeight = compact || plan === 'studio' ? Math.max(waitingHeight, loungeHeight) : waitingHeight + loungeHeight + gap;
   world.height = Math.max(top + Math.max(buildHeight, sideHeight) + 65, width / ratio);
   world.entry.y = world.height - 45;
+  world.exit.y = world.height - 40;
   const addFurniture = (f: Furniture, obstacle?: Rect) => { world.furniture.push(f); if (obstacle) world.obstacles.push(obstacle); };
   const populate = (room: OfficeRoom, members: CardPayload[]) => {
     world.rooms.push(room);

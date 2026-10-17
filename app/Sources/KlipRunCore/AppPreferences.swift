@@ -9,6 +9,7 @@ public struct AppPreferences: Equatable {
     public var startupPage: String
     public var detailTab: String
     public var theme: String
+    public var klopikSkin: String
     public var reduceMotion: Bool
 
     public init(defaults: UserDefaults = .standard) {
@@ -16,10 +17,11 @@ public struct AppPreferences: Equatable {
         smoothSensitivity = defaults.object(forKey: "terminal.smoothSensitivity") as? Double ?? 1
         terminalFontSize = defaults.object(forKey: "terminal.fontSize") as? Double ?? 13
         interfaceZoomPercent = defaults.object(forKey: "interface.zoom") as? Int ?? 100
-        terminalPosition = defaults.string(forKey: "terminal.position") ?? "bottom"
-        startupPage = defaults.string(forKey: "appearance.startupPage") ?? "/"
+        terminalPosition = defaults.string(forKey: "terminal.position") ?? "left"
+        startupPage = defaults.string(forKey: "appearance.startupPage") ?? "/sessions"
         detailTab = defaults.string(forKey: "appearance.detailTab") ?? "agent-text"
-        theme = defaults.string(forKey: "appearance.theme") ?? "default"
+        theme = defaults.string(forKey: "appearance.theme") ?? "graphite"
+        klopikSkin = defaults.string(forKey: "appearance.klopikSkin") ?? "default"
         reduceMotion = defaults.bool(forKey: "appearance.reduceMotion")
         self = validated()
     }
@@ -33,10 +35,11 @@ public struct AppPreferences: Equatable {
         value.smoothSensitivity = bounded(smoothSensitivity, 1...10, fallback: 1).rounded()
         value.terminalFontSize = bounded(terminalFontSize, 10...24, fallback: 13).rounded()
         value.interfaceZoomPercent = InterfaceZoom(percent: interfaceZoomPercent).percent
-        if !["bottom", "left"].contains(terminalPosition) { value.terminalPosition = "bottom" }
-        if !["/", "/git", "/office", "/stats", "/usage"].contains(startupPage) { value.startupPage = "/" }
+        if !["bottom", "left"].contains(terminalPosition) { value.terminalPosition = "left" }
+        if !["/sessions", "/", "/git", "/office", "/stats", "/usage"].contains(startupPage) { value.startupPage = "/" }
         if !["user", "agent-text", "agent", "models", "kanban"].contains(detailTab) { value.detailTab = "agent-text" }
-        if !["default", "ember", "dusk", "graphite", "daybreak", "paper"].contains(theme) { value.theme = "default" }
+        if !["default", "ember", "dusk", "graphite", "daybreak", "paper"].contains(theme) { value.theme = "graphite" }
+        if KlopikSkin(rawValue: klopikSkin) == nil { value.klopikSkin = "default" }
         return value
     }
 
@@ -50,12 +53,13 @@ public struct AppPreferences: Equatable {
         defaults.set(value.startupPage, forKey: "appearance.startupPage")
         defaults.set(value.detailTab, forKey: "appearance.detailTab")
         defaults.set(value.theme, forKey: "appearance.theme")
+        defaults.set(value.klopikSkin, forKey: "appearance.klopikSkin")
         defaults.set(value.reduceMotion, forKey: "appearance.reduceMotion")
     }
 
     public var webScript: String {
         // Only validated enum values and booleans cross into the web view.
         let value = validated()
-        return "window.kliprunPreferences = {detailTab: '\(value.detailTab)', theme: '\(value.theme)', reduceMotion: \(value.reduceMotion)}; window.dispatchEvent(new Event('kliprun:preferences'));"
+        return "window.kliprunPreferences = {detailTab: '\(value.detailTab)', theme: '\(value.theme)', klopikSkin: '\(value.klopikSkin)', reduceMotion: \(value.reduceMotion)}; window.dispatchEvent(new Event('kliprun:preferences'));"
     }
 }

@@ -4,6 +4,22 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.22] - 2026-10-17
+
+### Added
+
+- Native File, Edit, View, Navigate, Terminal and Help menus now expose session/project creation, repository opening, saving, contextual close, CodeMirror/native undo and redo, find, terminal layout/tab controls, full screen, draft-preserving data refresh and diagnostics. Unsaved file drafts prevent accidental window close or quit.
+- Settings → Appearance now offers Klopik skins: the original Default plus Robot, Astronaut, Knight, Wizard and Explorer. Each new set has four stable per-session equipment variations, previews in Settings, and matching Office/leaderboard avatars. The selection persists and applies immediately.
+- Office characters now walk through an EXIT door when agents or subagents leave the board. Returning sessions cancel the departure; reduced motion skips walking. The exit is available in every floor plan.
+- A compact Sessions workspace with favorites, custom projects, project-scoped groups, search across indexed history, collapse/expand, bulk moves, drag and drop, and undo. Organization persists across application restarts without modifying agent sessions or their folders.
+- Per-session observed running time, latest context usage, and the model with the most observed running time. Missing measurements remain unknown.
+
+### Changed
+
+- Use Graphite and a left terminal dock for fresh settings. Rename the original Default palette to Midnight, preserve saved choices, and order terminal-position controls Left before Bottom. Reset terminal settings now restores Left.
+- Move session history out of Kanban into Sessions, before Kanban in the toolbar. All sessions shows assigned projects first and No project last; groups inside a project include Uncategorized.
+- Navigation now uses Control+1 Sessions, Control+2 Kanban, Control+3 Office, Control+4 Git, Control+5 Usage, and Control+6 Statistics. Update the macOS Navigate menu, startup options and shortcut help. New installations start on Sessions; saved startup preferences are preserved.
+
 ## [0.0.21] - 2026-10-17
 
 ### Added

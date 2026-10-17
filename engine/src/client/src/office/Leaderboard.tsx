@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import type { CardPayload } from "@shared/types";
 import type { OfficeUsagePayload } from "@shared/usage";
 import { formatTokens } from "@shared/format";
+import { klopikVariant, type KlopikSkin } from './skins';
 import { colorFor, Mascot, modelName } from "./appearance";
 
 export function useOfficeUsage(sessionIds: string[]) {
@@ -38,8 +39,8 @@ export function useOfficeUsage(sessionIds: string[]) {
   return state.key === key ? state : { usage: null, pending: !!key, error: null };
 }
 
-export function OfficeLeaderboard({ residents, usage, pending, error, onSelect }: {
-  residents: CardPayload[]; usage: OfficeUsagePayload | null; pending: boolean; error: string | null; onSelect: (id: string) => void;
+export function OfficeLeaderboard({ residents, usage, pending, error, onSelect, skin = 'default' }: {
+  skin?: KlopikSkin; residents: CardPayload[]; usage: OfficeUsagePayload | null; pending: boolean; error: string | null; onSelect: (id: string) => void;
 }) {
   const totals = new Map(usage?.rows.map(row => [row.session_id, row]) ?? []);
   const ranked = [...residents].sort((a, b) => (totals.get(b.session_id)?.tokens ?? -1) - (totals.get(a.session_id)?.tokens ?? -1)
@@ -58,7 +59,7 @@ export function OfficeLeaderboard({ residents, usage, pending, error, onSelect }
         onClick={() => onSelect(card.session_id)} style={{ "--resident-color": colorFor(card.session_id) } as CSSProperties}
         title={`${card.title}\n${modelName(card)}\n${known ? `${total.tokens!.toLocaleString("en-US")} tokens${total.incomplete ? " · Partial data" : ""}` : "No data"}`}>
         <span className="office-leaderboard-rank">{known ? String(index + 1).padStart(2, "0") : "—"}</span>
-        <svg className="office-leaderboard-avatar" viewBox="60 40 110 90" shapeRendering="crispEdges" aria-hidden="true"><Mascot /></svg>
+        <svg className="office-leaderboard-avatar" viewBox={skin === "default" ? "60 40 110 90" : "60 22 110 104"} shapeRendering="crispEdges" aria-hidden="true"><Mascot skin={skin} variant={klopikVariant(card.session_id)} /></svg>
         <span className="office-leaderboard-entry"><span className="office-leaderboard-session">{card.title}</span>
           <span className="office-leaderboard-model">{modelName(card)}</span>
           <span className="office-leaderboard-tokens">{known ? `${total.incomplete ? "≈ " : ""}${formatTokens(total.tokens)}` : "No data"}</span></span>

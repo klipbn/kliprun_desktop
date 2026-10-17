@@ -19,6 +19,7 @@ final class DesktopAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard store.menu.allowWindowClose() else { store.updater.cancelQuit(); return .terminateCancel }
         let activeCount = store.activeTerminalCount
         if activeCount > 0 {
             sender.activate(ignoringOtherApps: true)
@@ -47,75 +48,6 @@ struct KlipRunApp: App {
     @NSApplicationDelegateAdaptor(DesktopAppDelegate.self) private var delegate
     var body: some Scene {
         WindowGroup("KlipRun") { ContentView(store: delegate.store) }
-            .commands {
-                CommandGroup(replacing: .newItem) {}
-                CommandGroup(replacing: .appSettings) {
-                    Button("Settings…") { delegate.store.showSettings() }
-                        .keyboardShortcut(",", modifiers: [.command])
-                    Button("Check for Updates…") { delegate.store.checkForUpdates() }
-                }
-                CommandGroup(replacing: .help) {
-                    Link("KlipRun Help", destination: URL(string: "https://github.com/klipbn/kliprun_desktop#readme")!)
-                    Link("Report an Issue…", destination: URL(string: "https://github.com/klipbn/kliprun_desktop/issues/new")!)
-                }
-                TerminalCommands(store: delegate.store)
-                CommandGroup(after: .toolbar) {
-                    Button("Zoom In") { delegate.store.zoomIn() }
-                        .keyboardShortcut("+", modifiers: [.command])
-                    Button("Zoom Out") { delegate.store.zoomOut() }
-                        .keyboardShortcut("-", modifiers: [.command])
-                    Button("Actual Size") { delegate.store.resetZoom() }
-                        .keyboardShortcut("0", modifiers: [.command])
-                }
-                CommandMenu("Navigate") {
-                    Button("Kanban Board") { delegate.store.showPage("/") }
-                        .keyboardShortcut("1", modifiers: [.control])
-                    Button("Git") { delegate.store.showPage("/git") }
-                        .keyboardShortcut("2", modifiers: [.control])
-                    Button("Office") { delegate.store.showPage("/office") }
-                        .keyboardShortcut("3", modifiers: [.control])
-                    Button("Usage") { delegate.store.showPage("/usage") }
-                        .keyboardShortcut("4", modifiers: [.control])
-                    Button("Statistics") { delegate.store.showPage("/stats") }
-                        .keyboardShortcut("5", modifiers: [.control])
-                }
-                CommandMenu("Agents") {
-                    Button("New Terminal") { delegate.store.chooseNewTerminal() }
-                        .keyboardShortcut("t", modifiers: [.command])
-                    Button("New OpenCode") { delegate.store.launch(source: "opencode") }
-                        .keyboardShortcut("o", modifiers: [.command, .shift])
-                    Button("New Codex") { delegate.store.launch(source: "codex") }
-                        .keyboardShortcut("c", modifiers: [.command, .shift])
-                    Button("Toggle Terminal") { delegate.store.toggleTerminal() }
-                        .keyboardShortcut("j", modifiers: [.command])
-                    Button("Expand/Restore Terminal") { delegate.store.toggleTerminalExpanded() }
-                        .keyboardShortcut(.return, modifiers: [.command])
-                    Divider()
-                    ForEach(1...9, id: \.self) { number in
-                        Button("Terminal Tab \(number)") { delegate.store.selectTerminalTab(number: number) }
-                            .keyboardShortcut(KeyEquivalent(Character(String(number))), modifiers: [.command])
-                    }
-                    Button("Rename Terminal Tab") { delegate.store.renameSelectedTerminal() }
-                        .keyboardShortcut("r", modifiers: [.command])
-                    Divider()
-                    Button("Open in iTerm2") { delegate.store.openSelectedInITerm() }
-                    Button("Quit Legacy Notifications") {
-                        for app in NSRunningApplication.runningApplications(withBundleIdentifier: "local.kliprun.notifications") { app.terminate() }
-                    }
-                }
-            }
-    }
-}
-
-private struct TerminalCommands: Commands {
-    @ObservedObject var store: DesktopStore
-    var body: some Commands {
-        CommandGroup(replacing: .saveItem) {
-            Button("Close Terminal") {
-                if let id = store.selectedTerminalID { store.closeTerminal(id) }
-            }
-            .keyboardShortcut("w", modifiers: [.command])
-            .disabled(store.selectedTerminalID == nil)
-        }
+            .commands { DesktopCommands(store: delegate.store) }
     }
 }

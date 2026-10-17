@@ -1,6 +1,6 @@
 // Playwright callback: pass parsed mock-api.json as the third argument. No real file API is used.
-async (page, directory = "docs/screenshots", fixture) => {
-  const base = "http://127.0.0.1:18796", root = fixture.git.status.root;
+async (page, directory = "docs/screenshots", fixture, base = "http://127.0.0.1:18796") => {
+  const root = fixture.git.status.root;
   const external = [];
   const watch = request => { if (!request.url().startsWith(`${base}/`)) external.push(request.url()); };
   const list = route => route.fulfill({ json: { root, files: Object.keys(fixture.git.text_files), truncated: false } });

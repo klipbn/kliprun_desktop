@@ -24,3 +24,5 @@
 
 .office-layout-tabs button[aria-pressed=true]:hover{background:#bce0c8;color:#173225}
 @container office (max-height:300px){.office-toolbar{min-height:34px;padding-top:4px;padding-bottom:4px}.office-toolbar h2{font-size:15px}.office-layout-tabs{padding:2px}.office-layout-tabs button{padding-top:3px;padding-bottom:3px}.office-toolbar-actions button{padding:4px}.office-footer{min-height:28px;padding-top:3px;padding-bottom:3px}.office-camera{bottom:5px;right:6px}.office-camera button{padding:3px 6px}}
+
+.office-resident.office-leaving{cursor:default}.office-resident.office-leaving .office-selection-ring{opacity:0}.office-timer[data-timer-state=leaving]{fill:#bbcec4}

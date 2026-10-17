@@ -15,15 +15,15 @@ struct KlipRunWebView: NSViewRepresentable {
         configuration.websiteDataStore = .nonPersistent()
         configuration.userContentController.add(context.coordinator, name: "sessionSelected")
         configuration.userContentController.add(context.coordinator, name: "sessionResume")
-        configuration.userContentController.add(context.coordinator, name: "recentSessionsCollapsed")
+        configuration.userContentController.add(context.coordinator, name: "menuState")
+        configuration.userContentController.add(context.coordinator, name: "sessionWorkspace")
+        configuration.userContentController.addUserScript(WKUserScript(source: SessionWorkspace().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "officePreferences")
         configuration.userContentController.addUserScript(WKUserScript(source: OfficePreferences().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "cardOrder")
         configuration.userContentController.addUserScript(WKUserScript(source: SessionOrder().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "cardPriorities")
         configuration.userContentController.addUserScript(WKUserScript(source: SessionPriorities().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        let collapsed = UserDefaults.standard.bool(forKey: "recentSessions.collapsed")
-        configuration.userContentController.addUserScript(WKUserScript(source: "window.kliprunRecentSessionsCollapsed = \(collapsed);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.addUserScript(WKUserScript(source: store.preferences.webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.addUserScript(WKUserScript(source: AppUpdater.webScript(version: store.updater.availableVersion), injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "desktopAction")
@@ -56,7 +56,8 @@ struct KlipRunWebView: NSViewRepresentable {
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "sessionSelected")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "sessionResume")
-        webView.configuration.userContentController.removeScriptMessageHandler(forName: "recentSessionsCollapsed")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "menuState")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "sessionWorkspace")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "officePreferences")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "cardOrder")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "cardPriorities")
@@ -75,7 +76,14 @@ struct KlipRunWebView: NSViewRepresentable {
         init(store: DesktopStore) { self.store = store }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            if message.name == "exportStatistics",
+            if message.name == "menuState",
+               message.frameInfo.isMainFrame,
+               message.frameInfo.securityOrigin.host == "127.0.0.1",
+               message.frameInfo.securityOrigin.port == loadedBaseURL?.port,
+               let body = message.body as? [String: Any], let state = DesktopMenuState(message: body) {
+                store.menu.webState = state
+                store.menu.updateFocus()
+            } else if message.name == "exportStatistics",
                message.frameInfo.isMainFrame,
                message.frameInfo.securityOrigin.host == "127.0.0.1",
                message.frameInfo.securityOrigin.port == loadedBaseURL?.port,
@@ -131,8 +139,15 @@ struct KlipRunWebView: NSViewRepresentable {
                 store.selectWebSession(message.body as? String)
             } else if message.name == "sessionResume", let id = message.body as? String {
                 store.resumeSession(id)
-            } else if message.name == "recentSessionsCollapsed", let collapsed = message.body as? Bool {
-                UserDefaults.standard.set(collapsed, forKey: "recentSessions.collapsed")
+            } else if message.name == "sessionWorkspace",
+                      message.frameInfo.isMainFrame,
+                      message.frameInfo.securityOrigin.host == "127.0.0.1",
+                      message.frameInfo.securityOrigin.port == loadedBaseURL?.port,
+                      let body = message.body as? [String: Any], SessionWorkspace().set(body) {
+                let scripts = userContentController.userScripts.filter { !$0.source.hasPrefix("window.kliprunSessionWorkspace = ") }
+                userContentController.removeAllUserScripts()
+                scripts.forEach(userContentController.addUserScript)
+                userContentController.addUserScript(WKUserScript(source: SessionWorkspace().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
             } else if message.name == "desktopAction",
                       message.frameInfo.isMainFrame,
                       message.frameInfo.securityOrigin.host == "127.0.0.1",

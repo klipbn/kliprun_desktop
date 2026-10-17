@@ -1,4 +1,6 @@
 import type { CardPayload } from "@shared/types";
+import type { KlopikSkin } from './skins';
+import { SkinnedMascot } from './SkinnedMascot';
 
 const COLORS = ["#ed987f", "#8eb5ff", "#c3a0ef", "#8dd5ae", "#efd081", "#ed9dc5", "#85d5de"];
 
@@ -13,9 +15,10 @@ export function modelName(card: CardPayload) {
   return model ? model.slice(model.indexOf("/") + 1) : "Unknown model";
 }
 
-export function Mascot({ small = false, raised = false }: { small?: boolean; raised?: boolean }) {
+export function Mascot({ small = false, raised = false, skin = 'default', variant = 0 }: { small?: boolean; raised?: boolean; skin?: KlopikSkin; variant?: number }) {
+  if (skin !== 'default') return <SkinnedMascot skin={skin} variant={variant} raised={raised} small={small} />;
   // The notification sprite pivots its arm at (80, 24); Office art is offset by (72, 55).
-  return <g className={`office-mascot${small ? " office-mascot-small" : ""}`}>
+  return <g className={`office-mascot${small ? " office-mascot-small" : ""}`} data-klopik-skin="default" data-klopik-variant="0">
     <g className="office-feet" fill="var(--resident-color)">
       <path d="M94 96h10v18H94zM114 96h10v18h-10zM134 96h10v18h-10z" />
     </g>

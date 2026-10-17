@@ -1,8 +1,9 @@
+import { validateKlopikSkin, type KlopikSkin } from './office/skins';
+
 type NativeBridgeHost = {
   webkit?: { messageHandlers?: {
     sessionSelected?: { postMessage: (id: string | null) => void };
     sessionResume?: { postMessage: (id: string) => void };
-    recentSessionsCollapsed?: { postMessage: (collapsed: boolean) => void };
     desktopAction?: { postMessage: (action: string) => void };
     exportStatistics?: { postMessage: (request: { filename: string; content: string }) => void };
     gitRepository?: { postMessage: (directory: string) => void };
@@ -41,17 +42,19 @@ export interface DesktopPreferences {
   detailTab: "user" | "agent-text" | "agent" | "models" | "kanban";
   theme: "default" | "ember" | "dusk" | "graphite" | "daybreak" | "paper";
   reduceMotion: boolean;
+  klopikSkin: KlopikSkin;
 }
 
-type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; theme?: unknown; reduceMotion?: unknown } };
+type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; theme?: unknown; reduceMotion?: unknown; klopikSkin?: unknown } };
 
 export function desktopPreferences(host: PreferencesHost = typeof window === "undefined" ? {} : window as PreferencesHost): DesktopPreferences {
   const value = host.kliprunPreferences;
   const tab = value?.detailTab;
   return {
     detailTab: tab === "user" || tab === "agent" || tab === "models" || tab === "kanban" ? tab : "agent-text",
-    theme: value?.theme === "ember" || value?.theme === "dusk" || value?.theme === "graphite" || value?.theme === "daybreak" || value?.theme === "paper" ? value.theme : "default",
+    theme: value?.theme === "default" || value?.theme === "ember" || value?.theme === "dusk" || value?.theme === "graphite" || value?.theme === "daybreak" || value?.theme === "paper" ? value.theme : "graphite",
     reduceMotion: value?.reduceMotion === true,
+    klopikSkin: validateKlopikSkin(value?.klopikSkin),
   };
 }
 
@@ -99,17 +102,6 @@ export function notifyNativeSelection(id: string | null, host: NativeBridgeHost 
 
 export function notifyNativeResume(id: string, host: NativeBridgeHost = window as unknown as NativeBridgeHost): void {
   host.webkit?.messageHandlers?.sessionResume?.postMessage(id);
-}
-
-export function setRecentSessionsCollapsed(collapsed: boolean): void {
-  try { localStorage.setItem("kliprun.recent-sessions-collapsed", String(collapsed)); } catch { /* storage unavailable */ }
-  (window as unknown as NativeBridgeHost).webkit?.messageHandlers?.recentSessionsCollapsed?.postMessage(collapsed);
-}
-
-export function recentSessionsCollapsed(): boolean {
-  const native = (window as unknown as { kliprunRecentSessionsCollapsed?: boolean }).kliprunRecentSessionsCollapsed;
-  if (native !== undefined) return native;
-  try { return localStorage.getItem("kliprun.recent-sessions-collapsed") === "true"; } catch { return false; }
 }
 
 export function observeNativeTerminalSelection(onSelect: (id: string | null) => void, host: EventTarget = window): () => void {

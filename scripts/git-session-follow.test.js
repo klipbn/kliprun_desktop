@@ -1,10 +1,9 @@
 // Playwright callback against the fixture-only preview; never opens live repositories.
-async (page) => {
+async (page, base = "http://127.0.0.1:18796") => {
   const context = await page.context().browser().newContext(); page = await context.newPage();
-  const base = "http://127.0.0.1:18796";
   const atlas = "/Users/demo/Projects/atlas", aurora = "/Users/demo/Projects/aurora", notes = "/Users/demo/Projects/notes";
   const fixture = await (await page.request.get(`${base}/api/git/status?directory=${encodeURIComponent(atlas)}`)).json();
-  const recent = await (await page.request.get(`${base}/api/recent-sessions`)).json();
+  const recent = await (await page.request.get(`${base}/api/session-catalog`)).json();
   recent.sessions.find(session => session.id === "ses_demo_previous_rollout").directory = notes;
   const assert = (value, message) => { if (!value) throw new Error(message); };
   let pendingAction, unavailable = false;
@@ -15,7 +14,7 @@ async (page) => {
     window.kliprunGitRepository = atlas;
     window.kliprunTerminalSessionId = "ses_demo_review";
   }, { atlas });
-  await page.route(`${base}/api/recent-sessions`, route => route.fulfill({ json: recent }));
+  await page.route(`${base}/api/session-catalog`, route => route.fulfill({ json: recent }));
   await page.route(`${base}/api/git/status?*`, route => {
     const directory = decodeURIComponent(route.request().url().match(/[?&]directory=([^&]*)/)[1].replace(/\+/g, " "));
     return directory === notes || unavailable
@@ -89,7 +88,7 @@ async (page) => {
     return { sessionSelection: true, noRepository: true, drafts: true, switchDuringCommit: true, nestedFolder: true };
   } finally {
     if (pendingAction) await pendingAction.fulfill({ status: 409, json: { error: "Test cancelled." } }).catch(() => {});
-    await page.unroute(`${base}/api/recent-sessions`);
+    await page.unroute(`${base}/api/session-catalog`);
     await page.unroute(`${base}/api/git/status?*`); await page.unroute(`${base}/api/git/diff?*`); await page.unroute(`${base}/api/git/action`);
     page.off("pageerror", onError);
     await context.close();

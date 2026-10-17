@@ -1,6 +1,5 @@
 // Playwright callback. All rendered data comes from mock-api.json via preview.ts.
-async (page, directory = "docs/screenshots") => {
-  const base = "http://127.0.0.1:18796";
+async (page, directory = "docs/screenshots", base = "http://127.0.0.1:18796") => {
   const external = [];
   const listener = request => { if (!request.url().startsWith(`${base}/`)) external.push(request.url()); };
   page.on("request", listener);

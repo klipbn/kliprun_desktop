@@ -47,6 +47,8 @@ cp -R "$project_dir/engine/node_modules/hono" "$app_dir/Contents/Resources/engin
 cp "$project_dir/engine/tsconfig.json" "$project_dir/engine/package.json" "$app_dir/Contents/Resources/engine/"
 cp "$project_dir/engine/LICENSE" "$app_dir/Contents/Resources/KlipRun-LICENSE"
 cp "$project_dir/vendor/SwiftTerm/LICENSE" "$app_dir/Contents/Resources/SwiftTerm-LICENSE"
+mkdir -p "$app_dir/Contents/Resources/KlopikSkins"
+cp "$project_dir/engine/src/client/public/klopik-skins/"*.png "$app_dir/Contents/Resources/KlopikSkins/"
 codesign --force --deep --sign - "$app_dir"
 touch "$app_dir"
 if [[ "$app_dir" == "$project_dir/dist/KlipRun.app" ]]; then

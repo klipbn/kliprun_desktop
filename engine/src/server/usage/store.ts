@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import type { OfficeUsagePayload, RecentSessionsPayload, RecentSessionsQuery, UsageAttribution, UsageEvent, UsageImportStatus, UsageInterval, UsageObservation, UsageSession } from "@shared/usage";
 import type { UsageDataset } from "./aggregate";
 import { scrub } from "../security";
+import { buildSessionCatalog } from "./catalog";
 
 /** KlipRun-owned derived metadata only. No prompts, response text or tool output. */
 export class UsageStore {
@@ -73,6 +74,13 @@ export class UsageStore {
         insert.run(sessionId, event.id, event.at, JSON.stringify(safe));
       }
     })();
+  }
+  sessionCatalog() {
+    const sessions = this.db.query<{ data: string }, []>("SELECT data FROM usage_sessions WHERE json_extract(data,'$.parent_id') IS NULL").all().map(r => JSON.parse(r.data) as UsageSession);
+    const intervals = this.db.query<{ data: string }, []>("SELECT data FROM usage_intervals").all().map(r => JSON.parse(r.data) as UsageInterval);
+    const attributions = this.db.query<{ interval_id: number; start: number; end: number; agent: string | null; model: string | null }, []>(
+      "SELECT interval_id,start_at AS start,end_at AS end,agent,model FROM usage_attributions").all();
+    return buildSessionCatalog({ sessions, intervals, attributions, observed_at: Number(this.getCheckpoint("observed_at") ?? 0) });
   }
   replaceEvents(sessionId: string, events: UsageEvent[]): void {
     this.db.transaction(() => {

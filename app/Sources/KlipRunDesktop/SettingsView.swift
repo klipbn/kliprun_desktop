@@ -117,9 +117,9 @@ struct SettingsView: View {
                     .font(.system(size: CGFloat(store.preferences.terminalFontSize), design: .monospaced))
                     .foregroundStyle(SettingsStyle.accent).frame(maxWidth: .infinity, alignment: .leading).padding(12)
                     .background(SettingsStyle.background, in: RoundedRectangle(cornerRadius: 6))
-                choices("Terminal position", key: \.terminalPosition, values: [("Bottom", "bottom"), ("Left", "left")])
+                choices("Terminal position", key: \.terminalPosition, values: [("Left", "left"), ("Bottom", "bottom")])
                 Button("Reset terminal settings") {
-                    store.updatePreferences { $0.wheelSensitivity = 5; $0.smoothSensitivity = 1; $0.terminalFontSize = 13; $0.terminalPosition = "bottom" }
+                    store.updatePreferences { $0.wheelSensitivity = 5; $0.smoothSensitivity = 1; $0.terminalFontSize = 13; $0.terminalPosition = "left" }
                 }
             }
             SettingsCard(title: "Keyboard shortcuts", subtitle: "Keep your hands on the keyboard.") {
@@ -164,7 +164,7 @@ struct SettingsView: View {
                 }
             }
             SettingsCard(title: "Default views", subtitle: "The startup screen opens next launch. The details tab applies immediately.") {
-                choices("Startup screen", key: \.startupPage, values: [("Kanban", "/"), ("Git", "/git"), ("Office", "/office"), ("Usage", "/usage"), ("Statistics", "/stats")])
+                choices("Startup screen", key: \.startupPage, values: [("Sessions", "/sessions"), ("Kanban", "/"), ("Office", "/office"), ("Git", "/git"), ("Usage", "/usage"), ("Statistics", "/stats")])
                 choices("Default details tab", key: \.detailTab, values: [("User", "user"), ("Agents T", "agent-text"), ("Agent", "agent"), ("Models", "models"), ("Kanban", "kanban")])
             }
             SettingsCard(title: "Motion", subtitle: "KlipRun also respects the macOS Reduce Motion setting.") {
@@ -173,7 +173,7 @@ struct SettingsView: View {
             SettingsCard(title: "Select Theme", subtitle: "Choose an interface palette. Changes apply immediately.") {
                 Button { themeMenuOpen.toggle() } label: {
                     HStack(spacing: 8) {
-                        Text(themeOptions.first { $0.0 == store.preferences.theme }?.1 ?? "Default")
+                        Text(themeOptions.first { $0.0 == store.preferences.theme }?.1 ?? "Graphite")
                         Spacer()
                         Image(systemName: "chevron.down").font(.system(size: 10)).foregroundStyle(.secondary)
                     }
@@ -199,12 +199,21 @@ struct SettingsView: View {
                     .background(SettingsStyle.surface)
                 }
             }
+            SettingsCard(title: "Klopik skins", subtitle: "Choose your Office characters. Each agent keeps its own variation within the set.") {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                    ForEach(KlopikSkin.allCases, id: \.rawValue) { skin in
+                        KlopikSkinOption(skin: skin, selected: store.preferences.klopikSkin == skin.rawValue) {
+                            store.updatePreferences { $0.klopikSkin = skin.rawValue }
+                        }
+                    }
+                }
+            }
         }
     }
 
     private var themeOptions: [(String, String)] {
-        [("default", "Default"), ("ember", "Ember"), ("dusk", "Dusk"),
-         ("graphite", "Graphite"), ("daybreak", "Daybreak"), ("paper", "Paper")]
+        [("graphite", "Graphite"), ("default", "Midnight"), ("ember", "Ember"),
+         ("dusk", "Dusk"), ("daybreak", "Daybreak"), ("paper", "Paper")]
     }
 
     private var about: some View {
@@ -261,6 +270,37 @@ struct SettingsView: View {
 
     private func shortcut(_ title: String, _ keys: String) -> some View {
         HStack { Text(title).foregroundStyle(.secondary); Spacer(); Text(keys).monospacedDigit() }
+    }
+}
+
+struct KlopikSkinOption: View {
+    let skin: KlopikSkin
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                if let url = Bundle.main.url(forResource: skin.rawValue, withExtension: "png", subdirectory: "KlopikSkins"),
+                   let image = NSImage(contentsOf: url) {
+                    Image(nsImage: image).resizable().interpolation(.none).scaledToFit().frame(height: 48)
+                } else {
+                    Image(systemName: "person.fill").frame(height: 48).foregroundStyle(SettingsStyle.accent)
+                }
+                HStack(spacing: 4) {
+                    Text(skin.label).font(.system(size: 11, weight: .medium))
+                    if selected { Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)) }
+                }
+            }
+            .frame(maxWidth: .infinity).padding(8)
+            .foregroundStyle(selected ? SettingsStyle.accent : Color.secondary)
+            .background(selected ? SettingsStyle.accent.opacity(0.1) : SettingsStyle.background, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(selected ? SettingsStyle.accent : SettingsStyle.border))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).accessibilityLabel("Klopik skin: \(skin.label)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityIdentifier("klopik-skin-\(skin.rawValue)")
     }
 }
 
