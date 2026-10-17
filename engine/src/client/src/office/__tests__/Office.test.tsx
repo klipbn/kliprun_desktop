@@ -60,26 +60,22 @@ test("office highlights only the coworker matching the active terminal, includin
   for (const activeTerminalId of ["parent", "child", "codex:waiting", "idle", null, "missing"]) {
     const html = renderToStaticMarkup(<Office board={residents} isRead={readAll} now={100}
       activeTerminalId={activeTerminalId} onSelect={() => {}} />);
-    const highlighted = [...html.matchAll(/<button[^>]*data-session-id="([^"]+)"[^>]*data-active-terminal="true"/g)].map(match => match[1]);
+    const highlighted = [...html.matchAll(/<g[^>]*data-session-id="([^"]+)"[^>]*data-active-terminal="true"/g)].map(match => match[1]);
     expect(highlighted).toEqual(activeTerminalId && activeTerminalId !== "missing" ? [activeTerminalId] : []);
     expect((html.match(/data-testid="office-active-terminal-badge"/g) ?? []).length).toBe(highlighted.length);
   }
 });
 
-test("the empty waiting area is a persistent meeting room rather than an unoccupied help queue", () => {
+test("the meeting room remains available with no waiting coworkers", () => {
   const html = renderToStaticMarkup(<Office isRead={readAll} board={board([])} onSelect={() => {}} />);
-  expect(html).toContain('aria-label="Meeting room"');
-  expect(html).toContain('aria-label="Meeting room available"');
-  expect(html).not.toContain("Human needed");
-  expect(html).not.toContain("No questions for now");
+  expect(html).toContain('data-zone="meeting"');
+  expect(html).toContain('Meeting room');
+  expect(html).not.toContain('data-office-state="waiting"');
 });
 
-test("a coworker with a question sits in the meeting room and requests input immediately", () => {
+test("a coworker with a question immediately has a waiting destination", () => {
   const html = renderToStaticMarkup(<Office isRead={readAll} board={board([card("question", { column: "attention", running_since: null })])} onSelect={() => {}} />);
-  const meeting = html.match(/<section[^>]*aria-label="Meeting room"[\s\S]*?<\/section>/)?.[0];
-  expect(meeting).toBeDefined();
-  expect(meeting).toContain('aria-label="Meeting needs your input"');
-  expect(meeting).toContain('data-session-id="question" data-office-state="waiting"');
+  expect(html).toMatch(/data-session-id="question"[^>]*data-office-state="waiting"[^>]*data-office-area="waiting"/);
 });
 
 test("raised arms stay joined to the body for questions and unread idle coworkers", () => {
@@ -91,25 +87,6 @@ test("raised arms stay joined to the body for questions and unread idle coworker
   expect(raisedArm(unread, "review")).toBeDefined();
   expect(raisedArm(read, "review")).toBeUndefined();
   expect(read).toContain('class="office-arm-right" d="M152 76h8v20h-8z"');
-});
-
-test("office rooms are independent peers in work, idle, meeting, superwork order with plain headings", () => {
-  const html = renderToStaticMarkup(<Office isRead={readAll} board={board([])} onSelect={() => {}} />);
-  let depth = 0;
-  const rooms: Array<{ name: string; depth: number }> = [];
-  for (const match of html.matchAll(/<section\b[^>]*>|<\/section>/g)) {
-    if (match[0] === "</section>") { depth--; continue; }
-    const name = match[0].match(/aria-label="([^"]+)"/)?.[1];
-    if (name && ["Work zone", "Idle zone", "Meeting room", "Superwork zone"].includes(name)) rooms.push({ name, depth });
-    depth++;
-  }
-  expect(rooms).toEqual([
-    { name: "Work zone", depth: 1 }, { name: "Idle zone", depth: 1 },
-    { name: "Meeting room", depth: 1 }, { name: "Superwork zone", depth: 1 },
-  ]);
-  expect(html).toContain("<h3>Meeting room</h3>");
-  expect(html).toContain("<h3>Superwork</h3>");
-  expect(html).not.toContain("⚡ Superwork");
 });
 
 test("a coworker keeps their color when their state and board position change", () => {
@@ -165,8 +142,8 @@ test("coworkers show their model and the time spent in their current state above
     card("uncertain", { source: "codex", column: "idle", stage: "Status unknown", running_since: null }),
   ])} onSelect={() => {}} />);
   expect(html).toContain('class="office-timer" data-timer-state="working"');
-  expect(html).toContain('<span class="office-timer-session">worker</span>');
-  expect(html).toContain('<span class="office-timer-session">idle-timer</span>');
+  expect(html).toMatch(/<text[^>]*class="office-timer-session"[^>]*>worker<\/text>/);
+  expect(html).toMatch(/<text[^>]*class="office-timer-session"[^>]*>idle-timer<\/text>/);
   expect(html).toContain("Working · 1m");
   expect(html).toContain("Idle · 1m 30s");
   expect(html).toContain("Waiting · 10s");
@@ -291,4 +268,14 @@ test("moving or removing one coworker leaves holes instead of compacting neighbo
   placement = updatePlacements(placement, [card("c"), card("d")], 102_000);
   expect(placement.get("c")!.seat).toBe(2);
   expect(placement.get("d")!.seat).toBe(0);
+});
+
+test('office offers all three live floor plans and keeps only observed coworkers', () => {
+  const html = renderToStaticMarkup(<Office isRead={readAll} now={120000} board={board([
+    card('lead', { children: [card('helper', { parent_id: 'lead' })] }),
+  ])} onSelect={() => {}} />);
+  for (const name of ['Shared loft', 'Team rooms', 'Long studio']) expect(html).toContain(name);
+  expect(html).toContain('data-office-parent="lead"');
+  expect([...html.matchAll(/data-session-id="([^"]+)"/g)].map(m => m[1]).sort()).toEqual(['helper', 'lead']);
+  expect(html).not.toContain('Call subagents');
 });

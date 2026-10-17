@@ -4,6 +4,14 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.19] - 2026-10-17
+
+### Added
+
+- Three selectable Office floor plans: Shared loft, Team rooms, and Long studio, with the selected layout and display settings saved across app restarts.
+- Live office movement: newcomers enter the office, helpers join their actual parent team, and working leads visit their smaller helpers. Waiting and idle sessions move to the meeting room and lounge while retaining observed status, idle grace, and unread markers.
+- Office display controls for labels, team connections, and animation; Fit, zoom, pan, a coworker selector, and a compact token-usage leaderboard. Honor app and system reduced motion and retain active-terminal highlighting without opening a hidden terminal.
+
 ## [0.0.18] - 2026-10-17
 
 ### Fixed
