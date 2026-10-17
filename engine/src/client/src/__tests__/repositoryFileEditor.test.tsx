@@ -88,4 +88,3 @@ test("editor shows file breadcrumbs and current language, encoding, indentation 
   expect(html).toContain('Spaces: 2');
   expect(html).toContain('SQL');
 });
-

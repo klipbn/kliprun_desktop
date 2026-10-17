@@ -4,6 +4,24 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.20] - 2026-10-17
+
+### Added
+
+- **Git → Files** browses the selected repository with file-type icons, Git status colors, filtering and keyboard navigation. Single-click opens a temporary preview tab; double-clicking or editing keeps it open. Each tab retains its draft, cursor and undo history while switching files.
+- Edit Python, SQL, Markdown, JavaScript/TypeScript and JSON with syntax highlighting, line numbers, folding, indentation, matching brackets, undo/redo and search. Toggle rendered Markdown with the eye button; save with **Save / Command+S** and a brief confirmation. Files are never executed.
+- Close files and diffs from their headers. Unsaved files offer **Save and close**, **Discard changes** or **Keep editing**; repository switches check inactive drafts too. Save existing UTF-8 files up to 512 KiB with revision checks, atomic replacement and preserved line endings. Keep access inside the selected repository and reject symlinks, Git metadata and binary content.
+
+### Changed
+
+- Give the Git workspace a Zed-style layout with the project panel on the right, a compact repository picker, folder/refresh icons, breadcrumbs and cursor status. Use One Dark colors under the Default app theme and honor other selected palettes.
+- Compact **Changes** rows with staging toggles before filenames, status colors and softer unified diffs. Add visible hover feedback to View/Sort By/Group By options, folders and files.
+- Add searchable loaded-commit metadata and keyboard navigation to **History**. Selecting a commit opens its first file diff; the commit message is collapsible, and closing a diff keeps it closed across refreshes.
+
+### Documentation
+
+- Update the file-editing guide and refresh sixteen fixture-only screenshots, including the editor and Markdown preview. Include CodeMirror dependency notices in the app bundle.
+
 ## [0.0.19] - 2026-10-17
 
 ### Added
