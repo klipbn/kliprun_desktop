@@ -10,7 +10,7 @@ async (page, directory = "docs/screenshots") => {
     await page.goto(`${base}${path}`);
     if (!path.startsWith("/__demo/")) {
       await page.locator('[data-testid="version"]').waitFor();
-      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.18") throw new Error("Build the 0.0.18 client before capturing.");
+      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.19") throw new Error("Build the 0.0.19 client before capturing.");
     }
   }
   async function sidebar(expanded) {
@@ -40,6 +40,8 @@ async (page, directory = "docs/screenshots") => {
     await page.getByRole("searchbox", { name: "Search sessions", exact: true }).focus();
     await save("recent-sessions");
     await visit("/office", 1600, 1200);
+    await page.evaluate(() => localStorage.removeItem("kliprun.officePreferences"));
+    await page.reload();
     await page.locator(".office-resident").first().waitFor();
     await save("office");
     await visit("/stats?period=30&timezone=UTC&heatmap=daily", 1600, 1600);

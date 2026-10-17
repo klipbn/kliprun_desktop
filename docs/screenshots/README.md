@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All fourteen images were captured from **KlipRun Desktop 0.0.18** on **2026-10-17**. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All fourteen images were captured from **KlipRun Desktop 0.0.19** on **2026-10-17**. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -8,7 +8,7 @@ All fourteen images were captured from **KlipRun Desktop 0.0.18** on **2026-10-1
 | [`kanban-details.png`](kanban-details.png) | 1440 × 900 | Selected Implement search API session and the default Agents T details tab |
 | [`recent-sessions.png`](recent-sessions.png) | 1600 × 1000 | Resized sidebar with compact title/project/time rows, search, bounded agent/project/updated filter controls, resume icons, and matching selected details |
 | [`desktop-terminal.png`](desktop-terminal.png) | 1440 × 900 | Fixture-based board plus a static synthetic terminal panel |
-| [`office.png`](office.png) | 1600 × 1200 | Fictional coworkers, model labels, rooms, and token leaderboard |
+| [`office.png`](office.png) | 1600 × 1200 | Fictional parent/helper team, Shared loft, model labels, and floor-plan controls |
 | [`statistics.png`](statistics.png) | 1600 × 1600 | Last 30 days, latest sessions, Daily token activity, and composition in UTC |
 | [`statistics-weekly.png`](statistics-weekly.png) | 1600 × 1600 | Weekly token activity for the same fictional dataset |
 | [`usage.png`](usage.png) | 1600 × 900 | Compact provider rows with colored status dots and white limit/reset labels |
@@ -38,3 +38,5 @@ Build the client with `cd engine/src/client && bun run build`, then start `bun d
 The `git` fixture supplies repository roots, status, history, commit files, and diff patches for `/api/git/*`. The preview rejects Git actions and never invokes Git or accesses working repositories. [`capture-git.js`](capture-git.js) captures Changes, its display-settings menu, the branch popover, History, and shortcuts. The `git.status.branches` fixture includes only fictional author, date, and last-commit metadata. [`../../scripts/git-workspace.test.js`](../../scripts/git-workspace.test.js) covers direct commit submission, message-field scrolling, the UI workflow, and normal/small layouts with in-memory responses based on the same fixture; [`../../scripts/git-panel-resize.test.js`](../../scripts/git-panel-resize.test.js) covers panel resizing. [`../../scripts/git-session-follow.test.js`](../../scripts/git-session-follow.test.js) covers session-driven repository selection, sessions without Git, per-repository drafts, nested folders, and switching sessions during a commit. [`../../scripts/git-changes-settings.test.js`](../../scripts/git-changes-settings.test.js) covers display settings, partial staging, saved options, keyboard navigation, and popup placement. These tests use fixture responses without modifying repositories.
 
 The toolbar follows **Kanban → Git → Office → Usage → Statistics**, with a separate **Check for Updates → Keyboard shortcuts → Settings** utility group. Shortcuts use Control+1 Kanban, Control+2 Git, Control+3 Office, Control+4 Usage, and Control+5 Statistics. Both capture callbacks made **zero external requests**.
+
+The Office image now shows the Shared loft floor plan with the same fictional sessions. [`../../scripts/office.test.js`](../../scripts/office.test.js) checks all three floor plans, persistent settings, new and removed helpers, observed-state transitions and idle grace, selection, active-terminal highlighting, usage, zoom, and reduced motion in normal and constrained web-view sizes.
