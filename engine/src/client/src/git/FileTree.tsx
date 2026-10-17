@@ -4,35 +4,44 @@ import { File, Folder, Minus, Plus } from "lucide-react";
 export function Counts({ additions, deletions }: { additions: number | null; deletions: number | null }) {
   return <span className="git-counts">{additions === null || deletions === null ? <small>Binary</small> : <><span>+{additions}</span><span>−{deletions}</span></>}</span>;
 }
-type Tree = { folders: Map<string, Tree>; files: GitCommitFile[] };
-export function FileTree({ files, selected, onSelect, onAction, actionLabel, disabled }: {
-  files: GitCommitFile[]; selected: string | null; onSelect: (path: string) => void;
-  onAction?: (paths: string[]) => void; actionLabel?: string; disabled: boolean;
+type FileEntry = GitCommitFile & { mode?: "staged" | "unstaged" };
+type Tree = { folders: Map<string, Tree>; files: FileEntry[] };
+export function FileTree({ files, selected, selectedMode, onSelect, onAction, actionLabel, disabled, view = "tree", sortBy = "path", showMode = false }: {
+  files: FileEntry[]; selected: string | null; selectedMode?: FileEntry["mode"]; onSelect: (path: string, mode?: FileEntry["mode"]) => void;
+  onAction?: (paths: string[], mode?: FileEntry["mode"]) => void; actionLabel?: string; disabled: boolean;
+  view?: "list" | "tree"; sortBy?: "path" | "name"; showMode?: boolean;
 }) {
   const root: Tree = { folders: new Map(), files: [] };
   for (const file of files) {
     let node = root;
-    for (const part of file.path.split("/").slice(0, -1)) {
+    for (const part of view === "tree" ? file.path.split("/").slice(0, -1) : []) {
       if (!node.folders.has(part)) node.folders.set(part, { folders: new Map(), files: [] });
       node = node.folders.get(part)!;
     }
     node.files.push(file);
   }
   function render(node: Tree) {
-    return <ul className="git-tree">
+    return <ul className={`git-tree${view === "list" ? " git-file-list" : ""}`}>
       {[...node.folders].sort(([a], [b]) => a.localeCompare(b)).map(([name, folder]) => <li key={`folder:${name}`}><details open>
         <summary><Folder size={14} /><span>{name}</span></summary>{render(folder)}
       </details></li>)}
-      {node.files.sort((a, b) => a.path.localeCompare(b.path)).map(file => <li className={`git-file ${file.path === selected ? "is-selected" : ""}`} key={file.path}>
-        <button type="button" className="git-file-select" onClick={() => onSelect(file.path)} aria-pressed={file.path === selected}
+      {[...node.files].sort((a, b) => (sortBy === "name" ? a.path.split("/").at(-1)!.localeCompare(b.path.split("/").at(-1)!) : 0) || a.path.localeCompare(b.path)).map(file => {
+        const chosen = file.path === selected && (selectedMode === undefined || file.mode === selectedMode);
+        const label = file.mode ? file.mode === "staged" ? "Unstage" : "Stage" : actionLabel;
+        const parent = file.path.split("/").slice(0, -1).join("/");
+        return <li className={`git-file ${chosen ? "is-selected" : ""}`} key={`${file.mode ?? ""}:${file.path}`}>
+        <button type="button" className="git-file-select" onClick={() => onSelect(file.path, file.mode)} aria-pressed={chosen}
           title={file.originalPath ? `${file.originalPath} → ${file.path}` : file.path}>
           <span className={`git-file-status status-${file.status}`} aria-label={file.status}>{file.status === "?" ? <File size={13} /> : file.status}</span>
-          <span className={file.status === "D" ? "git-deleted" : ""}>{file.path.split("/").at(-1)}</span>
+          <span className="git-file-label"><span className={`git-file-name ${file.status === "D" ? "git-deleted" : ""}`}>{file.path.split("/").at(-1)}</span>
+            {view === "list" && parent && <small className="git-file-directory">{parent}</small>}
+          </span>
+          {showMode && file.mode && <small className="git-file-mode">{file.mode === "staged" ? "Staged" : "Unstaged"}</small>}
           {file.status === "?" ? <span className="git-counts"><small>New</small></span> : <Counts {...file} />}
         </button>
-        {onAction && <button type="button" className="git-file-action" disabled={disabled} aria-label={`${actionLabel} ${file.path}`} title={`${actionLabel} ${file.path}`}
-          onClick={() => onAction([file.path])}>{actionLabel === "Unstage" ? <Minus size={14} /> : <Plus size={14} />}</button>}
-      </li>)}
+        {onAction && <button type="button" className="git-file-action" disabled={disabled} aria-label={`${label} ${file.path}`} title={`${label} ${file.path}`}
+          onClick={() => onAction([file.path], file.mode)}>{label === "Unstage" ? <Minus size={14} /> : <Plus size={14} />}</button>}
+      </li>; })}
     </ul>;
   }
   return render(root);

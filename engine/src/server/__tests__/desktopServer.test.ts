@@ -62,6 +62,14 @@ for (const { name, root, binary } of variants) test(`${name} desktop server requ
     const stylesheet = await fetch(`http://127.0.0.1:${port}${cssPath}`, { headers: { Cookie: cookie! } });
     expect(stylesheet.status).toBe(200);
     expect(stylesheet.headers.get("content-type")).toContain("text/css");
+    // The pre-existing dist bundle may be from an older release.
+    if (name === "source") for (const path of ["/api/git/unknown-endpoint", "/api/unknown-endpoint"]) {
+      const missing = await fetch(`http://127.0.0.1:${port}${path}`, { headers: { Authorization: "Bearer testtoken" } });
+      expect(missing.status).toBe(404);
+      expect(missing.headers.get("content-type")).toContain("application/json");
+      expect(missing.headers.get("cache-control")).toBe("no-store");
+      expect((await missing.json() as { error: unknown }).error).toBeString();
+    }
   } finally {
     child.kill(); await child.exited;
     rmSync(home, { recursive: true, force: true });

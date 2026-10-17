@@ -2,13 +2,15 @@
 async (page) => {
   const base = "http://127.0.0.1:18796";
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
-  const ids = ["kanban-button", "git-button", "office-button", "usage-button", "statistics-button", "settings-button"];
-  const labels = ["Kanban", "Git", "Office", "Usage", "Statistics", "Settings"];
+  const ids = ["kanban-button", "git-button", "office-button", "usage-button", "statistics-button", "check-updates-button", "keyboard-shortcuts-button", "settings-button"];
+  const labels = ["Kanban", "Git", "Office", "Usage", "Statistics", "Check for Updates", "Keyboard shortcuts", "Settings"];
   for (const width of [1440, 900, 500]) {
     await page.setViewportSize({ width, height: 900 }); await page.goto(base);
     await page.getByTestId("card-ses_demo_search").waitFor();
     const order = await page.locator("header button[data-testid]").evaluateAll((buttons, ids) => buttons.filter(button => ids.includes(button.dataset.testid)).map(button => button.getAttribute("aria-label") || button.textContent.trim()), ids);
     assert(order.join("|") === labels.join("|"), `Unexpected toolbar order: ${order.join("|")}`);
+    const utilities = await page.locator('[aria-label="Utilities"] button[data-testid]').evaluateAll(buttons => buttons.map(button => button.dataset.testid));
+    assert(utilities.join("|") === "check-updates-button|keyboard-shortcuts-button|settings-button", "Updates, shortcuts, and Settings are not grouped together");
     for (const id of [...ids, "new-opencode-button", "new-codex-button", "show-terminal-button", "check-updates-button"]) {
       const button = page.getByTestId(id);
       assert((await button.innerText()).trim() === "", `${id} still has a text label`);
