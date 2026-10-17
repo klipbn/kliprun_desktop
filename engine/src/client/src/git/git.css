@@ -7,7 +7,7 @@
 .git-workspace-title svg{color:#58a6ff}
 .git-repository-picker{display:flex;flex-direction:column;gap:3px;min-width:100px;max-width:440px;flex:1}.git-repository-picker>span{font-size:10px;color:#8b949e}
 .git-workspace select,.git-workspace input,.git-workspace textarea{border:1px solid #30363d;border-radius:5px;background:#0d1117;color:#c9d1d9;padding:7px 9px;min-width:0}
-.git-repository-picker select{width:100%;text-overflow:ellipsis}
+.git-repository-picker .recent-filter{flex-direction:column;align-items:stretch;gap:3px}.git-repository-picker .recent-filter>span{width:auto}.git-repository-picker .recent-filter-trigger{flex:auto;font-size:12px;height:30px}.git-repository-picker .recent-filter-trigger:disabled{opacity:.5;cursor:wait}.git-repository-picker .recent-filter-popup{z-index:80}
 .git-button{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #30363d;border-radius:5px;background:#21262d;padding:6px 9px;white-space:nowrap;color:#e6edf3}
 .git-button:hover:not(:disabled){border-color:#8b949e;background:#292f38}
 .git-primary{background:#1f6feb;border-color:#388bfd;color:#fff}

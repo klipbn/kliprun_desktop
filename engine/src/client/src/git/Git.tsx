@@ -8,6 +8,7 @@ import { BranchPicker } from "./BranchPicker";
 import { ChangeViewSettings } from "./ChangeViewSettings";
 import { CHANGE_VIEW_KEY, groupChangeFiles, readChangeView } from "./changeView";
 import { resizedDetailsWidth } from "../components/detailsSizing";
+import { RecentSessionFilter } from "../components/RecentSessionFilter";
 import { gitRequest, useGitRequest } from "./useGitRequest";
 import { loadGitRepositories } from "./repositoryDiscovery";
 import "./git.css";
@@ -171,10 +172,10 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   return <main className="git-workspace" data-testid="git-workspace">
     <div className="git-toolbar">
       <div className="git-workspace-title"><GitBranch size={17} /><strong>Git</strong></div>
-      <label className="git-repository-picker"><span>{followingSession ? "Selected session" : "Repository folder"}</span><select aria-label="Repository" value={directory} disabled={!!busy} onChange={event => chooseRepository(event.target.value)} title={directory}>
-        {!directory && <option value="">Choose a session or folder</option>}
-        {availableRoots.map(root => <option key={root} value={root}>{noRepository && root === directory ? "No Git repository" : nameOf(root)} — {root}</option>)}
-      </select></label>
+      <div className="git-repository-picker"><RecentSessionFilter label={followingSession ? "Selected session" : "Repository folder"}
+        name="Repository" value={directory} disabled={!!busy} onChange={value => chooseRepository(value)} searchable placement="viewport" searchSubject="repositories"
+        options={[...(!directory ? [{ value: "", label: "Choose a session or folder" }] : []), ...availableRoots.map(root => ({ value: root, label: noRepository && root === directory ? "No Git repository" : nameOf(root), path: root }))]} />
+      </div>
       <button type="button" className="git-button" disabled={!!busy} title="Choose a folder with an existing Git repository. Switching sessions follows their project automatically." onClick={() => { if (hasDesktopBridge()) notifyNativeAction("open-repository"); else setShowManualDirectory(value => !value); }}><FolderOpen size={14} />Choose Folder…</button>
       <button type="button" className="git-button git-refresh" disabled={!!busy} onClick={() => setRefresh(value => value + 1)} title="Refresh repository" aria-label="Refresh repository"><RefreshCw size={14} className={statusRequest.pending ? "animate-spin" : ""} /></button>
     </div>

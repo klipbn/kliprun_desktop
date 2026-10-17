@@ -29,7 +29,8 @@ async (page) => {
     assert(requests.every(request => request.status === 200), `Repository discovery failed: ${requests.map(request => request.status).join(", ")}`);
     await page.waitForFunction(() => !document.querySelector('.git-feedback[role="alert"]'));
     await page.locator('.git-file-select[title="src/api/search.ts"]').waitFor();
-    const options = await page.getByRole("combobox", { name: "Repository", exact: true }).locator("option").count();
+    await page.getByRole("button", { name: "Repository", exact: true }).click();
+    const options = await page.getByRole("option").count();
     assert(options === 2, "Merging repository batches duplicated roots");
     return { batches: requests.length, maxUrlBytes: Math.max(...pathLengths), successfulRequests: true, noGitError: true };
   } finally { await context.close(); }
