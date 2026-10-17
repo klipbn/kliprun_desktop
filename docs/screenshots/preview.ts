@@ -2,8 +2,12 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildDashboard, buildSessionDetail, rankSessions } from "../../engine/src/server/usage/aggregate.ts";
 import { parseStatsFilters } from "../../engine/src/server/usage/time.ts";
+import { UsageStore } from "../../engine/src/server/usage/store.ts";
+import { parseRecentSessionsQuery } from "../../engine/src/server/usage/recent.ts";
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const fixture = await Bun.file(join(root, "docs/screenshots/mock-api.json")).json();
+const recent = new UsageStore(":memory:");
+for (const session of fixture.recent_sessions.sessions) recent.upsertSession(session);
 const build = join(root, "engine/src/client/dist");
 const requests: string[] = [];
 const clock = `<script>const OriginalDate = Date; window.Date = class extends OriginalDate { constructor(...args) { super(...(args.length ? args : [${fixture.board.generated_at}])); } static now() { return ${fixture.board.generated_at}; } }; window.kliprunCardPriorities = ${JSON.stringify(fixture.card_priorities)}; window.kliprunPreferences = { detailTab: "agent-text", reduceMotion: true }; window.webkit = { messageHandlers: { desktopAction: {postMessage(){}}, sessionSelected: {postMessage(){}} } };</script>`;
@@ -18,7 +22,10 @@ const server = Bun.serve({ hostname: "127.0.0.1", port: 18796, idleTimeout: 0, a
   if (path === "/api/git/diff") return Response.json(fixture.git.diffs[url.searchParams.get("path") ?? ""] ?? { patch: "", binary: false, truncated: false });
   if (path === "/api/git/action") return Response.json({ error: "Fixture preview: repositories are not modified." }, { status: 409 });
   if (path === "/api/board") return Response.json(fixture.board);
-  if (path === "/api/recent-sessions") return Response.json(fixture.recent_sessions);
+  if (path === "/api/recent-sessions") {
+    try { return Response.json(recent.recentSessions(parseRecentSessionsQuery(url))); }
+    catch { return Response.json({ error: "Invalid session history filters" }, { status: 400 }); }
+  }
   if (path === "/api/stats") return Response.json(buildDashboard(fixture.statistics_dataset, parseStatsFilters(url, fixture.board.generated_at), fixture.board.generated_at));
   if (path === "/api/stats/sessions") return Response.json(rankSessions(fixture.statistics_dataset, parseStatsFilters(url, fixture.board.generated_at), url.searchParams.get("sort") ?? "tokens", Number(url.searchParams.get("page") ?? 1), 50));
   if (path.startsWith("/api/stats/session/")) return Response.json(buildSessionDetail(fixture.statistics_dataset, parseStatsFilters(url, fixture.board.generated_at), decodeURIComponent(path.split("/").at(-1)!)));

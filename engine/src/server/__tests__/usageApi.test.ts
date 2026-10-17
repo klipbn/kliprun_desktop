@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { StatsService, registerStatsRoutes } from "../usage/service";
-import type { OfficeUsagePayload, StatsDashboardPayload, StatsSessionsPayload, StatsSessionPayload } from "@shared/usage";
+import type { OfficeUsagePayload, RecentSessionsPayload, StatsDashboardPayload, StatsSessionsPayload, StatsSessionPayload } from "@shared/usage";
 import { UsageStore } from "../usage/store";
 
 const resources: Array<{ service: StatsService; home: string }> = [];
@@ -28,6 +28,38 @@ test("recent sessions include both harnesses, newest first, without child sessio
     expect(response.status).toBe(200);
     expect((await response.json() as { sessions: Array<{ id: string }> }).sessions.map(s => s.id)).toEqual(["codex:01900000-0000-7000-8000-000000000001", "ses_old"]);
   } finally { store.close(); }
+});
+test("recent history searches beyond the first page and combines source, project and updated filters", async () => {
+  const { app } = fixture();
+  await app.request("/api/stats?from=0&to=300");
+  const store = new UsageStore(join(resources[resources.length - 1].home, "usage.sqlite3"));
+  try {
+    for (let index = 0; index < 65; index++) store.upsertSession({ id: `ses_recent_${index}`, parent_id: null, source: "opencode",
+      title: `Recent task ${index}`, directory: "/demo/atlas", created_at: 1, updated_at: 1000 + index });
+    const target = { id: "codex:01900000-0000-7000-8000-000000000001", parent_id: null, source: "codex" as const,
+      title: "Проверить Поиск 100%_ready", directory: "/demo/aurora", created_at: 1, updated_at: 100 };
+    store.upsertSession(target);
+    store.upsertSession({ ...target, id: "ses_hidden_child", parent_id: target.id, directory: "/demo/hidden", updated_at: 9999 });
+    const search = async (query: Record<string, string>) => (await (await app.request(`/api/recent-sessions?${new URLSearchParams(query)}`)).json()) as RecentSessionsPayload;
+    const result = await search({ search: "ПОИСК aurora 100%_", source: "codex", project: "/demo/aurora", after: "100" });
+    expect(result.sessions.map(session => session.id)).toEqual([target.id]);
+    expect(result.total).toBe(1);
+    expect(result.projects).toEqual(["/demo/atlas", "/demo/aurora"]);
+    expect((await search({ search: "поиск", source: "opencode" })).sessions).toEqual([]);
+    expect((await search({ search: "поиск", project: "/demo/atlas" })).sessions).toEqual([]);
+    expect((await search({ search: "поиск", after: "101" })).sessions).toEqual([]);
+    expect((await search({ project: "/demo/atlas' OR 1=1 --" })).total).toBe(0);
+    const older = await search({ page: "1", limit: "50" });
+    expect(older.total).toBe(66); expect(older.sessions).toHaveLength(16);
+    expect(older.sessions.at(-1)?.id).toBe(target.id);
+  } finally { store.close(); }
+});
+test("recent history rejects invalid or unbounded query parameters", async () => {
+  const { app } = fixture();
+  for (const query of ["source=other", "search=" + "x".repeat(201), "project=relative", "page=-1", "page=1.5", "page=1000001",
+    "limit=0", "limit=101", "after=NaN", "after=-1", "search=%00", "project=%2Fdemo%00"]) {
+    expect((await app.request(`/api/recent-sessions?${query}`)).status).toBe(400);
+  }
 });
 test("worker-backed statistics serve independent observations while unavailable sources remain isolated", async () => {
   const { service, app } = fixture();

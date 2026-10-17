@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { OfficeUsagePayload, UsageAttribution, UsageEvent, UsageImportStatus, UsageInterval, UsageObservation, UsageSession } from "@shared/usage";
+import type { OfficeUsagePayload, RecentSessionsPayload, RecentSessionsQuery, UsageAttribution, UsageEvent, UsageImportStatus, UsageInterval, UsageObservation, UsageSession } from "@shared/usage";
 import type { UsageDataset } from "./aggregate";
 import { scrub } from "../security";
 
@@ -40,10 +40,30 @@ export class UsageStore {
     const safe = { ...session, title: scrub(session.title), directory: scrub(session.directory) };
     this.db.query("INSERT INTO usage_sessions(id,data) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data").run(session.id, JSON.stringify(safe));
   }
-  recentSessions(): UsageSession[] {
-    return this.db.query<{ data: string }, []>(`SELECT data FROM usage_sessions
-      WHERE json_extract(data,'$.parent_id') IS NULL AND json_extract(data,'$.directory') != ''
-      ORDER BY json_extract(data,'$.updated_at') DESC, id ASC LIMIT 50`).all().map(row => JSON.parse(row.data) as UsageSession);
+  recentSessions(query: RecentSessionsQuery = {}): RecentSessionsPayload {
+    const roots = "json_extract(data,'$.parent_id') IS NULL AND json_extract(data,'$.directory') != ''";
+    const conditions = [roots], values: Array<string | number> = [];
+    if (query.source) { conditions.push("json_extract(data,'$.source') = ?"); values.push(query.source); }
+    if (query.project) { conditions.push("json_extract(data,'$.directory') = ?"); values.push(query.project); }
+    if (query.after) { conditions.push("json_extract(data,'$.updated_at') >= ?"); values.push(query.after); }
+    const where = conditions.join(" AND "), page = query.page ?? 0, limit = query.limit ?? 50;
+    const ordered = `SELECT data FROM usage_sessions WHERE ${where} ORDER BY json_extract(data,'$.updated_at') DESC, id ASC`;
+    const terms = (query.search ?? "").normalize("NFKC").toLowerCase().split(/\s+/).filter(Boolean);
+    let sessions: UsageSession[], total: number;
+    if (terms.length) {
+      // SQLite's lower() only folds ASCII; match Unicode titles in the statistics worker.
+      const matches = this.db.query<{ data: string }, Array<string | number>>(ordered).all(...values)
+        .map(row => JSON.parse(row.data) as UsageSession).filter(session => {
+          const text = `${session.title} ${session.directory}`.normalize("NFKC").toLowerCase();
+          return terms.every(term => text.includes(term));
+        });
+      total = matches.length; sessions = matches.slice(page * limit, (page + 1) * limit);
+    } else {
+      total = this.db.query<{ total: number }, Array<string | number>>(`SELECT count(*) AS total FROM usage_sessions WHERE ${where}`).get(...values)!.total;
+      sessions = this.db.query<{ data: string }, Array<string | number>>(`${ordered} LIMIT ? OFFSET ?`).all(...values, limit, page * limit).map(row => JSON.parse(row.data) as UsageSession);
+    }
+    const projects = this.db.query<{ directory: string }, []>(`SELECT DISTINCT json_extract(data,'$.directory') AS directory FROM usage_sessions WHERE ${roots} ORDER BY directory`).all().map(row => row.directory);
+    return { sessions, total, projects, page, limit };
   }
   upsertEvents(sessionId: string, events: UsageEvent[]): void {
     const insert = this.db.query("INSERT INTO usage_events(session_id,event_id,at,data) VALUES(?,?,?,?) ON CONFLICT(session_id,event_id) DO UPDATE SET at=excluded.at,data=excluded.data");
