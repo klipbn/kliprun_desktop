@@ -18,6 +18,21 @@ export interface UsageSession {
   created_at: number;
   updated_at: number;
 }
+export interface RecentSessionsQuery {
+  search?: string;
+  source?: SessionSource;
+  project?: string;
+  after?: number;
+  page?: number;
+  limit?: number;
+}
+export interface RecentSessionsPayload {
+  sessions: UsageSession[];
+  total: number;
+  projects: string[];
+  page: number;
+  limit: number;
+}
 export interface UsageEvent {
   id: string;
   session_id: string;

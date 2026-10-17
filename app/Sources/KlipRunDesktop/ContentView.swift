@@ -41,6 +41,13 @@ struct ContentView: View {
                 }
             }
             .animation(reduceMotion || store.preferences.reduceMotion ? nil : .easeOut(duration: 0.2), value: store.showingSettings)
+            .sheet(isPresented: $updater.isPresented) {
+                if case .available = updater.phase {
+                    UpdateView(updater: updater).frame(height: geometry.size.height)
+                } else {
+                    UpdateView(updater: updater)
+                }
+            }
         }
         .frame(minWidth: 980, minHeight: 660)
         .background(Color(red: 13 / 255, green: 17 / 255, blue: 23 / 255))
@@ -49,7 +56,6 @@ struct ContentView: View {
             dragStartExtent = nil
             store.terminalExpanded = false
         }
-        .sheet(isPresented: $updater.isPresented) { UpdateView(updater: updater) }
     }
 
     private func workspace(geometry: GeometryProxy, visible: Bool, dockExtent: Double, divider: Double) -> some View {

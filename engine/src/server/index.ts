@@ -61,6 +61,10 @@ registerStatsRoutes(app, statistics);
 registerQuotaRoutes(app, new QuotaService());
 registerGitRoutes(app);
 
+app.all("/api/*", c => {
+  c.header("Cache-Control", "no-store");
+  return c.json({ error: "This API is unavailable in the running app. Restart KlipRun and try again." }, 404);
+});
 app.use("*", serveStatic({ root: "./src/client/dist" }));
 app.use("*", serveStatic({ path: "./src/client/dist/index.html" }));
 

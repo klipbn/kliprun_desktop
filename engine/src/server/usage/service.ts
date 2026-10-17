@@ -6,6 +6,7 @@ import { getDbPath } from "../storage/db";
 import { codexHome } from "../codex/storage";
 import { defaultHistoryPath } from "../history";
 import { parseStatsFilters } from "./time";
+import { parseRecentSessionsQuery } from "./recent";
 
 export interface StatsOptions { path: string; historyPath: string; opencodePath: string; codexHome: string }
 /** All history parsing and aggregation stays off the board's server thread. */
@@ -69,9 +70,12 @@ export class StatsService {
 
 export function registerStatsRoutes(app: Hono, service: StatsService): void {
   app.get("/api/recent-sessions", async c => {
+    let recent;
+    try { recent = parseRecentSessionsQuery(new URL(c.req.url)); }
+    catch { return c.json({ error: "Invalid session history filters" }, 400); }
     try {
       c.header("Cache-Control", "no-store");
-      return c.json(await service.query("recent", null));
+      return c.json(await service.query("recent", null, { recent }));
     } catch { return c.json({ error: "Recent sessions temporarily unavailable" }, 503); }
   });
   app.get("/api/stats/office-usage", async c => {

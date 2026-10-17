@@ -64,24 +64,17 @@ async (page) => {
 
     await page.getByRole("textbox", { name: "Commit message", exact: true }).fill("Add scoped search");
     await page.getByTestId("kanban-button").click(); await page.getByTestId("git-button").click();
-    await page.getByRole("textbox", { name: "Commit message", exact: true }).waitFor();
+    await page.waitForFunction(() => document.querySelector('textarea[aria-label="Commit message"]')?.value === "Add scoped search");
     assert(await page.getByRole("textbox", { name: "Commit message", exact: true }).inputValue() === "Add scoped search", "Navigating between tabs lost the commit message");
     await page.getByRole("button", { name: "Commit staged", exact: true }).click();
-    const dialog = page.locator(".git-confirmation[open]"); await dialog.waitFor();
-    assert(actions.length === 2, `Unexpected operations before confirmation: ${JSON.stringify(actions)}`);
-    assert((await dialog.innerText()).includes("feature/search"), "Confirmation omitted the branch");
-    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
-    assert(actions.length === 2, "Cancel performed an operation");
-    await page.getByRole("button", { name: "Commit staged", exact: true }).click();
-    await dialog.getByRole("button", { name: "Commit", exact: true }).click();
+    assert(await page.locator("dialog[open]").count() === 0, "Commit still opens a confirmation window");
     await page.getByRole("alert").getByText("Demo hook rejected this commit.", { exact: true }).waitFor();
     await page.waitForTimeout(2700);
     assert(await page.getByRole("alert").isVisible(), "A Git error disappeared before it could be reviewed");
     assert(await page.getByRole("textbox", { name: "Commit message", exact: true }).inputValue() === "Add scoped search", "Failed commit lost the message");
-    assert(actions.at(-1).expected.branch === "feature/search" && actions.at(-1).expected.head === fixture.head, "Commit did not preserve the confirmed HEAD");
+    assert(actions.at(-1).expected.branch === "feature/search" && actions.at(-1).expected.head === fixture.head, "Commit did not guard the current branch and HEAD");
     failCommit = false;
     await page.getByRole("button", { name: "Commit staged", exact: true }).click();
-    await dialog.getByRole("button", { name: "Commit", exact: true }).click();
     await page.getByText("Commit completed.", { exact: true }).waitFor();
     assert(await page.getByRole("button", { name: "Dismiss notification", exact: true }).count() === 0, "Success still requires closing a notification");
     assert(await page.getByRole("textbox", { name: "Commit message", exact: true }).inputValue() === "", "Successful commit did not clear the message");
@@ -138,6 +131,20 @@ async (page) => {
     await page.locator(".git-branch-toggle").click(); await page.locator(".git-diff-heading").click();
     assert(await page.locator(".git-branch-popover").count() === 0, "Clicking outside did not close branch selection");
 
+    const messageField = page.getByRole("textbox", { name: "Commit message", exact: true });
+    for (const [width, height] of [[1440, 900], [1440, 500], [500, 700]]) {
+      await page.setViewportSize({ width, height });
+      const before = await messageField.evaluate(element => element.getBoundingClientRect().height);
+      await messageField.fill(Array.from({ length: 40 }, (_, index) => `Commit detail ${index}`).join("\n"));
+      const field = await messageField.evaluate(element => {
+        element.scrollTop = element.scrollHeight;
+        return { height: element.getBoundingClientRect().height, resize: getComputedStyle(element).resize,
+          scrollable: element.scrollHeight > element.clientHeight && element.scrollTop > 0 };
+      });
+      assert(field.resize === "none" && field.height === before && field.scrollable, `Long commit messages must scroll within a fixed field: ${JSON.stringify(field)}`);
+      await messageField.fill("");
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.getByRole("tab", { name: "History", exact: true }).click();
     await page.locator(".git-history-row").first().click();
     await page.locator('.git-commit-files .git-file-select[title="src/api/search.ts"]').click();

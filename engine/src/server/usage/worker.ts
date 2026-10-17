@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 import { existsSync } from "node:fs";
-import type { StatsFilters, UsageInterval, UsageObservation } from "@shared/usage";
+import type { RecentSessionsQuery, StatsFilters, UsageInterval, UsageObservation } from "@shared/usage";
 import { buildDashboard, buildSessionDetail, rankSessions } from "./aggregate";
 import { UsageImporter } from "./importer";
 import { UsageStore } from "./store";
@@ -54,9 +54,9 @@ scope.onmessage = event => {
       await importRun;
       store.close(); store = null; reply(true); return;
     }
-    const request = data as { filters: StatsFilters; sessionId: string; sessionIds: string[]; sort: string; page: number; limit: number };
+    const request = data as { filters: StatsFilters; sessionId: string; sessionIds: string[]; sort: string; page: number; limit: number; recent: RecentSessionsQuery };
     if (op === "office") { reply(store.officeUsage(request.sessionIds)); return; }
-    if (op === "recent") { reply({ sessions: store.recentSessions() }); return; }
+    if (op === "recent") { reply(store.recentSessions(request.recent)); return; }
     const dataset = store.dataset();
     if (op === "dashboard") reply(buildDashboard(dataset, request.filters));
     else if (op === "sessions") reply(rankSessions(dataset, request.filters, request.sort, request.page, request.limit));

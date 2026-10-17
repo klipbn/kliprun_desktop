@@ -14,7 +14,7 @@ import { ShortcutHelp } from "./components/ShortcutHelp";
 import { RecentSessions } from "./components/RecentSessions";
 import { HarnessIcon } from "./components/HarnessIcon";
 import { useStatsRequest } from "./statistics/useStatsRequest";
-import type { UsageSession } from "@shared/usage";
+import type { RecentSessionsPayload } from "@shared/usage";
 import { formatRelativeTimeVerbose } from "@shared/format";
 import { useQuotas } from "./quota/useQuotas";
 import { StatusQuota } from "./quota/StatusQuota";
@@ -58,11 +58,12 @@ export default function App() {
   const desktop = hasDesktopBridge();
   const [updateVersion, setUpdateVersion] = useState(availableUpdateVersion);
   const [historyCollapsed, setHistoryCollapsed] = useState(recentSessionsCollapsed);
-  const recent = useStatsRequest<{ sessions: UsageSession[] }>("/api/recent-sessions", 0);
+  const recent = useStatsRequest<RecentSessionsPayload>("/api/recent-sessions", 0);
   const now = useNow();
   const quotaState = useQuotas();
   const { isRead, counts, markRead } = useReadTracker(board);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [recentSelection, setRecentSelection] = useState<{ id: string; directory: string } | null>(null);
   const [priorities, setPriorities] = useState(loadCardPriorities);
   const [cardOrder, setCardOrder] = useState(loadCardOrder);
   const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
@@ -72,10 +73,11 @@ export default function App() {
   const statisticsSearch = useRef(showStatistics ? window.location.search : "");
   const gitDirectories = useMemo(() => [...new Set([
     ...(board ? sessionCards(Object.values(board.columns).flatMap(column => column.cards)).map(card => card.directory) : []),
-    ...(recent.data?.sessions.map(session => session.directory) ?? []),
+    ...(recent.data?.projects ?? recent.data?.sessions.map(session => session.directory) ?? []),
   ])].filter(Boolean), [board, recent.data]);
-  const gitInitialDirectory = (selectedId && board ? findCard(board, selectedId)?.directory : null)
-    ?? recent.data?.sessions.find(session => session.id === selectedId)?.directory ?? null;
+  const gitSessionDirectory = (selectedId && board ? findCard(board, selectedId)?.directory : null)
+    ?? recent.data?.sessions.find(session => session.id === selectedId)?.directory
+    ?? (recentSelection?.id === selectedId ? recentSelection.directory : null);
   const activeSessionIds = useMemo(() => new Set(board ? sessionCards([
     ...board.columns.attention.cards,
     ...board.columns.running.cards,
@@ -219,10 +221,6 @@ export default function App() {
               className={`${HEADER_BUTTON} text-white hover:bg-white/10 ${page === item.page ? "border-accent/40 bg-accent/10" : "border-border"}`}>
               <item.icon className="w-4 h-4" />
             </button>)}
-            {desktop && <button type="button" onClick={() => notifyNativeAction("settings")} data-testid="settings-button"
-              aria-label="Settings" title="Settings (⌘,)" className={`${HEADER_BUTTON} border-border text-white hover:bg-white/10`}>
-              <Settings2 className="w-4 h-4" />
-            </button>}
           </nav>
           {desktop && <div className="flex items-center gap-1.5 border-l border-border pl-2" aria-label="Utilities">
             <button type="button" onClick={() => notifyNativeAction("check-updates")} data-testid="check-updates-button"
@@ -233,12 +231,16 @@ export default function App() {
               {updateVersion && <span aria-hidden="true" className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-warning" />}
             </button>
             <ShortcutHelp />
+            <button type="button" onClick={() => notifyNativeAction("settings")} data-testid="settings-button"
+              aria-label="Settings" title="Settings (⌘,)" className={`${HEADER_BUTTON} border-border text-white hover:bg-white/10`}>
+              <Settings2 className="w-4 h-4" />
+            </button>
           </div>}
         </div>
       </header>
 
       {page === "git" && <Suspense fallback={<div className="flex-1 flex items-center justify-center text-text-secondary">Loading Git…</div>}>
-        <Git directories={gitDirectories} initialDirectory={gitInitialDirectory} />
+        <Git directories={gitDirectories} sessionId={selectedId} sessionDirectory={gitSessionDirectory} />
       </Suspense>}
 
       {showStatistics && (
@@ -260,8 +262,10 @@ export default function App() {
 
       <main className="flex-1 min-h-0 flex" style={page !== "board" ? { display: "none" } : undefined}>
         <RecentSessions sessions={recent.data?.sessions ?? []} collapsed={historyCollapsed} selectedId={selectedId}
+          total={recent.data?.total} projects={recent.data?.projects} now={now}
           pending={recent.pending} error={recent.error ? "Recent sessions temporarily unavailable" : null}
-          onSelect={select} onResume={desktop ? notifyNativeResume : undefined}
+          onSelect={(id, directory) => { setRecentSelection({ id, directory }); select(id); }}
+          onResume={desktop ? (id, directory) => { setRecentSelection({ id, directory }); notifyNativeResume(id); } : undefined}
           onToggle={() => { const collapsed = !historyCollapsed; setHistoryCollapsed(collapsed); setRecentSessionsCollapsed(collapsed); }} />
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-text-secondary" data-testid="loading-screen">
