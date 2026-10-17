@@ -4119,6 +4119,12 @@
     "codex:00000000-0000-4000-8000-000000000001": "low"
   },
   "git": {
+    "text_files": {
+      "README.md": "# Atlas search\n\nA fictional project for KlipRun previews.\n\n- Search projects\n- Review results\n\n```python\nprint(\"demo only\")\n```\n",
+      "src/search.py": "from pathlib import Path\n\ndef find_projects(query: str):\n    # Search the demo project names.\n    projects = [\"Atlas\", \"Aurora\"]\n    return [name for name in projects if query.lower() in name.lower()]\n",
+      "queries/projects.sql": "-- Demo project usage\nSELECT project_name, COUNT(*) AS sessions\nFROM project_sessions\nWHERE active = true\nGROUP BY project_name\nORDER BY sessions DESC;\n",
+      "src/api/search.ts": "export function search(query: string) {\n  return query.trim();\n}\n"
+    },
     "repositories": [
       "/Users/demo/Projects/atlas",
       "/Users/demo/Projects/aurora"

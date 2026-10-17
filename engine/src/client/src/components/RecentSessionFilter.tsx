@@ -4,7 +4,7 @@ import { Check, ChevronDown, Search } from "lucide-react";
 interface Option { value: string; label: string; path?: string }
 
 export function RecentSessionFilter({ label, name, value, options, onChange, searchable = false, disabled = false, placement = "sidebar", searchSubject = "projects" }: {
-  label: string; name: string; value: string; options: Option[]; onChange: (value: string) => void; searchable?: boolean;
+  label?: string; name: string; value: string; options: Option[]; onChange: (value: string) => void; searchable?: boolean;
   disabled?: boolean; placement?: "sidebar" | "viewport"; searchSubject?: string;
 }) {
   const [open, setOpen] = useState(false), [query, setQuery] = useState(""), [active, setActive] = useState(0);
@@ -64,7 +64,7 @@ export function RecentSessionFilter({ label, name, value, options, onChange, sea
   }, [open, highlighted, query]);
 
   return <div className="recent-filter">
-    <span>{label}</span>
+    {label && <span>{label}</span>}
     <button ref={trigger} type="button" className="recent-filter-trigger" aria-label={name} title={selected?.path ?? selected?.label} disabled={disabled}
       aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? id : undefined}
       onClick={() => open ? close(true) : show()}

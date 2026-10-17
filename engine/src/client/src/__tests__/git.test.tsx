@@ -39,3 +39,20 @@ test("a partially staged file keeps separate staging controls and selection in a
   expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
   expect(html).toContain("Staged"); expect(html).toContain("Unstaged");
 });
+
+test("staging toggles lead their file rows and keep checked state separate from file selection", () => {
+  const files = [
+    { path: "src/staged.ts", status: "M", additions: 2, deletions: 1, mode: "staged" as const },
+    { path: "src/new.py", status: "?", additions: 0, deletions: 0, mode: "unstaged" as const },
+  ];
+  const html = renderToStaticMarkup(<FileTree files={files} selected="src/new.py" onSelect={() => {}} onAction={() => {}} disabled view="list" />);
+  expect(html.indexOf('aria-label="Unstage src/staged.ts"')).toBeLessThan(html.indexOf('title="src/staged.ts"'));
+  expect(html.indexOf('aria-label="Stage src/new.py"')).toBeLessThan(html.indexOf('title="src/new.py"'));
+  expect(html).toContain('data-state="checked"');
+  expect(html).toContain('data-state="unchecked"');
+  expect(html).toContain('aria-label="Untracked"');
+  expect(html).toContain('aria-label="Modified"');
+  expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
+  expect(html.match(/class="git-file-action"[^>]*disabled=""/g)).toHaveLength(2);
+  expect(html).not.toMatch(/class="git-file-select"[^>]*disabled/);
+});
