@@ -4,6 +4,18 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.16] - 2026-10-17
+
+### Added
+
+- Install verified updates inside KlipRun with **Install and Restart**, automatic app replacement, a rollback copy, and a one-time **What's New** panel after restart. Verify the bundle identity, version, signature, and architecture before offering installation.
+- **Latest sessions** above Token activity and Token mix: choose 5, 10, 20, or 50 recent tasks, remember the count, and inspect token categories, agents/models, last activity, observed time, calls, turns, subagents, and recorded costs under the current filters.
+
+### Changed
+
+- Use the Recent Sessions dropdown style for the Git repository picker, with searchable names and paths, keyboard navigation, and a popup bounded by the window.
+- Label cache-read tokens **Cached input** throughout Statistics, with explanations distinguishing them from uncached input and cache writes.
+
 ## [0.0.15] - 2026-10-17
 
 ### Changed
@@ -291,4 +303,5 @@ First public macOS release.
 [0.0.13]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.13
 [0.0.14]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.14
 [0.0.15]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.15
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.15...main
+[0.0.16]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.16
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.16...main
