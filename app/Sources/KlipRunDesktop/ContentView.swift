@@ -44,6 +44,8 @@ struct ContentView: View {
             .sheet(isPresented: $updater.isPresented) {
                 if case .available = updater.phase {
                     UpdateView(updater: updater).frame(height: geometry.size.height)
+                } else if case .installed = updater.phase {
+                    UpdateView(updater: updater).frame(height: geometry.size.height)
                 } else {
                     UpdateView(updater: updater)
                 }

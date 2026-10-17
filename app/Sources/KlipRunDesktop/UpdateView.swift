@@ -36,6 +36,7 @@ struct UpdateView: View {
         .tint(SettingsStyle.accent)
         .background(SettingsStyle.background)
         .preferredColorScheme(.dark)
+        .onDisappear { updater.dismissInstalledNotes() }
     }
 
     @ViewBuilder private var actions: some View {
@@ -43,14 +44,14 @@ struct UpdateView: View {
         case .available:
             Button { Task { await updater.download() } } label: { Label("Download Update", systemImage: "arrow.down") }
                 .buttonStyle(SettingsButtonStyle(primary: true)).keyboardShortcut(.defaultAction)
-        case .ready(let archive):
-            Button("Show ZIP in Finder") { NSWorkspace.shared.activateFileViewerSelecting([archive]) }
-            Button("Quit and Show Update") {
+        case .ready:
+            Button("Install and Restart") {
                 if updater.prepareToQuit() {
-                    updater.isPresented = false
                     NSApp.terminate(nil)
                 }
             }.buttonStyle(SettingsButtonStyle(primary: true)).keyboardShortcut(.defaultAction)
+        case .installed:
+            EmptyView()
         case .failed:
             Button("Try Again") { Task { await updater.check() } }.buttonStyle(SettingsButtonStyle(primary: true))
         case .idle, .upToDate:
@@ -78,9 +79,9 @@ struct UpdateView: View {
                     .background(SettingsStyle.surface, in: RoundedRectangle(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(SettingsStyle.border))
                     .accessibilityLabel("Release notes for KlipRun \(update.version)")
-                Text("Download → Quit KlipRun → Unzip → Replace in Applications")
+                Text("Download → Install and Restart → What’s New")
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(SettingsStyle.accent)
-                Text("Updates install manually. Downloading the ZIP does not replace the app. You can keep working while it downloads.")
+                Text("KlipRun prepares the update here and installs it when you choose to restart. You can keep working while it downloads.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
         case .downloading:
@@ -89,7 +90,7 @@ struct UpdateView: View {
                 if case .verifying = updater.downloadProgress {
                     HStack(spacing: 10) {
                         ProgressView().controlSize(.small)
-                        Text("Checking SHA256 before saving the ZIP…")
+                        Text("Checking the download’s SHA256…")
                     }
                 } else if case .downloading(let received, let total) = updater.downloadProgress {
                     HStack {
@@ -107,22 +108,22 @@ struct UpdateView: View {
                     }
                 }
             }
-        case .ready(let archive):
-            VStack(alignment: .leading, spacing: 14) {
-                Label("Download verified. Ready to install.", systemImage: "checkmark.shield.fill")
-                    .font(.headline).foregroundStyle(.green)
-                SettingsCard(title: "Install in four steps", subtitle: "The ZIP is downloaded. Finish these steps to use the new version.") {
-                    installStep(1, "Quit KlipRun", "Use Quit and Show Update below. Finder will select the ZIP after KlipRun closes.")
-                    installStep(2, "Unzip the download", "Double-click \(archive.lastPathComponent) in Finder.")
-                    installStep(3, "Replace the app", "Drag the new KlipRun.app into Applications and choose Replace. Keep KlipRun closed.")
-                    installStep(4, "Open KlipRun again", "Launch it from Applications. Your preferences and session history stay in place.")
-                }
-                Label("Quitting ends agents started in this app. Finish their work first.", systemImage: "exclamationmark.triangle")
+        case .preparing:
+            SettingsCard(title: "Preparing your update", subtitle: "Checking the application signature, version, and compatibility.") {
+                HStack(spacing: 10) { ProgressView().controlSize(.small); Text("Preparing automatic installation…") }
+            }
+        case .ready:
+            SettingsCard(title: "Ready to install", subtitle: "KlipRun will install the update and reopen automatically.") {
+                Text("Your preferences and session history stay in place. What’s New opens after the restart.")
+                Label("Restarting ends agents started in this app. Finish their work first.", systemImage: "exclamationmark.triangle")
                     .font(.system(size: 11)).foregroundStyle(.orange)
-                Text("If macOS blocks the app: System Settings → Privacy & Security → Open Anyway.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
-                Text(archive.path).font(.system(size: 10)).foregroundStyle(.secondary).textSelection(.enabled)
-                    .lineLimit(2).truncationMode(.middle)
+            }
+        case .installed(let version, let notes):
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Updated to KlipRun \(version)", systemImage: "checkmark.circle.fill")
+                    .font(.headline).foregroundStyle(.green)
+                Text("What’s New").font(.system(size: 13, weight: .semibold))
+                ReleaseNotesView(markdown: notes).frame(minHeight: 220, maxHeight: .infinity)
             }
         case .upToDate:
             SettingsCard(title: "You're up to date", subtitle: "KlipRun \(updater.installedVersion) is the latest compatible stable version.") {
@@ -130,21 +131,11 @@ struct UpdateView: View {
             }
         case .failed(let message):
             SettingsCard(title: "Could not update KlipRun", subtitle: message) {
-                Text("Check your connection and try again. Your installed app has not been changed.").foregroundStyle(.secondary)
+                Text("Review the error above and try again.").foregroundStyle(.secondary)
             }
         }
     }
 
     private func bytes(_ count: Int64) -> String { ByteCountFormatter.string(fromByteCount: count, countStyle: .file) }
 
-    private func installStep(_ number: Int, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text("\(number)").font(.system(size: 11, weight: .semibold)).foregroundStyle(SettingsStyle.accent)
-                .frame(width: 22, height: 22).background(SettingsStyle.accent.opacity(0.12), in: Circle())
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 12, weight: .semibold))
-                Text(detail).font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
 }

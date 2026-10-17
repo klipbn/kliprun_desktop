@@ -13,6 +13,10 @@ async (page, directory = "docs/screenshots") => {
     await page.locator(".git-diff-heading").getByText("src/api/search.ts", { exact: true }).waitFor();
     await page.locator(".git-diff").waitFor();
     await page.screenshot({ path: `${directory}/git-changes.png`, animations: "disabled" });
+    await page.getByRole("button", { name: "Repository", exact: true }).click();
+    await page.getByRole("searchbox", { name: "Search repositories", exact: true }).waitFor();
+    await page.screenshot({ path: `${directory}/git-repository.png`, animations: "disabled" });
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Changes view settings", exact: true }).click();
     await page.getByRole("menu", { name: "Changes view settings", exact: true }).waitFor();
     await page.screenshot({ path: `${directory}/git-changes-settings.png`, animations: "disabled" });
@@ -33,6 +37,6 @@ async (page, directory = "docs/screenshots") => {
     await page.locator("dialog[open]").waitFor();
     await page.screenshot({ path: `${directory}/shortcuts.png`, animations: "disabled" });
     if (external.length) throw new Error("Capture made external requests");
-    return { captures: ["git-changes.png", "git-changes-settings.png", "git-history.png", "git-branches.png", "shortcuts.png"], externalRequests: external.length };
+    return { captures: ["git-changes.png", "git-repository.png", "git-changes-settings.png", "git-history.png", "git-branches.png", "shortcuts.png"], externalRequests: external.length };
   } finally { page.off("request", listener); }
 }

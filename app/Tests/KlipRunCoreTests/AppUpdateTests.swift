@@ -199,9 +199,10 @@ private final class UpdateURLProtocol: URLProtocol, @unchecked Sendable {
         let expected = "https://api.github.com/repos/klipbn/kliprun_desktop/releases/latest"
         let isArchive = request.url?.absoluteString == "https://github.com/klipbn/kliprun_desktop/releases/download/v0.0.10/KlipRun-0.0.10-macos-arm64.zip"
         let chunked = request.value(forHTTPHeaderField: "X-Test-Chunked") == "true"
+        let archive = request.value(forHTTPHeaderField: "X-Test-Archive-File").flatMap { try? Data(contentsOf: URL(fileURLWithPath: $0)) } ?? Data("abc".utf8)
         let status = request.url?.absoluteString == expected || isArchive ? Int(request.value(forHTTPHeaderField: "X-Test-Status") ?? "200")! : 404
         let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil,
-                                       headerFields: isArchive ? ["Content-Length": chunked ? "1048576" : "3"] : nil)!
+                                       headerFields: isArchive ? ["Content-Length": chunked ? "1048576" : String(archive.count)] : nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         if isArchive, chunked {
             client?.urlProtocol(self, didLoad: Data(repeating: 97, count: 524_288))
@@ -218,20 +219,31 @@ private final class UpdateURLProtocol: URLProtocol, @unchecked Sendable {
             let digest = SHA256.hash(data: Data(repeating: 97, count: 1_048_576)).map { String(format: "%02x", $0) }.joined()
             payload = (try? updateRelease(digest: "sha256:\(digest)")) ?? Data()
         }
-        client?.urlProtocol(self, didLoad: isArchive ? Data("abc".utf8) : payload)
+        client?.urlProtocol(self, didLoad: isArchive ? archive : payload)
         client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}
 }
 
 @MainActor @Test func updateDialogAllowsHandoffOnlyAfterVerifiedDownloadAndClearsCancelledQuit() async throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let source = directory.appendingPathComponent("KlipRun.app"), destination = directory.appendingPathComponent("Installed.app")
+    try fixtureApp(source, version: "0.0.10"); try fixtureApp(destination, version: "0.0.9")
+    let archive = directory.appendingPathComponent("fixture.zip"), release = directory.appendingPathComponent("release.json")
+    let zip = Process(); zip.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+    zip.arguments = ["-c", "-k", "--keepParent", source.path, archive.path]; try zip.run(); zip.waitUntilExit()
+    let digest = SHA256.hash(data: try Data(contentsOf: archive)).map { String(format: "%02x", $0) }.joined()
+    try updateRelease(digest: "sha256:\(digest)").write(to: release)
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [UpdateURLProtocol.self]
+    config.httpAdditionalHeaders = ["X-Test-Archive-File": archive.path, "X-Test-Release-File": release.path]
     let session = URLSession(configuration: config)
     defer { session.invalidateAndCancel() }
-    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    defer { try? FileManager.default.removeItem(at: directory) }
-    let updater = AppUpdater(client: AppUpdateClient(session: session), installedVersion: "0.0.9")
+    let suite = "local.kliprun.update-tests.\(UUID().uuidString)", defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let updater = AppUpdater(client: AppUpdateClient(session: session), installedVersion: "0.0.9", applicationURL: destination, defaults: defaults)
     #expect(!updater.prepareToQuit())
     await updater.check()
     guard case .available(let release) = updater.phase else { Issue.record("Expected an available update"); return }
@@ -239,16 +251,27 @@ private final class UpdateURLProtocol: URLProtocol, @unchecked Sendable {
     #expect(release.releaseNotes == "- Preview release notes before downloading.")
     #expect(!updater.prepareToQuit())
     await updater.download(to: directory)
-    guard case .ready(let archive) = updater.phase else { Issue.record("Expected a verified download: \(updater.phase)"); return }
+    guard case .ready = updater.phase else { Issue.record("Expected a prepared update: \(updater.phase)"); return }
     await updater.check(background: true)
     #expect(updater.availableVersion == "0.0.10")
-    #expect(try Data(contentsOf: archive) == Data("abc".utf8))
     #expect(updater.prepareToQuit())
-    #expect(updater.archiveToReveal == archive)
     updater.cancelQuit()
-    #expect(updater.archiveToReveal == nil)
+    #expect(!updater.installOnExit)
     guard case .ready = updater.phase else { Issue.record("Cancelled exit must keep the download ready"); return }
     #expect(updater.prepareToQuit())
+    let installation = try #require(updater.installation)
+    let helper = try updater.installAfterExit(after: Int32.max, relaunch: ["/usr/bin/true"])
+    helper?.waitUntilExit()
+    let restarted = AppUpdater(installedVersion: "0.0.10", applicationURL: destination, defaults: defaults)
+    restarted.restoreAfterUpdate()
+    #expect(restarted.isPresented)
+    guard case .installed(let version, let notes) = restarted.phase else { Issue.record("Expected What's New after restart"); return }
+    #expect(version == "0.0.10")
+    #expect(notes == "- Preview release notes before downloading.")
+    #expect(!FileManager.default.fileExists(atPath: installation.directory.path))
+    let nextLaunch = AppUpdater(installedVersion: "0.0.10", applicationURL: destination, defaults: defaults)
+    nextLaunch.restoreAfterUpdate()
+    #expect(!nextLaunch.isPresented)
 }
 
 @Test func updateChecksPublicGitHubReleaseAndReportsHTTPFailures() async throws {

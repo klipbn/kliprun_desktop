@@ -61,6 +61,7 @@ final class DesktopStore: ObservableObject {
 
     func start() {
         pendingWebPage = preferences.startupPage
+        updater.restoreAfterUpdate()
         updater.startBackgroundChecks()
         runtime.start()
         loop = Task { [weak self] in

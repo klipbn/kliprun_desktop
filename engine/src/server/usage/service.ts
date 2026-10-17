@@ -100,7 +100,7 @@ export function registerStatsRoutes(app: Hono, service: StatsService): void {
     try {
       const url = new URL(c.req.url); filters = parseStatsFilters(url);
       page = Number(url.searchParams.get("page") ?? 1); limit = Number(url.searchParams.get("limit") ?? 50); sort = url.searchParams.get("sort") ?? "running";
-      if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(limit) || limit < 1 || limit > 50 || !["running", "tokens", "turns"].includes(sort)) throw new Error("invalid pagination");
+      if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(limit) || limit < 1 || limit > 50 || !["running", "tokens", "turns", "recent"].includes(sort)) throw new Error("invalid pagination");
     } catch { return c.json({ error: "invalid statistics filters" }, 400); }
     try { c.header("Cache-Control", "no-store"); return c.json(await service.query("sessions", filters, { page, limit, sort })); }
     catch { return c.json({ error: "Statistics temporarily unavailable" }, 503); }

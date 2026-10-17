@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All thirteen images were refreshed from **KlipRun Desktop 0.0.15** on **2026-10-17**. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All fourteen images were captured from **KlipRun Desktop 0.0.16** on **2026-10-17**. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -9,10 +9,11 @@ All thirteen images were refreshed from **KlipRun Desktop 0.0.15** on **2026-10-
 | [`recent-sessions.png`](recent-sessions.png) | 1600 × 1000 | Resized sidebar with compact title/project/time rows, search, bounded agent/project/updated filter controls, resume icons, and matching selected details |
 | [`desktop-terminal.png`](desktop-terminal.png) | 1440 × 900 | Fixture-based board plus a static synthetic terminal panel |
 | [`office.png`](office.png) | 1600 × 1200 | Fictional coworkers, model labels, rooms, and token leaderboard |
-| [`statistics.png`](statistics.png) | 1600 × 1600 | Last 30 days, Daily token activity, composition, and trends in UTC |
+| [`statistics.png`](statistics.png) | 1600 × 1600 | Last 30 days, latest sessions, Daily token activity, and composition in UTC |
 | [`statistics-weekly.png`](statistics-weekly.png) | 1600 × 1600 | Weekly token activity for the same fictional dataset |
 | [`usage.png`](usage.png) | 1600 × 900 | Compact provider rows with colored status dots and white limit/reset labels |
 | [`git-changes.png`](git-changes.png) | 1440 × 900 | Fictional changes in List/Path/None mode, staging controls, and a line-numbered diff |
+| [`git-repository.png`](git-repository.png) | 1440 × 900 | Searchable repository dropdown with fictional project names and paths |
 | [`git-changes-settings.png`](git-changes-settings.png) | 1440 × 900 | Changes settings menu with List/Tree, Path/Name, and three grouping choices |
 | [`git-branches.png`](git-branches.png) | 1440 × 900 | Branch popover with fictional commit metadata and a search/create field |
 | [`git-history.png`](git-history.png) | 1440 × 900 | Fictional commits, refs, commit files and first-parent diff |
@@ -27,6 +28,8 @@ Recent Sessions uses an in-memory `UsageStore` populated only from the fixture's
 [`../../scripts/git-repository-discovery.test.js`](../../scripts/git-repository-discovery.test.js) adds a synthetic long project history to the fixture response and checks discovery against Bun's real HTTP header limit. It verifies bounded request URLs, successful batches, merged roots, and a Git view without an error; it does not read real repositories.
 
 Build the client with `cd engine/src/client && bun run build`, then start `bun docs/screenshots/preview.ts` from the repository root. The fixture-only server binds to `127.0.0.1:18796` and serves the built client without starting a live engine.
+
+[`../../scripts/git-repository-picker.test.js`](../../scripts/git-repository-picker.test.js) checks the searchable Git dropdown, keyboard selection, empty searches, and popup bounds in three window sizes. [`../../scripts/statistics-latest.test.js`](../../scripts/statistics-latest.test.js) checks the latest-session count, ordering, saved selection, detail navigation, small layouts, and empty/error states. These checks and the committed screenshots use the same fictional dataset.
 
 [`capture-all.js`](capture-all.js) is an async Playwright callback taking `(page, outputDirectory = "docs/screenshots")`. It captures the nine non-Git images, checks the UI version and provider names, and rejects external requests. Invoke it with a directory on the Playwright host, or run from the repository root to use the default directory. [`capture-usage.js`](capture-usage.js) remains available for capturing Usage alone.
 

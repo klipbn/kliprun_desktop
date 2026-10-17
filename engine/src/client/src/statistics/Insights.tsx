@@ -30,10 +30,10 @@ export function TokenMix({ summary, onMetric }: { summary: UsageMetrics; onMetri
     <div className="stats-token-stack" role="img" aria-label={TOKEN_PARTS.map(part => `${part.label}: ${count(summary.tokens[part.key])}`).join("; ")}>
       {TOKEN_PARTS.map(part => <span key={part.key} style={{ width: `${total ? summary.tokens[part.key] / total * 100 : 0}%`, background: part.color }} title={`${part.label}: ${count(summary.tokens[part.key])}`} />)}
     </div>
-    <div className="stats-token-mix-list">{TOKEN_PARTS.map(part => <button type="button" key={part.key} onClick={() => onMetric(part.key)} title={`Show ${part.label.toLowerCase()} in the heatmap`}>
+    <div className="stats-token-mix-list">{TOKEN_PARTS.map(part => <button type="button" key={part.key} onClick={() => onMetric(part.key)} title={`${part.description} Show in the heatmap.`}>
       <i style={{ background: part.color }} /><span>{part.label}</span><strong title={count(summary.tokens[part.key])}>{tokens(summary.tokens[part.key])}</strong><small>{percent(summary.tokens[part.key], total)}</small><ArrowUpRight size={12} />
     </button>)}</div>
-    <div className="stats-token-ratios"><div><span>Input served from cache</span><b>{cacheShare(summary.tokens)}</b><small>Cache read / all input tokens</small></div><div><span>Average per model call</span><b>{summary.calls ? tokens(total / summary.calls) : "—"}</b><small>Across {count(summary.calls)} recorded calls</small></div></div>
-    <p className="stats-activity-note">Each token is counted once. Cache read and write are separate from uncached input. Click a token type to explore it in the heatmap.</p>
+    <div className="stats-token-ratios"><div><span>Input served from cache</span><b>{cacheShare(summary.tokens)}</b><small>Cached input / all input tokens</small></div><div><span>Average per model call</span><b>{summary.calls ? tokens(total / summary.calls) : "—"}</b><small>Across {count(summary.calls)} recorded calls</small></div></div>
+    <p className="stats-activity-note">Each token is counted once. Cached input means cache reads. Cache reads and writes are separate from uncached input. Click a token type to explore it in the heatmap.</p>
   </section>;
 }

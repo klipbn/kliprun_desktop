@@ -26,10 +26,10 @@ async (page) => {
     patch: `@@ -0,0 +1 @@\n+Repository: ${decodeURIComponent(route.request().url().match(/[?&]directory=([^&]*)/)[1].replace(/\+/g, " "))}\n`, binary: false, truncated: false,
   } }));
   await page.route(`${base}/api/git/action`, route => { actions.push(route.request().postDataJSON()); pendingAction = route; });
-  const repository = page.getByRole("combobox", { name: "Repository", exact: true });
+  const repository = page.getByRole("button", { name: "Repository", exact: true });
   const message = page.getByRole("textbox", { name: "Commit message", exact: true });
   async function waitForRepository(directory) {
-    await page.waitForFunction(value => document.querySelector('select[aria-label="Repository"]')?.value === value, directory, { timeout: 5000 });
+    await page.waitForFunction(value => document.querySelector('button[aria-label="Repository"]')?.title === value, directory, { timeout: 5000 });
     await page.locator(".git-diff").getByText(`+Repository: ${directory}`, { exact: true }).waitFor();
   }
   async function selectSession(id) {
@@ -46,8 +46,8 @@ async (page) => {
     await page.getByRole("tab", { name: "History", exact: true }).click();
     await page.locator(".git-history-row").first().click();
     await selectSession("ses_demo_previous_rollout");
-    await page.getByText("No Git repository", { exact: true }).waitFor();
-    assert(await repository.inputValue() === notes, "A session without Git fell back to a different repository");
+    await page.getByRole("region", { name: "Diff viewer" }).getByText("No Git repository", { exact: true }).waitFor();
+    assert(await repository.getAttribute("title") === notes, "A session without Git fell back to a different repository");
     assert(await page.locator(".git-file-select,.git-history-row,.git-diff").count() === 0, "Old repository content survived a session without Git");
     assert(await page.getByRole("tab", { name: /Changes/ }).getAttribute("aria-selected") === "true", "Session switching did not return to working changes");
     assert(await page.getByRole("button", { name: "Commit staged", exact: true }).isDisabled(), "Commit is enabled without a repository");
@@ -57,13 +57,13 @@ async (page) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await selectSession("ses_demo_review"); await waitForRepository(aurora);
     assert(await message.inputValue() === "Aurora draft", "Switching repositories lost the original draft");
-    await repository.selectOption(atlas); await waitForRepository(atlas);
+    await repository.click(); await page.getByRole("option").filter({ hasText: atlas }).click(); await waitForRepository(atlas);
     assert(await message.inputValue() === "Atlas draft", "Manual repository selection lost its draft");
     await selectSession("ses_demo_release"); await waitForRepository(aurora);
     await page.getByRole("button", { name: "Commit staged", exact: true }).click();
     await page.waitForFunction(() => !!document.querySelector('textarea[aria-label="Commit message"]')?.disabled);
     await selectSession("ses_demo_search");
-    assert(await repository.inputValue() === aurora, "Repository changed while a write was still running");
+    assert(await repository.getAttribute("title") === aurora, "Repository changed while a write was still running");
     assert(pendingAction && actions.at(-1).directory === aurora, "Commit targeted a different session's repository");
     await pendingAction.fulfill({ json: { ok: true } }); pendingAction = null;
     await waitForRepository(atlas);
@@ -77,12 +77,12 @@ async (page) => {
     await page.getByRole("button", { name: "Choose Folder…", exact: true }).click();
     await page.getByRole("textbox", { name: "Repository directory", exact: true }).fill(notes);
     await page.getByRole("button", { name: "Open", exact: true }).click();
-    await page.getByText("No Git repository", { exact: true }).waitFor();
+    await page.getByRole("region", { name: "Diff viewer" }).getByText("No Git repository", { exact: true }).waitFor();
     assert((await page.locator(".git-repository-picker").innerText()).includes("Repository folder"), "Manual folder selection still claims to follow the session");
-    await repository.selectOption(atlas); await waitForRepository(atlas);
+    await repository.click(); await page.getByRole("option").filter({ hasText: atlas }).click(); await waitForRepository(atlas);
     unavailable = true;
     await page.getByRole("button", { name: "Refresh repository", exact: true }).click();
-    await page.getByText("No Git repository", { exact: true }).waitFor();
+    await page.getByRole("region", { name: "Diff viewer" }).getByText("No Git repository", { exact: true }).waitFor();
     assert(await page.locator(".git-file-select").count() === 0, "A repository that disappeared still shows cached files");
     assert(await page.getByRole("button", { name: "Commit staged", exact: true }).isDisabled(), "Commit is enabled for a repository that disappeared");
     assert(!errors.length, `Browser errors: ${errors.join("; ")}`);

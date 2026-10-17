@@ -128,12 +128,12 @@ function sessionRows(data: UsageDataset, items: Contribution[], timezone: string
     return { ...metrics, id, source: session.source, title: session.title, directory: session.directory,
       agents: [...new Set(list.map(x => x.agent ?? UNKNOWN))], models: [...new Set(list.map(x => x.model ?? UNKNOWN))],
       subagents: new Set(list.filter(x => x.session.id !== id).map(x => x.session.id)).size,
-      last_at: list.reduce((last, x) => Math.max(last, x.event?.at ?? x.segment?.end ?? 0), 0) };
+      last_at: list.reduce((last, x) => Math.max(last, x.event?.at ?? (x.segment?.column === "running" ? x.segment.end : 0)), 0) };
   }).filter(row => row.tasks > 0);
 }
 export function rankSessions(data: UsageDataset, filters: StatsFilters, sort: string, page: number, limit: number): StatsSessionsPayload {
   const rows = sessionRows(data, contributions(data, filters), filters.timezone);
-  rows.sort((a, b) => (sort === "tokens" ? b.tokens.total - a.tokens.total : sort === "turns" ? b.turns - a.turns : (b.running_ms ?? -1) - (a.running_ms ?? -1)) || b.tokens.total - a.tokens.total || a.id.localeCompare(b.id));
+  rows.sort((a, b) => (sort === "recent" ? b.last_at - a.last_at : sort === "tokens" ? b.tokens.total - a.tokens.total : sort === "turns" ? b.turns - a.turns : (b.running_ms ?? -1) - (a.running_ms ?? -1)) || b.tokens.total - a.tokens.total || a.id.localeCompare(b.id));
   return { rows: rows.slice((page - 1) * limit, page * limit), total: rows.length, page, limit };
 }
 function tokenBuckets(items: Contribution[], from: number, to: number, timezone: string, granularity: "day" | "week", now: number) {
