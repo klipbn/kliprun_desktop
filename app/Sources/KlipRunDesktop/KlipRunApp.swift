@@ -31,7 +31,7 @@ final class DesktopAppDelegate: NSObject, NSApplicationDelegate {
                 return .terminateCancel
             }
         }
-        do { try store.updater.revealAfterExit() }
+        do { try store.updater.installAfterExit() }
         catch {
             store.updater.cancelQuit()
             NSAlert(error: error).runModal()
