@@ -4,6 +4,16 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.18] - 2026-10-17
+
+### Fixed
+
+- Fix **Install and Restart** doing nothing while Updates is open as a sheet by dismissing it before requesting app termination.
+
+### Documentation
+
+- Explain the one-time manual upgrade for 0.0.16–0.0.17 when the restart button does not respond. Refresh the fourteen demo screenshots from the fictional fixture for 0.0.18.
+
 ## [0.0.17] - 2026-10-17
 
 ### Added
@@ -316,4 +326,5 @@ First public macOS release.
 [0.0.15]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.15
 [0.0.16]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.16
 [0.0.17]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.17
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.17...main
+[0.0.18]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.18
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.18...main
