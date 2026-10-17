@@ -19,6 +19,7 @@ final class DesktopStore: ObservableObject {
     @Published var terminals: [TerminalSession] = []
     @Published var error: String?
     let runtime = EngineRuntime()
+    lazy var menu = DesktopMenuController(store: self)
     let updater: AppUpdater
     weak var webView: WKWebView?
 
@@ -170,7 +171,7 @@ final class DesktopStore: ObservableObject {
     }
 
     func showPage(_ path: String) {
-        guard ["/", "/git", "/stats", "/office", "/usage"].contains(path) else { return }
+        guard ["/sessions", "/", "/git", "/stats", "/office", "/usage"].contains(path) else { return }
         terminalExpanded = false
         guard webReady, let webView else { pendingWebPage = path; return }
         webView.evaluateJavaScript("window.kliprunPendingNavigation = '\(path)'; window.dispatchEvent(new CustomEvent('kliprun:navigate', { detail: '\(path)' }));")

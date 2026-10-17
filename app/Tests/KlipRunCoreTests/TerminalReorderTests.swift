@@ -18,6 +18,11 @@ import Testing
     #expect(store.selectedTerminalID == 101)
     store.moveTerminal(101, to: 102)
     #expect(store.terminals.map(\.id) == [101,102,103])
+    store.selectTerminalTab(103)
+    store.menu.cycleTerminal(1)
+    #expect(store.selectedTerminalID == 101)
+    store.menu.cycleTerminal(-1)
+    #expect(store.selectedTerminalID == 103)
 }
 
 @MainActor @Test func explicitTerminalLinkSwitchesCardsWithoutOpeningHiddenDock() throws {

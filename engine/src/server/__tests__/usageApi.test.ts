@@ -67,6 +67,20 @@ test("recent history rejects invalid or unbounded query parameters", async () =>
     expect((await app.request(`/api/recent-sessions?${query}`)).status).toBe(400);
   }
 });
+test("session catalog includes history beyond a page and sessions without directories", async () => {
+  const { app } = fixture();
+  await app.request("/api/session-catalog");
+  const store = new UsageStore(join(resources[resources.length - 1].home, "usage.sqlite3"));
+  try {
+    for (let i = 0; i < 105; i++) store.upsertSession({ id: `ses_catalog_${i}`, source: "opencode", parent_id: null, title: `Task ${i}`, directory: i === 0 ? "" : "/demo", created_at: 1, updated_at: i });
+    const response = await app.request("/api/session-catalog");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    const result = await response.json() as { sessions: Array<{ id: string; running_ms: number | null }> };
+    expect(result.sessions).toHaveLength(105);
+    expect(result.sessions.at(-1)).toMatchObject({ id: "ses_catalog_0", running_ms: null });
+  } finally { store.close(); }
+});
 test("worker-backed statistics serve independent observations while unavailable sources remain isolated", async () => {
   const { service, app } = fixture();
   const cards = [{ session_id: "ses_a", source: "opencode" as const, title: "Task", directory: "/p", parent_id: null, agent: "build", model: "p/a" }];

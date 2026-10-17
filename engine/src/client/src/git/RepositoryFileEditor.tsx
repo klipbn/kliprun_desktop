@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronRight, Eye, EyeOff, Save } from "lucide-react";
 import { Annotation, Compartment, EditorState, Transaction } from "@codemirror/state";
+import { undo, redo, undoDepth, redoDepth } from "@codemirror/commands";
+import { openSearchPanel, findNext, findPrevious, getSearchQuery } from "@codemirror/search";
 import { EditorView, keymap } from "@codemirror/view";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -25,6 +27,7 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
   const { path, content, savedContent, saving, savedAt = 0, error, onSave } = props;
   const current = useRef(props);
   current.current = props;
+  const root = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const editable = useRef(new Compartment());
@@ -38,6 +41,12 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
   const notebook = language === "Jupyter Notebook";
   const previewLabel = notebook ? preview ? "Edit notebook JSON" : "Preview notebook" : preview ? "Edit Markdown" : "Preview Markdown";
 
+  const publishHistory = (state: EditorState) => {
+    if (!root.current) return;
+    root.current.dataset.menuUndo = String(!current.current.saving && undoDepth(state) > 0);
+    root.current.dataset.menuRedo = String(!current.current.saving && redoDepth(state) > 0);
+    root.current.dataset.menuSearch = String(!!getSearchQuery(state).search);
+  };
   useEffect(() => {
     if (!host.current) return;
     const canEdit = (locked: boolean) => [EditorState.readOnly.of(locked), EditorView.editable.of(!locked),
@@ -52,6 +61,7 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
           return true;
         } }]),
         EditorView.updateListener.of(update => {
+          publishHistory(update.state);
           if (update.docChanged && !update.transactions.some(transaction => transaction.annotation(externalContent))) {
             current.current.onChange(update.state.sliceDoc());
           }
@@ -64,10 +74,23 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
       ]),
     });
     view.current = editor;
+    publishHistory(editor.state);
+    const menu = (event: Event) => {
+      if (!root.current?.getClientRects().length || root.current.closest('[hidden]')) return;
+      const command = (event as CustomEvent<string>).detail;
+      if (command === 'undo' && !current.current.saving) { undo(editor); editor.focus(); }
+      else if (command === 'redo' && !current.current.saving) { redo(editor); editor.focus(); }
+      else if (command === 'find') { setPreview(false); openSearchPanel(editor); requestAnimationFrame(() => editor.dom.querySelector<HTMLInputElement>('.cm-search input[name=search]')?.focus()); }
+      else if (command === 'find-next') findNext(editor);
+      else if (command === 'find-previous') findPrevious(editor);
+      publishHistory(editor.state);
+    };
+    const element = root.current;
+    element?.addEventListener('kliprun:editor-command', menu);
     setIndentation(repositoryIndentUnit(path, current.current.content));
     setPosition({ line: 1, column: 1 });
     setPreview(/\.ipynb$/i.test(path));
-    return () => { editor.destroy(); view.current = null; };
+    return () => { element?.removeEventListener('kliprun:editor-command', menu); editor.destroy(); view.current = null; };
   }, [path]);
 
   useEffect(() => {
@@ -97,7 +120,7 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
     return () => clearTimeout(timeout);
   }, [savedAt]);
 
-  return <div className="repository-file-editor" onKeyDown={event => {
+  return <div ref={root} className="repository-file-editor" onKeyDown={event => {
     if (!event.defaultPrevented && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
       event.stopPropagation();

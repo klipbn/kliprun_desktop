@@ -33,6 +33,12 @@ export interface RecentSessionsPayload {
   page: number;
   limit: number;
 }
+export interface CatalogSession extends UsageSession {
+  running_ms: number | null;
+  top_model: string | null;
+  top_model_ms: number | null;
+}
+export interface SessionCatalogPayload { sessions: CatalogSession[]; observed_at: number }
 export interface UsageEvent {
   id: string;
   session_id: string;

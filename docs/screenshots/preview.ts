@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildDashboard, buildSessionDetail, rankSessions } from "../../engine/src/server/usage/aggregate.ts";
+import { buildSessionCatalog } from "../../engine/src/server/usage/catalog.ts";
 import { parseStatsFilters } from "../../engine/src/server/usage/time.ts";
 import { UsageStore } from "../../engine/src/server/usage/store.ts";
 import { parseRecentSessionsQuery } from "../../engine/src/server/usage/recent.ts";
@@ -11,7 +12,7 @@ for (const session of fixture.recent_sessions.sessions) recent.upsertSession(ses
 const build = join(root, "engine/src/client/dist");
 const requests: string[] = [];
 const clock = `<script>const OriginalDate = Date; window.Date = class extends OriginalDate { constructor(...args) { super(...(args.length ? args : [${fixture.board.generated_at}])); } static now() { return ${fixture.board.generated_at}; } }; window.kliprunCardPriorities = ${JSON.stringify(fixture.card_priorities)}; window.kliprunPreferences = { detailTab: "agent-text", reduceMotion: true }; window.webkit = { messageHandlers: { desktopAction: {postMessage(){}}, sessionSelected: {postMessage(){}} } };</script>`;
-const server = Bun.serve({ hostname: "127.0.0.1", port: 18796, idleTimeout: 0, async fetch(request) {
+const server = Bun.serve({ hostname: "127.0.0.1", port: Number(process.env.KLIPRUN_PREVIEW_PORT ?? 18796), idleTimeout: 0, async fetch(request) {
   const url = new URL(request.url), path = url.pathname;
   if (path === "/__preview/requests") return Response.json(requests);
   if (path.startsWith("/api/")) requests.push(path+url.search);
@@ -28,6 +29,11 @@ const server = Bun.serve({ hostname: "127.0.0.1", port: 18796, idleTimeout: 0, a
   if (path === "/api/git/commit") return Response.json(fixture.git.commits[url.searchParams.get("revision") ?? ""] ?? { error: "Unknown demo commit" });
   if (path === "/api/git/diff") return Response.json(fixture.git.diffs[url.searchParams.get("path") ?? ""] ?? { patch: "", binary: false, truncated: false });
   if (path === "/api/git/action") return Response.json({ error: "Fixture preview: repositories are not modified." }, { status: 409 });
+  if (path === "/api/session-catalog") {
+    const catalog = buildSessionCatalog(fixture.statistics_dataset);
+    const byId = new Map(catalog.sessions.map(s => [s.id, s]));
+    return Response.json({ observed_at: catalog.observed_at, sessions: fixture.recent_sessions.sessions.map(s => ({ ...s, running_ms: byId.get(s.id)?.running_ms ?? null, top_model: byId.get(s.id)?.top_model ?? null, top_model_ms: byId.get(s.id)?.top_model_ms ?? null })) });
+  }
   if (path === "/api/board") return Response.json(fixture.board);
   if (path === "/api/recent-sessions") {
     try { return Response.json(recent.recentSessions(parseRecentSessionsQuery(url))); }

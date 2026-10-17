@@ -34,7 +34,7 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
         title = initialTitle
         titleState = TerminalTitle(automatic: initialTitle)
         super.init()
-        applyTheme("default")
+        applyTheme("graphite")
         view.minimumContrastRatio = 4.5
         view.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
         view.processDelegate = self
@@ -135,7 +135,8 @@ struct TerminalPane: NSViewRepresentable {
         return host
     }
     func updateNSView(_ nsView: TerminalHostView, context: Context) {
-        nsView.show(session.view)
-        DispatchQueue.main.async { session.view.window?.makeFirstResponder(session.view) }
+        if nsView.show(session.view) {
+            DispatchQueue.main.async { session.view.window?.makeFirstResponder(session.view) }
+        }
     }
 }

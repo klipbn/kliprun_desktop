@@ -83,3 +83,18 @@ test('every generated desk can be reached from the entrance without crossing fur
     }
   }
 });
+
+test('agents and helpers can reach the exit from every area in all floor plans', () => {
+  const cards = [card('lead'), card('helper', { parent_id: 'lead' }), card('waiting', { column: 'attention' }), card('idle', { column: 'idle' })];
+  for (const plan of Object.keys(OFFICE_LAYOUTS) as OfficeLayout[]) for (const aspect of [.8, 2, 5]) {
+    const world = build(cards, plan, aspect);
+    expect(world.exit).toBeDefined();
+    expect(world.exit).not.toEqual(world.entry);
+    for (const spot of world.spots.values()) {
+      const path = routeBetween(spot.point, world.exit, world);
+      expect(path.length).toBeGreaterThan(0);
+      expect(path.at(-1)).toEqual(world.exit);
+      for (const p of path) expect(world.obstacles.some(o => p.x > o.x - 10 && p.x < o.x + o.width + 10 && p.y > o.y - 10 && p.y < o.y + o.height + 10)).toBe(false);
+    }
+  }
+});

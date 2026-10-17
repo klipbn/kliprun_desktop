@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
+import "./recent-session-filter.css";
 
 interface Option { value: string; label: string; path?: string }
 

@@ -4,6 +4,8 @@ import { closeFileTab, editFileTab, isFileDirty, openFileTab, type FileDraft, ty
 import { gitRequest } from "./useGitRequest";
 
 const drafts = new Map<string, FileDraft>();
+export const hasUnsavedFileDrafts = () => drafts.size > 0;
+const notifyDrafts = () => window.dispatchEvent(new Event("kliprun:menu-state-request"));
 let nextId = 0;
 const keyFor = (directory: string, path: string) => JSON.stringify([directory, path]);
 function restored(directory: string): FileTabs {
@@ -59,9 +61,11 @@ export function useFileTabs(directory: string, onSaved: () => void) {
     if (!tab?.file) return;
     const key = keyFor(directory, tab.path);
     if (isFileDirty(tab)) drafts.set(key, tab.file); else drafts.delete(key);
+    notifyDrafts();
   }
   function discard(ids: number[]) {
     for (const tab of stateRef.current.tabs) if (ids.includes(tab.id)) drafts.delete(keyFor(directory, tab.path));
+    notifyDrafts();
     update(previous => ({ ...previous, tabs: previous.tabs.map(tab => ids.includes(tab.id) && tab.file ? { ...tab, file: { ...tab.file, draft: tab.file.content } } : tab) }));
   }
   function close(id: number) {
@@ -78,6 +82,7 @@ export function useFileTabs(directory: string, onSaved: () => void) {
       const data = await gitRequest<GitFileContent>("/api/git/file", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ directory: target, path: tab.path, content: snapshot.draft, revision: snapshot.revision }) });
       const key = keyFor(target, tab.path);
       if (drafts.get(key) === snapshot) drafts.delete(key);
+      notifyDrafts();
       if (mounted.current && currentDirectory.current === target) { patch(id, { file: { ...data, draft: data.content }, saving: false, savedAt: Math.max(Date.now(), tab.savedAt + 1) }); onSaved(); }
       return true;
     } catch (error) {

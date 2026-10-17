@@ -3,20 +3,26 @@ import { CircleHelp, X } from "lucide-react";
 
 const groups = [
   { title: "Navigate", shortcuts: [
-    ["Kanban board", "⌃ 1"], ["Git", "⌃ 2"], ["Office", "⌃ 3"], ["Usage", "⌃ 4"], ["Statistics", "⌃ 5"],
-    ["Settings", "⌘ ,"],
+    ["Sessions", "⌃ 1"], ["Kanban board", "⌃ 2"], ["Office", "⌃ 3"], ["Git", "⌃ 4"], ["Usage", "⌃ 5"], ["Statistics", "⌃ 6"],
+    ["Find session", "⌘ ⇧ F"], ["Settings", "⌘ ,"],
+  ] },
+  { title: "Files & editing", shortcuts: [
+    ["Open repository", "⌘ O"], ["New project", "⌘ ⇧ N"], ["Save file", "⌘ S"],
+    ["Close active item", "⌘ W"], ["Close window", "⌘ ⇧ W"],
+    ["Undo / Redo", "⌘ Z / ⌘ ⇧ Z"], ["Find", "⌘ F"], ["Next / previous match", "⌘ G / ⌘ ⇧ G"],
+    ["Refresh data", "⌘ ⇧ R"],
   ] },
   { title: "Terminals", shortcuts: [
     ["Choose a new terminal", "⌘ T"], ["Show or hide terminal", "⌘ J"],
     ["Expand or restore terminal", "⌘ ↩"], ["Select terminal tab 1–9", "⌘ 1–9"],
     ["Rename active tab", "⌘ R"],
-    ["Close active terminal", "⌘ W"],
+    ["Next / previous tab", "⌃ Tab / ⌃ ⇧ Tab"],
   ] },
   { title: "Agents", shortcuts: [
     ["New OpenCode", "⌘ ⇧ O"], ["New Codex", "⌘ ⇧ C"],
   ] },
   { title: "Zoom", shortcuts: [
-    ["Zoom in", "⌘ +"], ["Zoom out", "⌘ −"], ["Actual size", "⌘ 0"],
+    ["Zoom in", "⌘ +"], ["Zoom out", "⌘ −"], ["Actual size", "⌘ 0"], ["Full screen", "⌃ ⌘ F"],
   ] },
 ];
 

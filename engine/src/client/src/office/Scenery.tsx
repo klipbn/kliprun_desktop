@@ -94,6 +94,13 @@ export function Scenery({ world, waiting }: { world: OfficeWorld; waiting: numbe
     <path d={`M35 ${world.height - 64}v42h75v-42`} fill="#28474a" stroke="#739580" strokeWidth="2" />
     <path d={`M40 ${world.height - 30}h65`} stroke="#c4d3a5" strokeWidth="3" />
     <text x="124" y={world.height - 33} className="office-floor-note">ENTRANCE →</text>
+    <g className="office-exit" data-exit-x={world.exit.x} data-exit-y={world.exit.y} transform={`translate(${world.exit.x} ${world.exit.y})`}>
+      <title>Exit</title>
+      <path d="M-34-22h68v42h-68z" fill="#142b32" stroke="#91b89b" strokeWidth="2" />
+      <path d="M-27-18h30v33h-30z" fill="#4b7367" /><path d="M-24-15h22v19h-22z" fill="#85aa95" />
+      <path d="M-4 7h4" stroke="#d3dcb9" strokeWidth="2" /><path d="M-30 17h60" stroke="#b8d2b0" strokeWidth="3" />
+      <text x="-45" y="7" textAnchor="end" className="office-floor-note" style={{ fill: '#c4e2be' }}>EXIT →</text>
+    </g>
     {[...world.furniture].sort((a, b) => a.y - b.y).map(item => <g key={item.id} transform={`translate(${item.x} ${item.y})`}><ObjectArt item={item} /></g>)}
   </g>;
 }

@@ -1,8 +1,7 @@
 // Playwright callback against the fixture-only preview; reproduces Bun's real HTTP header limit.
-async (page) => {
+async (page, base = "http://127.0.0.1:18796") => {
   const context = await page.context().browser().newContext(); page = await context.newPage(); page.setDefaultTimeout(5000);
-  const base = "http://127.0.0.1:18796";
-  const response = await page.request.get(`${base}/api/recent-sessions`);
+  const response = await page.request.get(`${base}/api/session-catalog`);
   const seed = await response.json();
   const projects = Array.from({ length: 100 }, (_, index) => `/Users/demo/Projects/archives/${String(index).padStart(3, "0")}-${"project".repeat(19)}/worktrees/session`);
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
@@ -17,7 +16,7 @@ async (page) => {
       return response;
     };
   });
-  await page.route(`${base}/api/recent-sessions`, route => route.fulfill({ json: { ...seed, projects } }));
+  await page.route(`${base}/api/session-catalog`, route => route.fulfill({ json: { ...seed, sessions: [...seed.sessions, ...projects.map((directory, i) => ({ ...seed.sessions[0], id: `ses_demo_discovery_${i}`, directory }))] } }));
   try {
     await page.setViewportSize({ width: 1440, height: 900 }); await page.goto(`${base}/git`);
     // Two live fixture projects precede the 100 archived candidates in App.

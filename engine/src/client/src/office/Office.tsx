@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Settings2, Trophy, X } from 'lucide-react';
 import type { BoardPayload, CardPayload } from '@shared/types';
 import type { TrackedCard } from '@shared/readTracker';
@@ -6,18 +6,20 @@ import { OfficeLeaderboard, useOfficeUsage } from './Leaderboard';
 import { stateFor, updatePlacements, type OfficePlacement } from './placement';
 import { buildOfficeLayout, officeResidents } from './layout';
 import { loadOfficePreferences, saveOfficePreferences, OFFICE_LAYOUTS, type OfficeLayout, type OfficePreferences } from './preferences';
+import type { KlopikSkin } from './skins';
 import { Scene } from './Scene';
+import { reconcileOfficeRoster } from './departures';
 import './office.css';
 
-function Leaderboard({ residents, onSelect }: { residents: CardPayload[]; onSelect(id: string): void }) {
+function Leaderboard({ residents, skin, onSelect }: { residents: CardPayload[]; skin: KlopikSkin; onSelect(id: string): void }) {
   const { usage, pending, error } = useOfficeUsage(residents.map(c => c.session_id));
-  return <OfficeLeaderboard residents={residents} usage={usage} pending={pending} error={error} onSelect={onSelect} />;
+  return <OfficeLeaderboard skin={skin} residents={residents} usage={usage} pending={pending} error={error} onSelect={onSelect} />;
 }
 
 export default function Office({ board, onSelect, onBack, isRead, activeTerminalId = null, selectedId = null,
-  reduceMotion = false, now = Date.now() }: {
+  reduceMotion = false, skin = 'default', now = Date.now() }: {
   board: BoardPayload | null; onSelect: (id: string) => void; onBack?: () => void;
-  isRead: (card: TrackedCard) => boolean; activeTerminalId?: string | null; selectedId?: string | null; reduceMotion?: boolean; now?: number;
+  isRead: (card: TrackedCard) => boolean; activeTerminalId?: string | null; selectedId?: string | null; reduceMotion?: boolean; skin?: KlopikSkin; now?: number;
 }) {
   const [preferences, setPreferences] = useState(loadOfficePreferences);
   const [popover, setPopover] = useState<'settings' | 'leaderboard' | null>(null);
@@ -26,10 +28,19 @@ export default function Office({ board, onSelect, onBack, isRead, activeTerminal
   const stage = useRef<HTMLDivElement>(null), popup = useRef<HTMLDivElement>(null);
   const settingsButton = useRef<HTMLButtonElement>(null), leaderboardButton = useRef<HTMLButtonElement>(null);
   const residents = useMemo(() => officeResidents(board ? ['running', 'attention', 'idle'].flatMap(key => board.columns[key as keyof typeof board.columns].cards) : []), [board]);
+  const quiet = reduceMotion || systemReducedMotion || !preferences.animate;
+  const [roster, setRoster] = useState(() => reconcileOfficeRoster(new Map(), residents, quiet));
+  useLayoutEffect(() => { setRoster(previous => reconcileOfficeRoster(previous, residents, quiet)); }, [residents, quiet]);
+  const visibleResidents = useMemo(() => [...roster.values()].map(r => r.card), [roster]);
+  const departures = useMemo(() => new Set([...roster].filter(([, r]) => r.leaving).map(([id]) => id)), [roster]);
+  const finishDeparture = useCallback((id: string) => setRoster(previous => {
+    if (!previous.get(id)?.leaving) return previous;
+    const next = new Map(previous); next.delete(id); return next;
+  }), []);
   const previous = useRef(new Map<string, OfficePlacement>());
-  const placements = useMemo(() => updatePlacements(previous.current, residents, now), [residents, now]);
+  const placements = useMemo(() => updatePlacements(previous.current, visibleResidents, now), [visibleResidents, now]);
   useEffect(() => { previous.current = placements; }, [placements]);
-  const world = useMemo(() => buildOfficeLayout(residents, placements, preferences.layout, aspect), [residents, placements, preferences.layout, aspect]);
+  const world = useMemo(() => buildOfficeLayout(visibleResidents, placements, preferences.layout, aspect), [visibleResidents, placements, preferences.layout, aspect]);
   useEffect(() => {
     const element = stage.current;
     if (!element) return;
@@ -62,7 +73,6 @@ export default function Office({ board, onSelect, onBack, isRead, activeTerminal
   };
   const counts = { working: 0, waiting: 0, resting: 0, unknown: 0, error: 0 };
   residents.forEach(c => counts[stateFor(c)]++);
-  const quiet = reduceMotion || systemReducedMotion || !preferences.animate;
   return <section className={`office-page${quiet ? ' office-quiet' : ''}`} aria-label="Live agent office" data-testid="office-page" data-layout={preferences.layout}>
     <header className="office-toolbar">
       <h2>The office</h2>
@@ -77,9 +87,9 @@ export default function Office({ board, onSelect, onBack, isRead, activeTerminal
       </div>
     </header>
     <div className="office-stage" ref={stage}>
-      <Scene world={world} residents={residents} placements={placements} preferences={preferences} quiet={quiet} now={now}
+      <Scene skin={skin} world={world} residents={visibleResidents} departures={departures} onDeparture={finishDeparture} placements={placements} preferences={preferences} quiet={quiet} now={now}
         isRead={isRead} activeTerminalId={activeTerminalId} selectedId={selectedId} onSelect={onSelect} />
-      {!board ? <div className="office-empty" role="status">Loading office…</div> : !residents.length ? <div className="office-empty"><h3>The office is quiet</h3><p>Open an OpenCode or Codex session to bring a coworker in.</p></div> : null}
+      {!board ? <div className="office-empty" role="status">Loading office…</div> : !visibleResidents.length ? <div className="office-empty"><h3>The office is quiet</h3><p>Open an OpenCode or Codex session to bring a coworker in.</p></div> : null}
     </div>
     <footer className="office-footer">
       <span className="office-count-working">{counts.working} working</span><span className="office-count-waiting">{counts.waiting} waiting</span><span>{counts.resting} resting</span>
@@ -94,7 +104,7 @@ export default function Office({ board, onSelect, onBack, isRead, activeTerminal
         <label>Team connections<input type="checkbox" checked={preferences.links} onChange={e => change({ links: e.target.checked })} /></label>
         <label>Walking and animations<input type="checkbox" checked={preferences.animate} onChange={e => change({ animate: e.target.checked })} /></label>
         <p>{reduceMotion || systemReducedMotion ? 'Reduced motion is active in your app or system settings.' : 'The larger coworker leads its smaller helpers. Movement follows session activity.'}</p>
-      </> : <Leaderboard residents={residents} onSelect={id => { setPopover(null); onSelect(id); }} />}
+      </> : <Leaderboard skin={skin} residents={residents} onSelect={id => { setPopover(null); onSelect(id); }} />}
     </div>}
   </section>;
 }

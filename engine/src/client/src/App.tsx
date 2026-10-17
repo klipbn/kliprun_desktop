@@ -1,9 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownToLine, BarChart3, Building2, Columns3, Gauge, GitBranch, Settings2, SquareTerminal } from "lucide-react";
+import { ArrowDownToLine, BarChart3, Building2, Columns3, Folder, Gauge, GitBranch, Settings2, SquareTerminal } from "lucide-react";
 import type { CardPayload, ColumnKey } from "@shared/types";
 import { sessionCards } from "@shared/readTracker";
 import { linkedSessionId } from "@shared/sessionLink";
-import { availableUpdateVersion, hasDesktopBridge, notifyNativeAction, notifyNativeSelection, notifyNativeResume, observeNativeNavigation, observeNativeTerminalSelection, observeNativeUpdate, recentSessionsCollapsed, setRecentSessionsCollapsed } from "./nativeBridge";
+import { availableUpdateVersion, hasDesktopBridge, notifyNativeAction, notifyNativeSelection, notifyNativeResume, observeNativeNavigation, observeNativeTerminalSelection, observeNativeUpdate } from "./nativeBridge";
 import { useBoard, useNow } from "./hooks/useBoard";
 import { useDesktopPreferences } from "./hooks/useDesktopPreferences";
 import { useReadTracker } from "./hooks/useReadTracker";
@@ -11,16 +11,18 @@ import { BoardColumn } from "./components/BoardColumn";
 import { DetailsPanel } from "./components/DetailsPanel";
 import { StatusBar } from "./components/StatusBar";
 import { ShortcutHelp } from "./components/ShortcutHelp";
-import { RecentSessions } from "./components/RecentSessions";
 import { HarnessIcon } from "./components/HarnessIcon";
 import { useStatsRequest } from "./statistics/useStatsRequest";
-import type { RecentSessionsPayload } from "@shared/usage";
+import type { SessionCatalogPayload } from "@shared/usage";
 import { formatRelativeTimeVerbose } from "@shared/format";
 import { useQuotas } from "./quota/useQuotas";
 import { StatusQuota } from "./quota/StatusQuota";
 import { loadCardPriorities, saveCardPriorities, updateCardPriority, type CardPriority } from "./cardPriorities";
 import { loadCardOrder, saveCardOrder, type CardOrder } from "./cardOrder";
 
+import { installWebMenuBridge } from "./webMenu";
+
+const Sessions = lazy(() => import("./sessions/Sessions"));
 const Statistics = lazy(() => import("./statistics/Statistics"));
 const Office = lazy(() => import("./office/Office"));
 const Usage = lazy(() => import("./quota/Usage"));
@@ -28,7 +30,7 @@ const Git = lazy(() => import("./git/Git"));
 const HEADER_BUTTON = "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60";
 
 function currentPage() {
-  return window.location.pathname === "/git" ? "git" : window.location.pathname === "/stats" ? "stats" : window.location.pathname === "/office" ? "office" : window.location.pathname === "/usage" ? "usage" : "board";
+  return window.location.pathname === "/sessions" ? "sessions" : window.location.pathname === "/git" ? "git" : window.location.pathname === "/stats" ? "stats" : window.location.pathname === "/office" ? "office" : window.location.pathname === "/usage" ? "usage" : "board";
 }
 
 function ConnectionIndicator(state: "connecting" | "live" | "polling", error: string | null) {
@@ -57,8 +59,8 @@ export default function App() {
   const { board, connection, error } = useBoard();
   const desktop = hasDesktopBridge();
   const [updateVersion, setUpdateVersion] = useState(availableUpdateVersion);
-  const [historyCollapsed, setHistoryCollapsed] = useState(recentSessionsCollapsed);
-  const recent = useStatsRequest<RecentSessionsPayload>("/api/recent-sessions", 0);
+  const [catalogRefresh, setCatalogRefresh] = useState(0);
+  const recent = useStatsRequest<SessionCatalogPayload>("/api/session-catalog", catalogRefresh);
   const now = useNow();
   const quotaState = useQuotas();
   const { isRead, counts, markRead } = useReadTracker(board);
@@ -69,15 +71,25 @@ export default function App() {
   const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
   const [linkedId, setLinkedId] = useState(() => linkedSessionId(window.location.search));
   const [page, setPage] = useState(currentPage);
+  const [sessionMenuRequest, setSessionMenuRequest] = useState<"new-project" | "find" | null>(null);
   const showStatistics = page === "stats";
   const statisticsSearch = useRef(showStatistics ? window.location.search : "");
   const gitDirectories = useMemo(() => [...new Set([
     ...(board ? sessionCards(Object.values(board.columns).flatMap(column => column.cards)).map(card => card.directory) : []),
-    ...(recent.data?.projects ?? recent.data?.sessions.map(session => session.directory) ?? []),
+    ...(recent.data?.sessions.map(session => session.directory) ?? []),
   ])].filter(Boolean), [board, recent.data]);
   const gitSessionDirectory = (selectedId && board ? findCard(board, selectedId)?.directory : null)
     ?? recent.data?.sessions.find(session => session.id === selectedId)?.directory
     ?? (recentSelection?.id === selectedId ? recentSelection.directory : null);
+  const catalogCards = useMemo(() => new Map(board ? sessionCards(Object.values(board.columns).flatMap(column => column.cards)).map(card => [card.session_id, card]) : []), [board]);
+  const catalogSessions = useMemo(() => {
+    const rows = new Map((recent.data?.sessions ?? []).map(session => [session.id, session]));
+    for (const card of catalogCards.values()) if (!card.parent_id && !rows.has(card.session_id)) rows.set(card.session_id, {
+      id: card.session_id, source: card.source, parent_id: null, title: card.title, directory: card.directory,
+      created_at: card.last_event_at, updated_at: card.last_event_at, running_ms: null, top_model: null, top_model_ms: null,
+    });
+    return [...rows.values()];
+  }, [recent.data, catalogCards]);
   const activeSessionIds = useMemo(() => new Set(board ? sessionCards([
     ...board.columns.attention.cards,
     ...board.columns.running.cards,
@@ -117,6 +129,10 @@ export default function App() {
     window.history.pushState(null, "", "/");
     setPage("board");
   }, []);
+  const openSessions = useCallback(() => {
+    if (window.location.pathname === "/stats") statisticsSearch.current = window.location.search;
+    window.history.pushState(null, "", "/sessions"); setPage("sessions");
+  }, []);
   const openOffice = useCallback(() => {
     if (window.location.pathname === "/stats") statisticsSearch.current = window.location.search;
     window.history.pushState(null, "", "/office");
@@ -133,12 +149,33 @@ export default function App() {
     setPage("git");
   }, []);
   useEffect(() => observeNativeNavigation(path => {
-    if (path === "/") backToBoard();
+    if (path === "/sessions") openSessions();
+    else if (path === "/") backToBoard();
     else if (path === "/stats") openStatistics();
     else if (path === "/office") openOffice();
     else if (path === "/usage") openUsage();
     else if (path === "/git") openGit();
-  }), [backToBoard, openStatistics, openOffice, openUsage, openGit]);
+  }), [backToBoard, openStatistics, openOffice, openUsage, openGit, openSessions]);
+  useEffect(() => {
+    const navigate = (event: KeyboardEvent) => {
+      if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || document.querySelector("dialog[open]")) return;
+      const action = [openSessions, backToBoard, openOffice, openGit, openUsage, openStatistics][Number(event.key) - 1];
+      if (action) { event.preventDefault(); action(); }
+    };
+    window.addEventListener("keydown", navigate);
+    return () => window.removeEventListener("keydown", navigate);
+  }, [openSessions, backToBoard, openOffice, openGit, openUsage, openStatistics]);
+  const menuActions = useRef({ newProject: () => {}, findSession: () => {}, refresh: () => {} });
+  menuActions.current = {
+    newProject: () => { openSessions(); setSessionMenuRequest("new-project"); },
+    findSession: () => { openSessions(); setSessionMenuRequest("find"); },
+    refresh: () => {
+      window.dispatchEvent(new Event("kliprun:board-refresh"));
+      window.dispatchEvent(new Event("kliprun:data-refresh"));
+      if (page === "usage") quotaState.onRefresh();
+    },
+  };
+  useEffect(() => installWebMenuBridge({ newProject: () => menuActions.current.newProject(), findSession: () => menuActions.current.findSession(), refresh: () => menuActions.current.refresh() }), []);
   const rememberStatisticsSearch = useCallback((search: string) => {
     statisticsSearch.current = search;
   }, []);
@@ -211,11 +248,12 @@ export default function App() {
         <div className={`ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 ${desktop ? "md:ml-0" : ""}`}>
           <nav className="flex items-center gap-1.5" aria-label="Views">
             {[
-              { id: "kanban", label: "Kanban", page: "board", icon: Columns3, shortcut: 1, onClick: backToBoard },
-              { id: "git", label: "Git", page: "git", icon: GitBranch, shortcut: 2, onClick: openGit },
+              { id: "sessions", label: "Sessions", page: "sessions", icon: Folder, shortcut: 1, onClick: openSessions },
+              { id: "kanban", label: "Kanban", page: "board", icon: Columns3, shortcut: 2, onClick: backToBoard },
               { id: "office", label: "Office", page: "office", icon: Building2, shortcut: 3, onClick: page === "office" ? backToBoard : openOffice },
-              { id: "usage", label: "Usage", page: "usage", icon: Gauge, shortcut: 4, onClick: page === "usage" ? backToBoard : openUsage },
-              { id: "statistics", label: "Statistics", page: "stats", icon: BarChart3, shortcut: 5, onClick: showStatistics ? backToBoard : openStatistics },
+              { id: "git", label: "Git", page: "git", icon: GitBranch, shortcut: 4, onClick: openGit },
+              { id: "usage", label: "Usage", page: "usage", icon: Gauge, shortcut: 5, onClick: page === "usage" ? backToBoard : openUsage },
+              { id: "statistics", label: "Statistics", page: "stats", icon: BarChart3, shortcut: 6, onClick: showStatistics ? backToBoard : openStatistics },
             ].map(item => <button key={item.id} type="button" onClick={item.onClick} aria-label={item.label}
               aria-pressed={page === item.page} data-testid={`${item.id}-button`} title={`${item.label} (Control+${item.shortcut})`}
               className={`${HEADER_BUTTON} text-white hover:bg-white/10 ${page === item.page ? "border-accent/40 bg-accent/10" : "border-border"}`}>
@@ -239,6 +277,16 @@ export default function App() {
         </div>
       </header>
 
+      {page === "sessions" && <main className="flex-1 min-h-0 flex">
+        <Suspense fallback={<div className="p-4 text-text-secondary">Loading sessions…</div>}>
+          <Sessions menuRequest={sessionMenuRequest} onMenuRequestHandled={() => setSessionMenuRequest(null)} sessions={catalogSessions} cards={catalogCards} pending={recent.pending} error={recent.error} now={now} selectedId={selectedId}
+            onRetry={() => setCatalogRefresh(value => value + 1)}
+            onSelect={(id, directory) => { setRecentSelection({ id, directory }); select(id); }}
+            onResume={desktop ? (id, directory) => { setRecentSelection({ id, directory }); notifyNativeResume(id); } : undefined} />
+        </Suspense>
+        {selectedId && <DetailsPanel sessionId={selectedId} onClose={closeDetails} />}
+      </main>}
+
       {page === "git" && <Suspense fallback={<div className="flex-1 flex items-center justify-center text-text-secondary">Loading Git…</div>}>
         <Git directories={gitDirectories} sessionId={selectedId} sessionDirectory={gitSessionDirectory} />
       </Suspense>}
@@ -251,7 +299,7 @@ export default function App() {
 
       {page === "office" && <main className="office-view flex-1 min-h-0 flex">
         <Suspense fallback={<div className="flex-1 flex items-center justify-center text-text-secondary">Loading office…</div>}>
-          <Office board={board} now={now} isRead={isRead} activeTerminalId={activeTerminalId} selectedId={selectedId} reduceMotion={preferences.reduceMotion} onSelect={select} onBack={backToBoard} />
+          <Office board={board} now={now} isRead={isRead} activeTerminalId={activeTerminalId} selectedId={selectedId} reduceMotion={preferences.reduceMotion} skin={preferences.klopikSkin} onSelect={select} onBack={backToBoard} />
         </Suspense>
         {selectedId && <DetailsPanel sessionId={selectedId} onClose={closeDetails} />}
       </main>}
@@ -261,12 +309,6 @@ export default function App() {
       </Suspense>}
 
       <main className="flex-1 min-h-0 flex" style={page !== "board" ? { display: "none" } : undefined}>
-        <RecentSessions sessions={recent.data?.sessions ?? []} collapsed={historyCollapsed} selectedId={selectedId}
-          total={recent.data?.total} projects={recent.data?.projects} now={now}
-          pending={recent.pending} error={recent.error ? "Recent sessions temporarily unavailable" : null}
-          onSelect={(id, directory) => { setRecentSelection({ id, directory }); select(id); }}
-          onResume={desktop ? (id, directory) => { setRecentSelection({ id, directory }); notifyNativeResume(id); } : undefined}
-          onToggle={() => { const collapsed = !historyCollapsed; setHistoryCollapsed(collapsed); setRecentSessionsCollapsed(collapsed); }} />
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-text-secondary" data-testid="loading-screen">
             <Loader2Impl />

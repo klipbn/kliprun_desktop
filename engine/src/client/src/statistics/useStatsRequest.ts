@@ -25,8 +25,10 @@ export function useStatsRequest<T>(url: string | null, refresh: number) {
       } finally { if (live && controller === requestController && !requestController.signal.aborted) setPending(false); }
     }
     void load();
+    const reload = () => void load();
+    window.addEventListener("kliprun:data-refresh", reload);
     const timer = window.setInterval(() => void load(), 30_000);
-    return () => { live = false; controller?.abort(); window.clearInterval(timer); };
+    return () => { live = false; controller?.abort(); window.clearInterval(timer); window.removeEventListener("kliprun:data-refresh", reload); };
   }, [url, refresh]);
   return { data, pending, error };
 }

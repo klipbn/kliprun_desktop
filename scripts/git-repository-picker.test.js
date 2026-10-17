@@ -1,7 +1,7 @@
 // Run against the fixture-only preview. All repository data is fictional.
-async (page) => {
+async (page, base = "http://127.0.0.1:18796") => {
   const context = await page.context().browser().newContext(); page = await context.newPage();
-  const base = "http://127.0.0.1:18796", errors = [];
+  const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   const assert = (value, message) => { if (!value) throw new Error(message); };
   try {
