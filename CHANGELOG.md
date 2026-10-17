@@ -4,6 +4,26 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.15] - 2026-10-17
+
+### Changed
+
+- Compact Recent Sessions with search across indexed history, Agent/Project/Updated filters, pagination, and inline resume controls. Preserve search and filters while switching views or collapsing the panel.
+- Resize Recent Sessions from its right edge or with Left/Right keys; remember the width across launches. Keep filter menus inside the panel and search projects by name or folder path.
+- Add Git Changes settings for List/Tree, Path/Name, and grouping by tracked or staging status. Remember choices and keep both diffs for partially staged files.
+- Group toolbar utilities as **Check for Updates → Keyboard shortcuts → Settings**.
+- Expand available-update notes to the main window's full height, with scrolling and fixed action buttons.
+
+### Fixed
+
+- Open Git reliably with large project histories by splitting repository discovery into bounded requests. Handle invalid API responses without WebKit's “The string did not match the expected pattern.” error.
+- Follow the selected session's repository, including older Recent Sessions entries, and open a changed file's diff automatically. Clear stale changes for sessions without Git; label the repository context and manual **Choose Folder…** action.
+- Commit immediately with **Commit staged**, without another confirmation. Keep the message field at a fixed height with scrolling, retain drafts per repository, and preserve messages on failure.
+
+### Documentation
+
+- Shorten the README to an app overview, screenshots, installation, and build commands. Refresh all thirteen demo screenshots using fictional fixture data only.
+
 ## [0.0.14] - 2026-10-17
 
 ### Added
@@ -270,4 +290,5 @@ First public macOS release.
 [0.0.12]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.12
 [0.0.13]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.13
 [0.0.14]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.14
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.14...main
+[0.0.15]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.15
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.15...main

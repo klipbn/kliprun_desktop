@@ -7,11 +7,16 @@ async (page, directory = "docs/screenshots") => {
   try {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${base}/git`);
-    await page.evaluate(() => localStorage.removeItem("kliprun.git.sidebar-width"));
+    await page.evaluate(() => { localStorage.removeItem("kliprun.git.sidebar-width"); localStorage.removeItem("kliprun.git.changes-view"); });
     await page.reload();
     await page.locator('.git-file-select[title="src/api/search.ts"]').click();
+    await page.locator(".git-diff-heading").getByText("src/api/search.ts", { exact: true }).waitFor();
     await page.locator(".git-diff").waitFor();
     await page.screenshot({ path: `${directory}/git-changes.png`, animations: "disabled" });
+    await page.getByRole("button", { name: "Changes view settings", exact: true }).click();
+    await page.getByRole("menu", { name: "Changes view settings", exact: true }).waitFor();
+    await page.screenshot({ path: `${directory}/git-changes-settings.png`, animations: "disabled" });
+    await page.keyboard.press("Escape");
     await page.getByRole("tab", { name: "History", exact: true }).click();
     await page.locator(".git-history-row").first().click();
     await page.locator('.git-commit-files .git-file-select[title="src/api/search.ts"]').click();
@@ -28,6 +33,6 @@ async (page, directory = "docs/screenshots") => {
     await page.locator("dialog[open]").waitFor();
     await page.screenshot({ path: `${directory}/shortcuts.png`, animations: "disabled" });
     if (external.length) throw new Error("Capture made external requests");
-    return { captures: ["git-changes.png", "git-history.png", "git-branches.png", "shortcuts.png"], externalRequests: external.length };
+    return { captures: ["git-changes.png", "git-changes-settings.png", "git-history.png", "git-branches.png", "shortcuts.png"], externalRequests: external.length };
   } finally { page.off("request", listener); }
 }

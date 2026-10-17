@@ -10,7 +10,7 @@ async (page, directory = "docs/screenshots") => {
     await page.goto(`${base}${path}`);
     if (!path.startsWith("/__demo/")) {
       await page.locator('[data-testid="version"]').waitFor();
-      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.14") throw new Error("Build the 0.0.14 client before capturing.");
+      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.15") throw new Error("Build the 0.0.15 client before capturing.");
     }
   }
   async function sidebar(expanded) {
@@ -24,6 +24,8 @@ async (page, directory = "docs/screenshots") => {
   }
   try {
     await visit("/", 1440, 900);
+    await page.evaluate(() => localStorage.removeItem("kliprun.recent-sessions.width"));
+    await page.reload();
     await page.locator('[data-testid="card-ses_demo_search"]').waitFor();
     await sidebar(false);
     await save("kanban");
@@ -32,6 +34,10 @@ async (page, directory = "docs/screenshots") => {
     await save("kanban-details");
     await page.setViewportSize({ width: 1600, height: 1000 });
     await sidebar(true);
+    await page.getByRole("button", { name: "Filter sessions", exact: true }).click();
+    await page.getByRole("separator", { name: "Resize recent sessions", exact: true }).focus();
+    for (let step = 0; step < 4; step++) await page.keyboard.press("ArrowRight");
+    await page.getByRole("searchbox", { name: "Search sessions", exact: true }).focus();
     await save("recent-sessions");
     await visit("/office", 1600, 1200);
     await page.locator(".office-resident").first().waitFor();
