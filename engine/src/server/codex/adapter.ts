@@ -18,6 +18,7 @@ export class CodexAdapter {
   private choices = new Map<string, string>();
   private observations = new Map<string, string | null>();
   private links: TerminalLink[] = [];
+  private currentCards: CardPayload[] = [];
   diagnostics: string[] = [];
 
   constructor(home = codexHome(), private readonly hermesHome = codexHermesHome()) { this.storage = new CodexStorage(home); }
@@ -75,6 +76,7 @@ export class CodexAdapter {
   cards(now: number): CardPayload[] {
     this.diagnostics = [];
     this.links = [];
+    this.currentCards = [];
     if (!this.processes.length) { this.threads.clear(); this.readers.clear(); this.statuses.clear(); return []; }
     let processes: CliProcess[];
     let matched: CodexThread[];
@@ -98,7 +100,8 @@ export class CodexAdapter {
         }
       }
       const visible = new Set(this.links.map(link => link.session_id));
-      this.threads = new Map(this.candidates.filter(row => visible.has(`codex:${row.id}`)).map(row => [row.id, row]));
+      const roots = this.candidates.filter(row => visible.has(`codex:${row.id}`));
+      this.threads = new Map([...roots, ...this.storage.descendants(roots.map(row => row.id))].map(row => [row.id, row]));
     } catch {
       this.diagnostics = ["Codex database unavailable or incompatible; CLI sessions cannot be matched"];
       this.threads.clear();
@@ -109,17 +112,38 @@ export class CodexAdapter {
     for (const id of this.readers.keys()) if (!this.threads.has(id)) { this.readers.delete(id); this.statuses.delete(id); }
     const threads = [...this.threads.values()];
     const hermes = readHermesStatuses(this.hermesHome, threads, now);
-    return processes.flatMap(process => {
+    const cards = new Map(threads.map(row => [row.id, this.card(row, now, hermes.get(row.id))]));
+    this.currentCards = [...cards.values()];
+    for (const row of threads) {
+      const child = cards.get(row.id)!;
+      const parent = row.parent_thread_id ? cards.get(row.parent_thread_id) : undefined;
+      if (!parent) continue;
+      parent.subagent_count++;
+      if (child.column !== "idle") parent.subagent_active++;
+      if (child.stage === "Error") {
+        parent.subagent_errors++;
+        if (parent.subagent_error_notes.length < 3) parent.subagent_error_notes.push(`${child.title} — ${child.error ?? "failed"}`.slice(0, 160));
+      }
+      if (child.column !== "idle" && child.column === parent.column) parent.children.push(child);
+    }
+    const roots = processes.map(process => {
       const link = this.links.find(link => link.pid === Number(process.pid));
       const row = link ? this.threads.get(link.session_id.slice(6)) : undefined;
       const candidates = this.sessionCandidates(process).filter(row => !this.links.some(link => link.pid !== Number(process.pid) && link.session_id === `codex:${row.id}`));
       const terminal = { pid: Number(process.pid), generation: process.startedAt ?? "", session_id: row ? `codex:${row.id}` : null,
         candidates: candidates.map(row => ({ session_id: `codex:${row.id}`, title: scrub(row.title).slice(0, 90) })) };
-      const card = row ? this.card(row, now, hermes.get(row.id)) : this.unresolvedCard(process);
+      const card = row ? cards.get(row.id)! : this.unresolvedCard(process);
       if (!row || process.selectedSessionId) card.terminal = terminal;
-      return [card];
+      return card;
     });
+    return [...roots, ...threads.filter(row => {
+      const card = cards.get(row.id)!;
+      const parent = row.parent_thread_id ? cards.get(row.parent_thread_id) : undefined;
+      return parent && card.column !== "idle" && card.column !== parent.column;
+    }).map(row => cards.get(row.id)!)];
   }
+
+  historyCards(): CardPayload[] { return this.currentCards; }
 
   private unresolvedCard(process: CliProcess): CardPayload {
     return { source: "codex", session_id: `codex-terminal:${process.pid}`, directory: scrub(process.cwd),
@@ -154,7 +178,9 @@ export class CodexAdapter {
     else this.statuses.delete(row.id);
     return {
       source: "codex", session_id: `codex:${row.id}`, directory: scrub(row.cwd), directory_name: scrub(basename(row.cwd)),
-      title: scrub(row.title).slice(0, 90), prompt_snippet: state?.prompt ?? null, parent_id: null, agent: { name: "Codex" },
+      title: scrub(row.title).slice(0, 90), prompt_snippet: state?.prompt ?? null,
+      parent_id: row.parent_thread_id ? `codex:${row.parent_thread_id}` : null,
+      agent: { name: typeof row.agent_nickname === "string" ? scrub(row.agent_nickname) : "Codex" },
       column: state?.column ?? "idle", stage: state?.stage ?? "Status unknown", stage_since: state?.since || row.updated_at * 1000,
       running_since: state?.column === "running" ? state.startedAt : null, last_event_at: state?.lastEventAt || row.updated_at * 1000,
       reason: state?.reason ?? (state ? null : "Local journal unavailable"), error: state?.stage === "Error" ? "Turn failed" : null,
@@ -195,5 +221,5 @@ export class CodexAdapter {
     return provider ? scrub(`${provider}/${card.model_ref}`) : card.model_ref;
   }
 
-  close(): void { this.storage.close(); this.threads.clear(); this.readers.clear(); this.statuses.clear(); this.candidates = []; this.choices.clear(); this.observations.clear(); this.links = []; }
+  close(): void { this.storage.close(); this.threads.clear(); this.readers.clear(); this.statuses.clear(); this.candidates = []; this.choices.clear(); this.observations.clear(); this.links = []; this.currentCards = []; }
 }

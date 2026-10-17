@@ -284,6 +284,58 @@ function database(dir: string) {
 }
 
 describe("Codex storage and adapter", () => {
+  test("shows Codex descendants without separate terminals and tracks their lifecycle like OpenCode", () => {
+    const dir = temp(); const { db } = database(dir);
+    const add = (key: string, parent: string | null, status: string, archived = 0) => {
+      const path = join(dir, `${key}.jsonl`);
+      const source = parent ? JSON.stringify({ subagent: { thread_spawn: { parent_thread_id: parent,
+        depth: 1, agent_path: `/root/${key}`, agent_nickname: key, agent_role: null } } }) : "cli";
+      writeFileSync(path, event("event_msg", { type: "task_started" }) +
+        (status === "running" ? "" : event("event_msg", { type: status })));
+      db.query("INSERT INTO threads VALUES (?,?,?,?,?,?,?,?)")
+        .run(key, "/project", `${key} task`, source, path, t / 1000, archived, null);
+      return path;
+    };
+    add(id, null, "running");
+    const childPath = add("child", id, "running");
+    const grandchildPath = add("grandchild", "child", "running");
+    const waitingPath = add("waiting", id, "running");
+    appendFileSync(waitingPath, event("response_item", { type: "function_call", name: "request_user_input", call_id: "q" }));
+    add("done", id, "task_complete");
+    add("failed", id, "task_failed");
+    add("archived", id, "running", 1);
+    add("foreign", "another-root", "running");
+    db.query("INSERT INTO threads VALUES (?,?,?,?,?,?,?,?)")
+      .run("broken", "/project", "Invalid source", "{broken", childPath, t / 1000, 0, null);
+    db.close();
+    const adapter = new CodexAdapter(dir, join(dir, "hermes"));
+    const process = { ...cli(), startedAt: "generation-1", writerSessionIds: [id], daemonSessionIds: [id, "child", "foreign"] };
+    adapter.setProcesses([process]);
+    const cards = adapter.cards(t);
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toMatchObject({ session_id: `codex:${id}`, subagent_count: 4, subagent_active: 2,
+      subagent_errors: 1, children: [{ session_id: "codex:child", parent_id: `codex:${id}`,
+        agent: { name: "child" }, subagent_count: 1, subagent_active: 1,
+        children: [{ session_id: "codex:grandchild", parent_id: "codex:child" }] }] });
+    expect(cards[1]).toMatchObject({ session_id: "codex:waiting", parent_id: `codex:${id}`, column: "attention" });
+    expect(cards[0].subagent_error_notes[0]).toContain("failed task");
+    expect(adapter.terminalLinks()).toEqual([{ session_id: `codex:${id}`, pid: 10 }]);
+    expect(adapter.watchPaths()).toContain(grandchildPath);
+    expect(adapter.watchPaths()).not.toContain(join(dir, "foreign.jsonl"));
+    expect(adapter.detail("codex:child", t)).toMatchObject({ exists: true, title: "child task" });
+    appendFileSync(childPath, event("event_msg", { type: "task_complete" }, t + 1));
+    const completed = adapter.cards(t + 1);
+    expect(completed.find(card => card.session_id === `codex:${id}`)).toMatchObject({ subagent_count: 4,
+      subagent_active: 1, children: [] });
+    expect(completed.find(card => card.session_id === "codex:grandchild")).toMatchObject({ column: "running", parent_id: "codex:child" });
+    expect(completed.some(card => card.session_id === "codex:child")).toBe(false);
+    expect(adapter.observeTerminalSession(10, null, "generation-1")).toBe(true);
+    expect(adapter.cards(t + 2)).toMatchObject([{ terminal: { session_id: null }, children: [], subagent_count: 0 }]);
+    expect(adapter.watchPaths()).not.toContain(childPath);
+    adapter.setProcesses([]);
+    expect(adapter.cards(t + 3)).toEqual([]);
+    adapter.close();
+  });
   test("keeps live terminals visible while session metadata is unavailable", () => {
     const adapter = new CodexAdapter(temp());
     adapter.setProcesses([cli(), cli("11")]);

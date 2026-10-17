@@ -58,6 +58,29 @@ test("session details expose the live branch and its browser URL", async () => {
   expect(await (await app.request(`/api/session/${id}`)).json()).toMatchObject({ branch: "main", repository_url: "https://github.com/demo/project/tree/main" });
 });
 
+test("Codex children reach the board and history with parent links but without terminal ownership", () => {
+  const observations: UsageObservation[] = [];
+  const { service, home, event, id } = fixture(value => observations.push(value));
+  const childId = "01900000-0000-7000-8000-000000000002";
+  const path = join(home, `rollout-${childId}.jsonl`);
+  writeFileSync(path, event("task_started"));
+  const db = new Database(join(home, "state_5.sqlite"));
+  db.query("INSERT INTO threads VALUES (?,?,?,?,?,?,?)").run(childId, home, "Child fixture",
+    JSON.stringify({ subagent: { thread_spawn: { parent_thread_id: id.slice(6), depth: 1 } } }), path, Date.now() / 1000, 0);
+  db.close();
+  const board = service.getBoard().data;
+  expect(board.columns.running.count).toBe(3);
+  expect(board.columns.running.cards.find(card => card.session_id === id)).toMatchObject({ subagent_count: 1,
+    children: [{ session_id: `codex:${childId}`, parent_id: id }] });
+  expect(service.terminalLinks()).toEqual([{ session_id: id, pid: 10 }]);
+  expect(observations.at(-1)?.cards).toContainEqual(expect.objectContaining({ session_id: `codex:${childId}`, parent_id: id }));
+  appendFileSync(path, event("task_complete"));
+  service.invalidate();
+  expect(service.getBoard().data.columns.running.count).toBe(2);
+  expect(observations.at(-1)?.cards).toContainEqual(expect.objectContaining({ session_id: `codex:${childId}`, parent_id: id }));
+  expect(service.history.get(`codex:${childId}`, Date.now()).some(interval => interval.column === "idle")).toBe(true);
+});
+
 test("native title observations validate process generation and update terminal links", async () => {
   const { app, codex, home, id } = fixture();
   codex.setProcesses([{ pid: "10", startedAt: "generation-1", cwd: home, rollouts: [] }]);

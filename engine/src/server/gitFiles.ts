@@ -7,6 +7,10 @@ import { gitPath, gitRoot } from "./git";
 import { GitError, runGit } from "./gitProcess";
 
 const FILE_LIMIT = 512 * 1024;
+const fileLimit = (path: string) => /\.ipynb$/i.test(path) ? 10 * 1024 * 1024 : FILE_LIMIT;
+function checkFileSize(path: string, size: number) {
+  if (size > fileLimit(path)) throw new GitError(`File exceeds the ${/\.ipynb$/i.test(path) ? "10 MB notebook" : "512 KB editor"} limit.`, 413);
+}
 const saves = new Set<string>();
 const revision = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 
@@ -29,9 +33,9 @@ export async function gitFile(root: string, path: string): Promise<GitFileConten
   try {
     const info = await handle.stat();
     if (!info.isFile()) throw new GitError("Only regular text files can be opened.", 400);
-    if (info.size > FILE_LIMIT) throw new GitError("File exceeds the 512 KB editor limit.", 413);
-    const buffer = Buffer.alloc(FILE_LIMIT + 1), { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
-    if (bytesRead > FILE_LIMIT) throw new GitError("File exceeds the 512 KB editor limit.", 413);
+    checkFileSize(path, info.size);
+    const buffer = Buffer.alloc(fileLimit(path) + 1), { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    checkFileSize(path, bytesRead);
     const bytes = buffer.subarray(0, bytesRead);
     let content: string;
     try {
@@ -45,7 +49,7 @@ export async function gitFile(root: string, path: string): Promise<GitFileConten
 export async function saveGitFile(root: string, path: string, content: unknown, expected: unknown): Promise<GitFileContent> {
   if (typeof content !== "string" || content.includes("\0") || typeof expected !== "string" || !/^[a-f0-9]{64}$/.test(expected)) throw new GitError("Invalid file content or revision.", 400);
   const bytes = Buffer.from(content, "utf8");
-  if (bytes.length > FILE_LIMIT) throw new GitError("File exceeds the 512 KB editor limit.", 413);
+  checkFileSize(path, bytes.length);
   if (bytes.toString("utf8") !== content) throw new GitError("File contains invalid Unicode text.", 400);
   const absolute = await filePath(root, path);
   if (saves.has(absolute)) throw new GitError("Another save is in progress. Try again.");

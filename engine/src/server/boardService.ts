@@ -203,12 +203,12 @@ export class BoardService {
         console.warn("[board] OpenCode rebuild failed:", error instanceof Error ? error.message : error);
       }
       const codex = this.codex.cards(now);
-      const codexSessions = codex.filter(card => card.terminal?.session_id !== null);
+      const codexSessions = this.codex.historyCards();
       const openCodeHistory = this.engine.historyCards();
       const intervals = this.history.record([...openCodeHistory, ...codexSessions.map(card => ({ sessionId: card.session_id, directory: card.directory, column: card.column }))], now);
       this.observe?.({ at: now, intervals, cards: [
         ...openCodeHistory.map(card => ({ session_id: card.sessionId, source: "opencode" as const, parent_id: card.parent_id ?? null, title: card.title ?? "Session", directory: card.directory, agent: card.agent ?? null, model: card.model ?? null })),
-        ...codexSessions.map(card => ({ session_id: card.session_id, source: "codex" as const, parent_id: null, title: card.title, directory: card.directory, agent: card.agent?.name ?? null, model: this.codex.usageModel(card) })),
+        ...codexSessions.map(card => ({ session_id: card.session_id, source: "codex" as const, parent_id: card.parent_id, title: card.title, directory: card.directory, agent: card.agent?.name ?? null, model: this.codex.usageModel(card) })),
       ] });
       const data = combineBoard(this.engine.board(now), codex, now);
       const running = data.columns.running.cards;

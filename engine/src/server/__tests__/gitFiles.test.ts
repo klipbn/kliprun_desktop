@@ -53,6 +53,25 @@ test("reading and saving UTF-8 text preserves content, returns a new revision an
   expect((await (await get("file", path)).json() as GitFileContent).revision).not.toBe(file.revision);
 });
 
+test("notebooks with saved outputs above the text limit open and save, with a bounded notebook limit", async () => {
+  const { root, get, save } = fixture();
+  const path = "analysis.IPYNB";
+  const content = JSON.stringify({ nbformat: 4, cells: [{ cell_type: "code", source: "print('saved')", outputs: [
+    { output_type: "stream", name: "stdout", text: "x".repeat(5 * 1024 * 1024) },
+  ] }] });
+  writeFileSync(join(root, path), content);
+  const response = await get("file", path);
+  expect(response.status).toBe(200);
+  const file = await response.json() as GitFileContent;
+  expect(file.content).toBe(content);
+  const edited = content + "\n";
+  expect((await save({ path, content: edited, revision: file.revision })).status).toBe(200);
+  expect(readFileSync(join(root, path), "utf8")).toBe(edited);
+  writeFileSync(join(root, path), "x".repeat(10 * 1024 * 1024 + 1));
+  expect((await get("file", path)).status).toBe(413);
+  expect((await save({ path, content: "x".repeat(10 * 1024 * 1024 + 1), revision: file.revision })).status).toBe(413);
+});
+
 test("file reads and saves cannot access ignored files or a nested repository", async () => {
   const { root, get, save } = fixture();
   writeFileSync(join(root, ".gitignore"), "private.txt\n"); writeFileSync(join(root, "private.txt"), "private");

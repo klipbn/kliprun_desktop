@@ -8,6 +8,8 @@ A macOS app for OpenCode and Codex sessions: a Kanban board, embedded terminals,
 
 ![Repository files and code editor](docs/screenshots/git-files.png)
 
+![Jupyter notebook preview](docs/screenshots/git-notebook.png)
+
 ![Git changes and diff](docs/screenshots/git-changes.png)
 
 ![Office view](docs/screenshots/office.png)
@@ -18,7 +20,7 @@ A macOS app for OpenCode and Codex sessions: a Kanban board, embedded terminals,
 
 Requires **Apple Silicon and macOS 13+**.
 
-1. Download `KlipRun-0.0.20-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.21-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip and move `KlipRun.app` to **Applications**. Quit KlipRun before replacing an older version.
 3. Open the app. If macOS blocks it, use **System Settings → Privacy & Security → Open Anyway**. The build is locally signed and not notarized.
 
@@ -32,11 +34,15 @@ The compact repository control shows its name, with the full path on hover; adja
 
 File editing follows [Zed's preview-tab conventions](https://zed.dev/docs/reference/all-settings#preview-tabs): a single click opens a temporary tab; double-clicking or editing keeps it open. Open files retain their own drafts and undo history while switching tabs. Close a tab with **×**; unsaved files offer **Save and close**, **Discard changes**, or **Keep editing**. Changing repositories checks inactive dirty tabs too. Drafts survive switching to another KlipRun view within the current app session; save before quitting.
 
-The editor includes Python, SQL, Markdown, JavaScript/TypeScript, and JSON highlighting; line numbers, folding, active-line and matching-bracket highlights; **Tab / Shift+Tab** indentation, automatic indentation, undo/redo, and **Command+F** search. Breadcrumbs show the path, and the status bar shows the cursor position and language. The eye button toggles rendered Markdown. **Save / Command+S** writes the current file and briefly shows **Saved**. Files are never executed. The editor accepts existing UTF-8 files up to 512 KiB and checks their revision before saving to detect changes on disk. The Git workspace uses a One Dark palette under the Default app theme and follows any explicitly selected palette.
+The editor includes Python, SQL, Markdown, JavaScript/TypeScript, and JSON highlighting; line numbers, folding, active-line and matching-bracket highlights; **Tab / Shift+Tab** indentation, automatic indentation, undo/redo, and **Command+F** search. Breadcrumbs show the path, and the status bar shows the cursor position and language. The eye button toggles rendered Markdown. **Save / Command+S** writes the current file and briefly shows **Saved**. Files are never executed. The editor accepts existing UTF-8 text files up to 512 KiB and Jupyter notebooks up to 10 MiB, and checks their revision before saving to detect changes on disk. The Git workspace uses a One Dark palette under the Default app theme and follows any explicitly selected palette.
+
+**Jupyter notebooks (.ipynb)** open as readable cells: rendered Markdown, highlighted code, execution counts, and saved outputs including text, HTML tables, PNG/JPEG/GIF/WebP images, and errors. Markdown attachments are supported. The eye button switches between the notebook preview and its editable JSON source; previewing preserves the original file. Cells are never run, HTML output is sanitized, and external images and links are inactive. Notebook format 4 is supported; invalid or older files show a message with access to the JSON source. Interactive widgets and SVG-only outputs require their text fallback.
 
 **Statistics → Latest sessions** shows the latest 5, 10, 20, or 50 sessions within the selected period and filters, including subagents, token breakdowns, observed time, calls, and recorded costs. The chosen count is remembered. **Cached input** means tokens read from the cache; it is separate from uncached input and cache writes, so totals do not double-count tokens.
 
 **Office** offers three saved floor plans: **Shared loft**, **Team rooms**, and **Long studio**. Coworkers walk between working, meeting, and lounge areas as session states change. Larger team leads check on their smaller subagents; labels and team connections show which sessions belong together. Use **Office settings** to toggle names, connections, and movement; app and system reduced motion take priority. **Fit**, zoom, and dragging keep the floor accessible beside the terminal, while **Find a task** selects any coworker by title. The trophy button opens the token-usage leaderboard.
+
+Codex subagents appear with their confirmed parent session, including nested helpers. Active helpers share their parent's card when they are in the same column and appear separately when their status differs. Finished helpers stay in the parent's counters; failures appear in its error badge. Subagents do not need a separate terminal.
 
 For keyboard shortcuts, click the **?** button in the app toolbar. The macOS **Help → KlipRun Help** menu opens this guide, and **Help → Report an Issue…** opens GitHub Issues.
 

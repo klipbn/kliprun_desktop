@@ -4,6 +4,20 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.21] - 2026-10-17
+
+### Added
+
+- Read Jupyter `.ipynb` files in Git → Files as Markdown and highlighted code cells with execution counts, saved tables, images, text, and errors. Toggle to editable JSON without changing the notebook on preview. Support notebook files up to 10 MiB; cells are never executed and HTML output is sanitized.
+
+### Fixed
+
+- Show Codex subagents under their confirmed parent sessions in Kanban and Office, with nested helpers, active/finished/error counts, and parent links in observed session history. Helpers no longer require their own terminal to appear.
+
+### Documentation
+
+- Document the complete release workflow in AGENTS.md and the release guide. Refresh fixture-only screenshots and add the notebook preview.
+
 ## [0.0.20] - 2026-10-17
 
 ### Added

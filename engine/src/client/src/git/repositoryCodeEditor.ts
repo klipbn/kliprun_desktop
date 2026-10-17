@@ -18,6 +18,7 @@ export function repositoryFileLanguage(path: string): string {
   if (["ts", "tsx", "mts", "cts"].includes(extension ?? "")) return "TypeScript";
   if (["js", "jsx", "mjs", "cjs"].includes(extension ?? "")) return "JavaScript";
   if (extension === "json") return "JSON";
+  if (extension === "ipynb") return "Jupyter Notebook";
   return "Plain text";
 }
 
@@ -27,7 +28,7 @@ function languageExtension(path: string): Extension {
     case "SQL": return sql();
     case "TypeScript": return javascript({ typescript: true, jsx: /\.tsx$/i.test(path) });
     case "JavaScript": return javascript({ jsx: /\.jsx$/i.test(path) });
-    case "JSON": return json();
+    case "JSON": case "Jupyter Notebook": return json();
     case "Markdown": return markdown();
     default: return [];
   }
@@ -40,7 +41,7 @@ export function repositoryIndentUnit(path: string, content: string): string {
   return " ".repeat(widths.length ? Math.min(...widths) : repositoryFileLanguage(path) === "Python" ? 4 : 2);
 }
 
-const highlightStyle = HighlightStyle.define([
+export const repositoryHighlightStyle = HighlightStyle.define([
   { tag: [tags.keyword, tags.modifier, tags.operatorKeyword], class: "repository-token-keyword" },
   { tag: [tags.string, tags.regexp, tags.special(tags.string)], class: "repository-token-string" },
   { tag: [tags.comment, tags.meta], class: "repository-token-comment" },
@@ -101,6 +102,6 @@ export function createRepositoryEditorState(path: string, content: string, exten
       indentUnit.of(repositoryIndentUnit(path, content)), EditorState.tabSize.of(4),
       EditorState.lineSeparator.of(content.includes("\r\n") ? "\r\n" : "\n"),
       EditorView.clipboardInputFilter.of((text, state) => text.replace(/\r\n?|\n/g, state.lineBreak)),
-      syntaxHighlighting(highlightStyle), indentGuides, theme],
+      syntaxHighlighting(repositoryHighlightStyle), indentGuides, theme],
   });
 }

@@ -5,6 +5,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createRepositoryEditorState, repositoryFileLanguage, repositoryIndentUnit } from "./repositoryCodeEditor";
+import { NotebookPreview } from "./NotebookPreview";
 import "./repositoryFileEditor.css";
 
 export interface RepositoryFileEditorProps {
@@ -27,13 +28,15 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const editable = useRef(new Compartment());
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(() => /\.ipynb$/i.test(path));
   const [showSaved, setShowSaved] = useState(false);
   const [position, setPosition] = useState({ line: 1, column: 1 });
   const [indentation, setIndentation] = useState(() => repositoryIndentUnit(path, content));
   const dirty = content !== savedContent;
   const language = repositoryFileLanguage(path);
   const markdown = language === "Markdown";
+  const notebook = language === "Jupyter Notebook";
+  const previewLabel = notebook ? preview ? "Edit notebook JSON" : "Preview notebook" : preview ? "Edit Markdown" : "Preview Markdown";
 
   useEffect(() => {
     if (!host.current) return;
@@ -63,7 +66,7 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
     view.current = editor;
     setIndentation(repositoryIndentUnit(path, current.current.content));
     setPosition({ line: 1, column: 1 });
-    setPreview(false);
+    setPreview(/\.ipynb$/i.test(path));
     return () => { editor.destroy(); view.current = null; };
   }, [path]);
 
@@ -110,11 +113,12 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
       </nav>
       {dirty && <span className="repository-editor-dirty" aria-label="Unsaved changes">Unsaved</span>}
       <span className="repository-editor-feedback" role="status">{saving ? "Saving…" : showSaved && !dirty && !error ? "Saved" : ""}</span>
-      {markdown && <button type="button" className="git-icon-button" aria-label={preview ? "Edit Markdown" : "Preview Markdown"} title={preview ? "Edit Markdown" : "Preview Markdown"} aria-pressed={preview} onClick={() => setPreview(value => !value)}>{preview ? <EyeOff size={14} /> : <Eye size={14} />}</button>}
+      {(markdown || notebook) && <button type="button" className="git-icon-button" aria-label={previewLabel} title={previewLabel} aria-pressed={preview} onClick={() => setPreview(value => !value)}>{preview ? <EyeOff size={14} /> : <Eye size={14} />}</button>}
       <button type="button" className="git-icon-button repository-editor-save" disabled={!dirty || saving} aria-label="Save file" title="Save (⌘S / Ctrl+S)" onClick={onSave}><Save size={14} /></button>
     </div>
     {error && <p className="git-feedback is-error" role="alert">{error}</p>}
     <div className="repository-code-editor" ref={host} hidden={preview} />
+    {preview && notebook && <NotebookPreview content={content} />}
     {preview && markdown && <div className="repository-markdown-preview" aria-label="Markdown preview" tabIndex={0}>
       <Markdown remarkPlugins={[remarkGfm]} skipHtml components={{
         img: ({ alt }) => <span className="repository-markdown-image">[Image: {alt || "image"}]</span>,

@@ -36,4 +36,8 @@ The committed screenshots in `docs/screenshots/` must use only `docs/screenshots
 
 ## External actions
 
-Local edits, builds, and tests are allowed. Before each commit, push, GitHub metadata update, or release, obtain the user's explicit approval in the current chat, as required by the owner's global AGENTS.md. Prepare the exact files, diff, checks, and release assets before asking. Do not terminate an existing user agent to test or replace an app bundle.
+Local edits, builds, and tests are allowed. Commits, pushes, PRs, merges, and releases require authorization in the current chat. An explicit release request such as “делай релиз 0.0.21” requests and authorizes the full release workflow for that version: branch, commits, push, PR, merge, tag, and GitHub release. Continue through those steps without asking again; unrelated external actions still require approval. Do not terminate an existing user agent to test or replace an app bundle.
+
+## Releases
+
+For a release request, follow [docs/RELEASING.md](docs/RELEASING.md) through publication and download verification. “Release VERSION” means that complete workflow, not just a version bump or local build. Report the release URL, merged PR, and checks when finished.
