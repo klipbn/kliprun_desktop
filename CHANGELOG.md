@@ -4,6 +4,17 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.17] - 2026-10-17
+
+### Added
+
+- Select a theme in Settings → Appearance, with the original Default palette and five Zed-inspired dark and light palettes under KlipRun names. Apply each palette to the interface and open terminal tabs immediately.
+
+### Fixed
+
+- Replace the macOS Help command that opened a missing Help Book with links to the KlipRun guide and issue tracker.
+- Show the theme list as a compact menu in Settings and keep OpenCode and Codex icons visible in light themes.
+
 ## [0.0.16] - 2026-10-17
 
 ### Added
@@ -304,4 +315,5 @@ First public macOS release.
 [0.0.14]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.14
 [0.0.15]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.15
 [0.0.16]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.16
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.16...main
+[0.0.17]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.17
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.17...main
