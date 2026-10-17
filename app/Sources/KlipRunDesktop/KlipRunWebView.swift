@@ -16,6 +16,8 @@ struct KlipRunWebView: NSViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: "sessionSelected")
         configuration.userContentController.add(context.coordinator, name: "sessionResume")
         configuration.userContentController.add(context.coordinator, name: "recentSessionsCollapsed")
+        configuration.userContentController.add(context.coordinator, name: "officePreferences")
+        configuration.userContentController.addUserScript(WKUserScript(source: OfficePreferences().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "cardOrder")
         configuration.userContentController.addUserScript(WKUserScript(source: SessionOrder().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "cardPriorities")
@@ -55,6 +57,7 @@ struct KlipRunWebView: NSViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "sessionSelected")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "sessionResume")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "recentSessionsCollapsed")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "officePreferences")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "cardOrder")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "cardPriorities")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "desktopAction")
@@ -92,6 +95,17 @@ struct KlipRunWebView: NSViewRepresentable {
                 userContentController.removeAllUserScripts()
                 scripts.forEach(userContentController.addUserScript)
                 userContentController.addUserScript(WKUserScript(source: "window.kliprunGitRepository = \(literal);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+            } else if message.name == "officePreferences",
+                      message.frameInfo.isMainFrame,
+                      message.frameInfo.securityOrigin.host == "127.0.0.1",
+                      message.frameInfo.securityOrigin.port == loadedBaseURL?.port,
+                      let body = message.body as? [String: Any],
+                      let preferences = OfficePreferences(message: body) {
+                preferences.save()
+                let scripts = userContentController.userScripts.filter { !$0.source.hasPrefix("window.kliprunOfficePreferences = ") }
+                userContentController.removeAllUserScripts()
+                scripts.forEach(userContentController.addUserScript)
+                userContentController.addUserScript(WKUserScript(source: preferences.webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
             } else if message.name == "cardOrder",
                       message.frameInfo.isMainFrame,
                       message.frameInfo.securityOrigin.host == "127.0.0.1",

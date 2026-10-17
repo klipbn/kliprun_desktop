@@ -251,7 +251,7 @@ export default function App() {
 
       {page === "office" && <main className="office-view flex-1 min-h-0 flex">
         <Suspense fallback={<div className="flex-1 flex items-center justify-center text-text-secondary">Loading office…</div>}>
-          <Office board={board} now={now} isRead={isRead} activeTerminalId={activeTerminalId} onSelect={select} onBack={backToBoard} />
+          <Office board={board} now={now} isRead={isRead} activeTerminalId={activeTerminalId} selectedId={selectedId} reduceMotion={preferences.reduceMotion} onSelect={select} onBack={backToBoard} />
         </Suspense>
         {selectedId && <DetailsPanel sessionId={selectedId} onClose={closeDetails} />}
       </main>}
