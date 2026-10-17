@@ -1,5 +1,6 @@
 import { Hono, type Context } from "hono";
 import { GitError, gitAction, gitCommit, gitDiff, gitHistory, gitPath, gitRoot, gitStatus, parseGitAction } from "../git";
+import { gitFile, gitFiles, saveGitFile } from "../gitFiles";
 
 export function registerGitRoutes(parent: Hono) {
   const app = new Hono();
@@ -19,6 +20,19 @@ export function registerGitRoutes(parent: Hono) {
     return c.json({ repositories: [...roots].sort() });
   });
   app.get("/status", async c => c.json(await gitStatus(await root(c))));
+  app.get("/files", async c => c.json(await gitFiles(await root(c))));
+  app.get("/file", async c => c.json(await gitFile(await root(c), gitPath(c.req.query("path")))));
+  app.post("/file", async c => {
+    const origin = c.req.header("Origin"), site = c.req.header("Sec-Fetch-Site");
+    if ((origin && origin !== new URL(c.req.url).origin) || site === "cross-site") return c.json({ error: "Cross-origin file saves are not allowed." }, 403);
+    if (!c.req.header("Content-Type")?.startsWith("application/json")) return c.json({ error: "Expected JSON." }, 400);
+    const raw = await c.req.text();
+    if (raw.length > 4 * 1024 * 1024) return c.json({ error: "File request is too large." }, 413);
+    let body;
+    try { body = JSON.parse(raw); } catch { return c.json({ error: "Invalid JSON." }, 400); }
+    if (!body || typeof body !== "object") return c.json({ error: "Invalid file request." }, 400);
+    return c.json(await saveGitFile(await gitRoot(body.directory), gitPath(body.path), body.content, body.revision));
+  });
   app.get("/history", async c => c.json(await gitHistory(await root(c), Number(c.req.query("skip") ?? 0), Number(c.req.query("limit") ?? 50))));
   app.get("/commit", async c => c.json(await gitCommit(await root(c), c.req.query("revision") ?? "")));
   app.get("/diff", async c => c.json(await gitDiff(await root(c), gitPath(c.req.query("path")), c.req.query("mode") ?? "", c.req.query("revision"))));

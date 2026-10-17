@@ -18,6 +18,8 @@ export interface GitCommitDetail { hash: string; message: string; files: GitComm
 export interface GitHistory { commits: GitCommit[]; hasMore: boolean }
 export type GitDiffMode = "staged" | "unstaged" | "commit";
 export interface GitDiff { patch: string; binary: boolean; truncated: boolean; notice?: string }
+export interface GitFileList { root: string; files: string[]; truncated: boolean }
+export interface GitFileContent { root: string; path: string; content: string; revision: string }
 export interface GitExpectation { branch: string | null; head: string | null }
 export type GitAction =
   | { action: "stage" | "unstage"; paths: string[] }

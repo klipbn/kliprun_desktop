@@ -17,6 +17,13 @@ const server = Bun.serve({ hostname: "127.0.0.1", port: 18796, idleTimeout: 0, a
   if (path.startsWith("/api/")) requests.push(path+url.search);
   if (path === "/api/git/repositories") return Response.json({ repositories: fixture.git.repositories });
   if (path === "/api/git/status") return Response.json({ ...fixture.git.status, root: url.searchParams.get("directory") ?? fixture.git.status.root });
+  if (path === "/api/git/files") return Response.json({ root: url.searchParams.get("directory"), files: Object.keys(fixture.git.text_files), truncated: false });
+  if (path === "/api/git/file") {
+    if (request.method !== "GET") return Response.json({ error: "Fixture preview: files are not modified." }, { status: 409 });
+    const name = url.searchParams.get("path") ?? "", content = fixture.git.text_files[name];
+    return content === undefined ? Response.json({ error: "Unknown demo file." }, { status: 404 })
+      : Response.json({ root: url.searchParams.get("directory"), path: name, content, revision: "demo-revision-1" });
+  }
   if (path === "/api/git/history") return Response.json(fixture.git.history);
   if (path === "/api/git/commit") return Response.json(fixture.git.commits[url.searchParams.get("revision") ?? ""] ?? { error: "Unknown demo commit" });
   if (path === "/api/git/diff") return Response.json(fixture.git.diffs[url.searchParams.get("path") ?? ""] ?? { patch: "", binary: false, truncated: false });

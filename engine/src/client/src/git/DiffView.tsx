@@ -1,4 +1,5 @@
 import type { GitDiff } from "@shared/git";
+import "./gitReview.css";
 
 export function parseDiff(patch: string): Array<{ kind: string; oldLine: number | null; newLine: number | null; text: string }> {
   let oldLine = 0, newLine = 0, inHunk = false;
@@ -18,7 +19,7 @@ export function DiffView({ diff }: { diff: GitDiff }) {
     {diff.truncated && <p className="git-notice">Preview truncated. Open the file locally to review the complete contents.</p>}
     {diff.notice && <p className="git-notice">{diff.notice}</p>}
     {diff.binary ? <div className="git-empty"><strong>Binary file</strong><span>A text diff is unavailable for this file.</span></div> : diff.patch ?
-      <div className="git-diff-scroll" tabIndex={0} aria-label="File diff"><table className="git-diff"><tbody>
+      <div className="git-diff-scroll git-review-diff" tabIndex={0} aria-label="File diff"><table className="git-diff"><tbody>
         {parseDiff(diff.patch).slice(0, 10_000).map((row, index) => <tr key={index} className={`git-line-${row.kind}`}>
           <td className="git-line-number" aria-label={row.oldLine ? `Old line ${row.oldLine}` : undefined}>{row.oldLine}</td>
           <td className="git-line-number" aria-label={row.newLine ? `New line ${row.newLine}` : undefined}>{row.newLine}</td>

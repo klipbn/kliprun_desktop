@@ -39,7 +39,7 @@ async (page) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${base}/git`);
     await waitForRepository(aurora);
-    assert((await page.locator(".git-repository-picker").innerText()).includes("Selected session"), "Repository context does not explain the session link");
+    assert(!/Selected session|Repository folder/.test(await page.locator(".git-repository-picker").innerText()), "Compact repository selector still displays a session metadata label");
     await message.fill("Aurora draft");
     await selectSession("ses_demo_search"); await waitForRepository(atlas);
     await message.fill("Atlas draft");
@@ -78,7 +78,7 @@ async (page) => {
     await page.getByRole("textbox", { name: "Repository directory", exact: true }).fill(notes);
     await page.getByRole("button", { name: "Open", exact: true }).click();
     await page.getByRole("region", { name: "Diff viewer" }).getByText("No Git repository", { exact: true }).waitFor();
-    assert((await page.locator(".git-repository-picker").innerText()).includes("Repository folder"), "Manual folder selection still claims to follow the session");
+    assert(!/Selected session|Repository folder/.test(await page.locator(".git-repository-picker").innerText()), "Manual repository selection still displays a metadata label");
     await repository.click(); await page.getByRole("option").filter({ hasText: atlas }).click(); await waitForRepository(atlas);
     unavailable = true;
     await page.getByRole("button", { name: "Refresh repository", exact: true }).click();

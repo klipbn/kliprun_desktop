@@ -1,0 +1,30 @@
+.git-history-list{min-width:0;font-size:12px;color:var(--theme-text)}
+.git-history-search-heading{position:sticky;top:0;z-index:1;padding:8px 10px 6px;background:var(--theme-surface);border-bottom:1px solid var(--theme-border)}
+.git-history-search{display:flex;align-items:center;gap:6px;min-height:27px;padding:0 7px;border:1px solid var(--theme-border);border-radius:4px;color:var(--theme-muted);background:var(--theme-background)}
+.git-history-search:focus-within{border-color:var(--theme-accent)}
+.git-history-search>svg{flex-shrink:0}
+.git-workspace .git-history-search input{flex:1;width:100%;min-width:0;height:25px;padding:0;border:0;outline:0;background:transparent;color:var(--theme-text);font:inherit;font-size:11px;border-radius:0}
+.git-workspace .git-history-search input::placeholder{color:var(--theme-muted)}
+.git-workspace .git-history-search input:focus-visible{outline:0}
+.git-history-search button{display:flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;padding:0;border:0;border-radius:3px;background:transparent;color:var(--theme-muted);cursor:pointer}
+.git-history-search button:hover{color:var(--theme-strong);background:var(--theme-raised)}
+.git-history-count{display:block;padding-top:5px;color:var(--theme-muted);font-size:10px;line-height:14px}
+.git-history-list .git-history-row{position:relative;display:flex;align-items:stretch;gap:8px;width:100%;min-height:49px;margin:0;padding:7px 10px;border:0;border-radius:0;text-align:left;color:var(--theme-text);background:transparent;cursor:pointer}
+.git-history-list .git-history-row:hover{background:var(--theme-raised)}
+.git-history-list .git-history-row.is-selected{background:color-mix(in srgb,var(--theme-accent) 15%,transparent)}
+.git-history-list .git-history-row:focus-visible{outline:1px solid var(--theme-accent);outline-offset:-1px}
+.git-history-list .git-commit-dot{position:relative;display:flex;justify-content:center;flex:0 0 12px;width:12px;padding:5px 0 0;color:var(--theme-muted)}
+.git-history-list .git-commit-dot::before{position:absolute;content:"";width:1px;top:-7px;bottom:-7px;left:5.5px;background:var(--theme-border)}
+.git-history-list .git-history-row:first-child .git-commit-dot::before{top:8px}
+.git-history-list .git-history-row:last-child .git-commit-dot::before{bottom:calc(100% - 8px)}
+.git-history-list .git-commit-dot>span{position:relative;z-index:0;display:block;flex-shrink:0;width:7px;height:7px;border:1.5px solid var(--theme-muted);border-radius:50%;background:var(--theme-surface)}
+.git-history-list .git-history-row.is-selected .git-commit-dot>span{border-color:var(--theme-accent);background:var(--theme-accent)}
+.git-history-list .git-history-text{display:grid;gap:3px;flex:1;min-width:0}
+.git-history-list .git-history-text>strong{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--theme-strong);font-size:12px;font-weight:500;line-height:16px;overflow-wrap:normal}
+.git-history-list .git-history-metadata{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;white-space:nowrap;color:var(--theme-muted);font-size:10px;line-height:14px}
+.git-history-author{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.git-history-metadata time,.git-history-metadata code{flex-shrink:0}
+.git-history-metadata code{font-size:9px;color:var(--theme-muted)}
+.git-history-list .git-refs{display:flex;flex-wrap:nowrap;gap:4px;min-width:0;overflow:hidden}
+.git-history-list .git-refs small{display:block;max-width:160px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;border:1px solid color-mix(in srgb,var(--theme-accent) 30%,var(--theme-border));border-radius:3px;background:color-mix(in srgb,var(--theme-accent) 8%,transparent);color:var(--theme-text);font-size:9px;line-height:14px}
+.git-history-no-results{margin:16px 12px;color:var(--theme-muted);font-size:11px}

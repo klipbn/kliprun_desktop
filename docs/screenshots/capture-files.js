@@ -1,0 +1,33 @@
+// Playwright callback: pass parsed mock-api.json as the third argument. No real file API is used.
+async (page, directory = "docs/screenshots", fixture) => {
+  const base = "http://127.0.0.1:18796", root = fixture.git.status.root;
+  const external = [];
+  const watch = request => { if (!request.url().startsWith(`${base}/`)) external.push(request.url()); };
+  const list = route => route.fulfill({ json: { root, files: Object.keys(fixture.git.text_files), truncated: false } });
+  const read = route => {
+    const path = decodeURIComponent(route.request().url().match(/[?&]path=([^&]*)/)[1].replace(/\+/g, " "));
+    return route.fulfill({ json: { root, path, content: fixture.git.text_files[path], revision: "fixture" } });
+  };
+  page.on("request", watch);
+  await page.route(`${base}/api/git/files?*`, list);
+  await page.route(`${base}/api/git/file?*`, read);
+  try {
+    await page.setViewportSize({ width: 1440, height: 900 }); await page.goto(`${base}/git`);
+    await page.evaluate(() => localStorage.removeItem("kliprun.git.sidebar-width")); await page.reload();
+    await page.getByRole("button", { name: "Repository", exact: true }).click();
+    await page.getByRole("option").filter({ hasText: root }).click();
+    await page.getByRole("tab", { name: "Files", exact: true }).click();
+    for (const path of ["README.md", "queries/projects.sql"]) await page.getByRole("treeitem", { name: `Open file ${path}`, exact: true }).dblclick();
+    await page.getByRole("treeitem", { name: "Open file src/search.py", exact: true }).click();
+    await page.getByRole("textbox", { name: "Edit src/search.py", exact: true }).waitFor();
+    await page.screenshot({ path: `${directory}/git-files.png`, animations: "disabled" });
+    await page.getByRole("tab", { name: "README.md", exact: true }).click();
+    await page.locator('button[aria-label="Preview Markdown"]:visible').click();
+    await page.getByRole("heading", { name: "Atlas search", exact: true }).waitFor();
+    await page.screenshot({ path: `${directory}/git-markdown.png`, animations: "disabled" });
+    if (external.length) throw new Error("Capture made external requests");
+    return { captures: ["git-files.png", "git-markdown.png"], externalRequests: 0 };
+  } finally {
+    page.off("request", watch); await page.unroute(`${base}/api/git/files?*`, list); await page.unroute(`${base}/api/git/file?*`, read);
+  }
+}

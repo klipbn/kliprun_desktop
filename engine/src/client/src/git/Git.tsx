@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowDown, ArrowUp, Check, FileDiff, FolderOpen, GitBranch, GitCommitHorizontal, History, Loader2, Minus, RefreshCw, X } from "lucide-react";
-import type { GitAction, GitCommit, GitCommitDetail, GitCommitFile, GitDiff, GitDiffMode, GitHistory, GitStatus } from "@shared/git";
+import { ArrowDown, ArrowUp, Check, FileDiff, FileText, FolderOpen, GitBranch, GitCommitHorizontal, History, Loader2, Minus, RefreshCw, X } from "lucide-react";
+import type { GitAction, GitCommit, GitCommitDetail, GitCommitFile, GitDiff, GitDiffMode, GitFileList, GitHistory, GitStatus } from "@shared/git";
 import { gitRepository, saveGitRepository, hasDesktopBridge, notifyNativeAction, observeNativeRepository } from "../nativeBridge";
 import { Counts, FileTree } from "./FileTree";
+import { isFileDirty } from "./fileTabs";
+import { useFileTabs } from "./useFileTabs";
+import { RepositoryTree } from "./RepositoryTree";
+import { RepositoryFileEditor } from "./RepositoryFileEditor";
 import { DiffView } from "./DiffView";
+import { HistoryList } from "./HistoryList";
 import { BranchPicker } from "./BranchPicker";
 import { ChangeViewSettings } from "./ChangeViewSettings";
 import { CHANGE_VIEW_KEY, groupChangeFiles, readChangeView } from "./changeView";
@@ -24,7 +29,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const [followingSession, setFollowingSession] = useState(!!sessionId);
   const lastSession = useRef({ id: sessionId, directory: sessionDirectory });
   const [refresh, setRefresh] = useState(0);
-  const [tab, setTab] = useState<"changes" | "history">("changes");
+  const [tab, setTab] = useState<"files" | "changes" | "history">("changes");
   const [changeView, setChangeView] = useState(() => {
     try { return readChangeView(localStorage.getItem(CHANGE_VIEW_KEY)); }
     catch { return readChangeView(null); }
@@ -38,7 +43,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const [resizing, setResizing] = useState(false);
   const resizeDrag = useRef<{ x: number; width: number } | null>(null);
   const sidebar = useRef<HTMLElement>(null);
-  const visibleWidth = resizedDetailsWidth(panelWidth ?? Math.max(330, Math.min(470, viewportWidth * 0.32)), 0, 0, viewportWidth);
+  const visibleWidth = resizedDetailsWidth(panelWidth ?? 320, 0, 0, viewportWidth);
   useEffect(() => {
     const resize = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", resize);
@@ -50,11 +55,61 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   }, [panelWidth]);
   function stopResize() { resizeDrag.current = null; setResizing(false); }
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [diffClosed, setDiffClosed] = useState(false);
+  const documents = useFileTabs(directory, () => setRefresh(value => value + 1));
+  const documentTabs = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (tab === "files") documentTabs.current?.querySelector("[aria-selected=true]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [documents.activeId, tab]);
+  const activeDocument = documents.tabs.find(document => document.id === documents.activeId);
+  const filePath = activeDocument?.path ?? null;
+  const dirty = documents.tabs.some(isFileDirty);
+  const savingFiles = documents.tabs.some(document => document.saving);
+  const discardDialog = useRef<HTMLDialogElement>(null);
+  const pendingNavigation = useRef<{ action: () => void; ids: number[] } | null>(null);
+  const [pendingClose, setPendingClose] = useState(false);
+  const [pendingDocuments, setPendingDocuments] = useState<string[]>([]);
+  function navigate(action: () => void, ids = documents.tabs.map(document => document.id), closing = false) {
+    if (busyRef.current || savingFiles) return;
+    const unsaved = documents.tabs.filter(document => ids.includes(document.id) && isFileDirty(document));
+    if (unsaved.length) {
+      pendingNavigation.current = { action, ids: unsaved.map(document => document.id) };
+      setPendingDocuments(unsaved.map(document => document.path)); setPendingClose(closing);
+      discardDialog.current?.showModal();
+    } else action();
+  }
+  async function finishNavigation(save: boolean) {
+    const pending = pendingNavigation.current;
+    if (!pending) return;
+    if (save) {
+      for (const id of pending.ids) if (!await documents.save(id)) {
+        documents.activate(id); setTab("files");
+        pendingNavigation.current = null; discardDialog.current?.close(); return;
+      }
+    } else documents.discard(pending.ids);
+    pendingNavigation.current = null; discardDialog.current?.close(); pending.action();
+  }
+  function closeFile(id: number) { navigate(() => documents.close(id), [id], true); }
+  function chooseTab(value: typeof tab) {
+    if (value === tab) return;
+    setTab(value); setSelection(null); setDiffClosed(false);
+  }
+  function openFile(path: string, permanent = false) {
+    if (busyRef.current) return;
+    setSelection(null); void documents.open(path, permanent);
+  }
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [dirty]);
   const [commitHash, setCommitHash] = useState<string | null>(null);
   const [message, setMessage] = useState(() => commitDrafts.get(directory) ?? "");
   useEffect(() => { commitDrafts.set(directory, message); }, [directory, message]);
   const [busy, setBusy] = useState<string | null>(null);
   const busyRef = useRef(false);
+  const workspaceBusy = !!busy || savingFiles;
   const [operationError, setOperationError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ message: string } | null>(null);
   useEffect(() => {
@@ -75,6 +130,8 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const repositories = useGitRequest<{ repositories: string[] }>(repositoryUrl, refresh, 0, loadGitRepositories);
   const statusRequest = useGitRequest<GitStatus>(directory ? endpoint("status", directory) : null, refresh, busy ? 0 : 5000);
   const status = statusRequest.error ? null : statusRequest.data;
+  const filesRequest = useGitRequest<GitFileList>(directory && status && tab === "files" ? endpoint("files", directory) : null, refresh);
+  const fileStatuses = useMemo(() => Object.fromEntries((status?.files ?? []).map(file => [file.path, `${file.index}${file.worktree}`])), [status?.files]);
   const activeRemote = status?.remote ?? "";
   const historyScope = `${directory}:${status?.head ?? ""}`;
   const historyRequest = useGitRequest<GitHistory>(directory && tab === "history" && status ? endpoint("history", directory, { skip: String(historyPage * 50), head: status.head ?? "" }) : null, refresh);
@@ -82,6 +139,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const diffRequest = useGitRequest<GitDiff>(directory && status && selection ? endpoint("diff", directory, { path: selection.path, mode: selection.mode, ...(selection.revision ? { revision: selection.revision } : {}) }) : null, refresh, selection?.mode !== "commit" && !busy ? 5000 : 0);
   const history = historyRows.scope === historyScope ? historyRows.rows : [];
   const chosenCommit = history.find(commit => commit.hash === commitHash);
+  const commitBody = detailRequest.data?.message.split("\n").slice(1).join("\n").trim();
   const availableRoots = [...new Set([...(repositories.data?.repositories ?? []), ...(directory ? [directory] : [])])];
 
   const groups = useMemo(() => {
@@ -98,23 +156,25 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const displayGroups = useMemo(() => groupChangeFiles(changeEntries, changeView.groupBy), [changeEntries, changeView.groupBy]);
   const stagePaths = [...new Set(groups.slice(1).flatMap(group => group.files.map(file => file.path)))];
 
-  function chooseRepository(value: string, remember = true, fromSession = false) {
+  function chooseRepository(value: string, remember = true, fromSession = false, nextTab?: typeof tab) {
     if (busyRef.current) return;
-    commitDrafts.set(directory, message); setMessage(commitDrafts.get(value) ?? "");
-    setDirectory(value); setSelection(null); setCommitHash(null); setHistoryPage(0);
-    setFollowingSession(fromSession); setShowManualDirectory(false);
-    setOperationError(null); setNotice(null);
-    if (remember) saveGitRepository(value);
+    navigate(() => {
+      commitDrafts.set(directory, message); setMessage(commitDrafts.get(value) ?? "");
+      setDirectory(value); documents.clear(); setDiffClosed(false); setSelection(null); setCommitHash(null); setHistoryPage(0);
+      setFollowingSession(fromSession); setShowManualDirectory(false);
+      if (nextTab) setTab(nextTab);
+      setOperationError(null); setNotice(null);
+      if (remember) saveGitRepository(value);
+    });
   }
   const chooseRepositoryRef = useRef(chooseRepository); chooseRepositoryRef.current = chooseRepository;
   useEffect(() => observeNativeRepository(value => chooseRepositoryRef.current(value)), []);
   useEffect(() => {
     if (lastSession.current.id === sessionId && lastSession.current.directory === sessionDirectory) return;
-    if (busyRef.current) return;
+    if (busyRef.current || savingFiles) return;
     lastSession.current = { id: sessionId, directory: sessionDirectory };
-    chooseRepositoryRef.current(sessionDirectory ?? "", false, !!sessionId);
-    setTab("changes");
-  }, [sessionId, sessionDirectory, busy]);
+    chooseRepositoryRef.current(sessionDirectory ?? "", false, !!sessionId, "changes");
+  }, [sessionId, sessionDirectory, busy, savingFiles]);
   useEffect(() => {
     if (!directory && !sessionId && repositories.data?.repositories[0]) chooseRepositoryRef.current(repositories.data.repositories[0], false);
   }, [directory, sessionId, repositories.data]);
@@ -126,18 +186,27 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
     }
   }, [status, directory, message]);
   useEffect(() => {
-    if (statusRequest.error) { setSelection(null); setCommitHash(null); setTab("changes"); return; }
-    if (tab !== "changes" || !status) return;
+    if (statusRequest.error) { setSelection(null); setCommitHash(null); return; }
+    if (tab !== "changes" || !status || diffClosed) return;
     if (selection && groups.some(group => group.mode === selection.mode && group.files.some(file => file.path === selection.path))) return;
     const group = groups.find(group => group.files.length);
     setSelection(group ? { path: group.files[0].path, mode: group.mode } : null);
-  }, [tab, status, statusRequest.error, groups, selection]);
+  }, [tab, status, statusRequest.error, groups, selection, diffClosed]);
   useEffect(() => { setHistoryPage(0); }, [historyScope]);
   useEffect(() => {
     if (!historyRequest.data) return;
     setHistoryRows(previous => ({ scope: historyScope, rows: historyPage && previous.scope === historyScope
       ? [...previous.rows, ...historyRequest.data!.commits.filter(commit => !previous.rows.some(row => row.hash === commit.hash))] : historyRequest.data!.commits }));
   }, [historyRequest.data, historyScope, historyPage]);
+  useEffect(() => {
+    if (tab !== "history" || diffClosed || selection || detailRequest.data?.hash !== commitHash) return;
+    const first = detailRequest.data?.files[0];
+    if (first && commitHash) setSelection({ path: first.path, mode: "commit", revision: commitHash });
+  }, [tab, commitHash, detailRequest.data, diffClosed, selection]);
+
+  function chooseCommit(hash: string) {
+    setCommitHash(hash); setSelection(null); setDiffClosed(false);
+  }
 
   async function execute(action: GitAction, label: string, expected = status ? { branch: status.branch, head: status.head } : undefined) {
     if (busyRef.current) return;
@@ -161,8 +230,12 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const selectedFiles = detailRequest.data?.files ?? [];
   const emptyState = statusRequest.error
     ? { title: "Repository unavailable", detail: "Choose another folder or refresh to try again." }
+    : tab === "files" && status
+    ? { title: "Select a file to open", detail: "Browse files in this repository. Edit text and save locally without running code." }
     : tab === "history" && status
     ? { title: commitHash ? "Select a file to review its diff" : "Select a commit to review its diff", detail: "Choose a commit in History, then one of its files." }
+    : status && status.files.length
+    ? { title: "Select a file to review its diff", detail: "Choose a file in Changes to reopen its diff." }
     : status
     ? { title: "Working tree clean", detail: "No changes to review. Browse previous commits in History." }
     : directory
@@ -171,33 +244,52 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
 
   return <main className="git-workspace" data-testid="git-workspace">
     <div className="git-toolbar">
-      <div className="git-workspace-title"><GitBranch size={17} /><strong>Git</strong></div>
-      <div className="git-repository-picker"><RecentSessionFilter label={followingSession ? "Selected session" : "Repository folder"}
-        name="Repository" value={directory} disabled={!!busy} onChange={value => chooseRepository(value)} searchable placement="viewport" searchSubject="repositories"
+      <GitBranch size={14} className="git-toolbar-icon" aria-hidden="true" />
+      <div className="git-repository-picker"><RecentSessionFilter
+        name="Repository" value={directory} disabled={workspaceBusy} onChange={value => chooseRepository(value)} searchable placement="viewport" searchSubject="repositories"
         options={[...(!directory ? [{ value: "", label: "Choose a session or folder" }] : []), ...availableRoots.map(root => ({ value: root, label: noRepository && root === directory ? "No Git repository" : nameOf(root), path: root }))]} />
       </div>
-      <button type="button" className="git-button" disabled={!!busy} title="Choose a folder with an existing Git repository. Switching sessions follows their project automatically." onClick={() => { if (hasDesktopBridge()) notifyNativeAction("open-repository"); else setShowManualDirectory(value => !value); }}><FolderOpen size={14} />Choose Folder…</button>
-      <button type="button" className="git-button git-refresh" disabled={!!busy} onClick={() => setRefresh(value => value + 1)} title="Refresh repository" aria-label="Refresh repository"><RefreshCw size={14} className={statusRequest.pending ? "animate-spin" : ""} /></button>
+      <button type="button" className="git-button git-toolbar-action" disabled={workspaceBusy} aria-label="Choose Folder…" title="Choose a repository folder" onClick={() => { if (hasDesktopBridge()) notifyNativeAction("open-repository"); else setShowManualDirectory(value => !value); }}><FolderOpen size={14} /></button>
+      <button type="button" className="git-button git-refresh" disabled={workspaceBusy} onClick={() => setRefresh(value => value + 1)} title="Refresh repository" aria-label="Refresh repository"><RefreshCw size={14} className={statusRequest.pending ? "animate-spin" : ""} /></button>
     </div>
-    {showManualDirectory && !hasDesktopBridge() && <form className="git-manual-path" onSubmit={event => { event.preventDefault(); if (manualDirectory.trim()) chooseRepository(manualDirectory.trim()); }}><input autoFocus id="git-manual-directory" aria-label="Repository directory" placeholder="Absolute path to an existing Git repository" value={manualDirectory} onChange={event => setManualDirectory(event.target.value)} /><button className="git-button" disabled={!!busy || !manualDirectory.trim()}>Open</button></form>}
+    {showManualDirectory && !hasDesktopBridge() && <form className="git-manual-path" onSubmit={event => { event.preventDefault(); if (manualDirectory.trim()) chooseRepository(manualDirectory.trim()); }}><input autoFocus id="git-manual-directory" aria-label="Repository directory" placeholder="Absolute path to an existing Git repository" value={manualDirectory} onChange={event => setManualDirectory(event.target.value)} /><button className="git-button" disabled={workspaceBusy || !manualDirectory.trim()}>Open</button></form>}
     {(error || busy) && <div className={`git-feedback ${error ? "is-error" : ""}`} role={error ? "alert" : "status"}>
       {busy ? <><Loader2 size={14} className="animate-spin" />{busy}…</> : error}
       {!busy && operationError && <button type="button" aria-label="Dismiss notification" onClick={() => setOperationError(null)}><X size={14} /></button>}
     </div>}
     {notice && <div className="git-toast" role="status"><Check size={14} /><span>{notice.message}</span></div>}
     <div className="git-layout" data-resizing={resizing} style={panelWidth === null ? undefined : { "--git-sidebar-width": `${panelWidth}px` } as CSSProperties}>
-      <section className="git-diff-pane" aria-label="Diff viewer">
-        <div className="git-diff-heading"><FileDiff size={16} /><strong title={selection?.path}>{selection?.path ?? "Review your changes"}</strong>
-          {selection && <span className="git-badge">{selection.mode === "commit" ? selection.revision?.slice(0, 7) : selection.mode === "staged" ? "Staged" : "Working tree"}</span>}
-        </div>
-        {tab === "history" && commitHash && <div className="git-commit-detail"><GitCommitHorizontal size={15} /><div><strong>{chosenCommit?.subject ?? commitHash.slice(0, 7)}</strong><p>{chosenCommit?.author}{chosenCommit ? ` · ${new Date(chosenCommit.date).toLocaleString()}` : ""}</p>{detailRequest.data && <pre>{detailRequest.data.message}</pre>}<small>Changes compared with the first parent; initial commits show all added files.</small></div></div>}
+      <section className="git-diff-pane" aria-label={tab === "files" ? "File editor" : "Diff viewer"}>
+        {tab === "files" && documents.tabs.length > 0 && <div ref={documentTabs} className="git-document-tabs" role="tablist" aria-label="Open files">
+          {documents.tabs.map((document, index) => <div key={document.id} className={`git-document-tab ${document.id === documents.activeId ? "is-active" : ""} ${document.pinned ? "" : "is-preview"}`}>
+            <button type="button" role="tab" id={`git-document-tab-${document.id}`} aria-controls={`git-document-panel-${document.id}`} aria-selected={document.id === documents.activeId} aria-label={document.path} title={`${document.path}${document.pinned ? "" : " · Preview — double-click to keep open"}`} tabIndex={document.id === documents.activeId ? 0 : -1} onClick={() => documents.activate(document.id)} onDoubleClick={() => documents.pin(document.id)} onKeyDown={event => {
+              const next = event.key === "Home" ? 0 : event.key === "End" ? documents.tabs.length - 1 : event.key === "ArrowRight" ? (index + 1) % documents.tabs.length : event.key === "ArrowLeft" ? (index - 1 + documents.tabs.length) % documents.tabs.length : null;
+              if (next === null) return;
+              event.preventDefault(); documents.activate(documents.tabs[next].id);
+              event.currentTarget.parentElement?.parentElement?.querySelectorAll<HTMLButtonElement>("[role=tab]")[next]?.focus();
+            }}>
+              <FileText size={13} /><span>{nameOf(document.path)}</span>{isFileDirty(document) && <span className="git-document-dirty" aria-label="Unsaved changes" />}
+            </button>
+            <button type="button" className="git-document-close" aria-label={`Close ${document.path}`} title="Close file" disabled={document.saving} onClick={() => closeFile(document.id)}><X size={13} /></button>
+          </div>)}
+        </div>}
+        {(tab !== "files" || !activeDocument) && <div className="git-diff-heading">{tab === "files" ? <FileText size={14} /> : <FileDiff size={16} />}<strong title={tab === "files" ? filePath ?? undefined : selection?.path}>{tab === "files" ? filePath?.split("/").join(" / ") ?? "Repository files" : selection?.path ?? "Review your changes"}</strong>
+          {tab !== "files" && selection && <><span className="git-badge">{selection.mode === "commit" ? selection.revision?.slice(0, 7) : selection.mode === "staged" ? "Staged" : "Working tree"}</span>
+            <button type="button" className="git-close-file" aria-label="Close diff" title="Close diff" disabled={workspaceBusy} onClick={() => { setSelection(null); setDiffClosed(true); }}><X size={16} /></button></>}
+        </div>}
+        {documents.tabs.map(document => <div key={document.id} id={`git-document-panel-${document.id}`} role="tabpanel" aria-labelledby={`git-document-tab-${document.id}`} className="git-document-view" hidden={tab !== "files" || document.id !== documents.activeId}>
+          {document.loading ? <div className="git-empty"><Loader2 className="animate-spin" /><span>Loading file…</span></div>
+            : document.file ? <RepositoryFileEditor path={document.path} content={document.file.draft} savedContent={document.file.content} saving={document.saving || !!busy} error={document.error} savedAt={document.savedAt} onChange={content => documents.edit(document.id, content)} onSave={() => void documents.save(document.id)} />
+            : <div className="git-empty" role="alert"><strong>Unable to open file</strong><span>{document.error}</span></div>}
+        </div>)}
+        {tab === "history" && commitHash && <div className="git-commit-detail" title="Changes compared with the first parent; initial commits show all added files."><GitCommitHorizontal size={14} /><div><strong>{chosenCommit?.subject ?? commitHash.slice(0, 7)}</strong><p><code title={commitHash}>{commitHash.slice(0, 7)}</code>{chosenCommit ? ` · ${chosenCommit.author} · ${new Date(chosenCommit.date).toLocaleString()}` : ""}</p>{commitBody && <details><summary>Commit message</summary><pre>{commitBody}</pre></details>}</div></div>}
         {noRepository ? <div className="git-empty"><div className="git-empty-icon"><FolderOpen size={32} strokeWidth={1.3} /></div><strong>No Git repository</strong><span>{followingSession ? "This session's folder is not a Git working tree." : "The selected folder is not a Git working tree."} Choose Folder… opens an existing repository. It does not create one.</span></div>
+          : tab === "files" && activeDocument ? null
           : diffRequest.error ? <div className="git-empty" role="alert"><strong>Unable to load diff</strong><span>{diffRequest.error}</span></div>
           : selection ? diffRequest.data ? <DiffView diff={diffRequest.data} /> : <div className="git-empty"><Loader2 className="animate-spin" /><span>Loading diff…</span></div>
           : <div className="git-empty"><div className="git-empty-icon"><FileDiff size={32} strokeWidth={1.3} /></div><strong>{emptyState.title}</strong><span>{emptyState.detail}</span><div className="git-empty-hints"><span><span className="git-dot" />Changes</span><span><History size={13} />Commit history</span><span><GitBranch size={13} />Branches</span></div></div>}
       </section>
-
-      <aside ref={sidebar} className="git-sidebar" aria-label="Repository changes and history">
+      <aside ref={sidebar} className="git-sidebar" aria-label="Repository files, changes and history">
         <div className="git-panel-resizer" role="separator" aria-label="Resize Git panel" aria-orientation="vertical" tabIndex={0}
           aria-valuemin={320} aria-valuemax={Math.max(320, Math.min(850, viewportWidth - 340))} aria-valuenow={Math.round(visibleWidth)}
           title="Drag to resize Git panel"
@@ -222,63 +314,75 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
             setPanelWidth(resizedDetailsWidth(sidebar.current?.getBoundingClientRect().width ?? visibleWidth, 0, event.key === "ArrowLeft" ? -20 : 20, window.innerWidth));
           }} />
         <div className="git-tabs" role="tablist" aria-label="Git view">
-          <button id="git-changes-tab" type="button" role="tab" aria-controls="git-sidebar-panel" aria-selected={tab === "changes"} onClick={() => { setTab("changes"); setSelection(null); }}><FileDiff size={14} />Changes{status && <span>{status.files.length}</span>}</button>
-          <button id="git-history-tab" type="button" role="tab" aria-controls="git-sidebar-panel" aria-selected={tab === "history"} onClick={() => { setTab("history"); setSelection(null); }}><History size={14} />History</button>
+          <button id="git-files-tab" type="button" role="tab" aria-controls="git-sidebar-panel" aria-selected={tab === "files"} onClick={() => chooseTab("files")}><FolderOpen size={14} />Files</button>
+          <button id="git-changes-tab" type="button" role="tab" aria-controls="git-sidebar-panel" aria-selected={tab === "changes"} onClick={() => chooseTab("changes")}><FileDiff size={14} />Changes{status && <span>{status.files.length}</span>}</button>
+          <button id="git-history-tab" type="button" role="tab" aria-controls="git-sidebar-panel" aria-selected={tab === "history"} onClick={() => chooseTab("history")}><History size={14} />History</button>
         </div>
         {tab === "changes" && <div className="git-changes-summary">
           <span className="git-changes-count">{status?.files.length ?? 0} files</span><Counts {...totals} />
           <div className="git-changes-tools"><ChangeViewSettings preferences={changeView} onChange={setChangeView} />
-            <button type="button" className="git-button" disabled={!!busy || !stagePaths.length} onClick={() => void execute({ action: "stage", paths: stagePaths }, "Stage all")}>Stage all</button>
-            <button type="button" className="git-button git-view-settings-trigger" aria-label="Unstage all" title="Unstage all" disabled={!!busy || !groups[0].files.length}
+            <button type="button" className="git-button" disabled={workspaceBusy || !stagePaths.length} onClick={() => void execute({ action: "stage", paths: stagePaths }, "Stage all")}>Stage all</button>
+            <button type="button" className="git-button git-view-settings-trigger" aria-label="Unstage all" title="Unstage all" disabled={workspaceBusy || !groups[0].files.length}
               onClick={() => void execute({ action: "unstage", paths: groups[0].files.map(file => file.path) }, "Unstage all")}><Minus size={14} /></button>
           </div>
         </div>}
         <div id="git-sidebar-panel" className="git-sidebar-content" role="tabpanel" aria-labelledby={`git-${tab}-tab`}>
-          {tab === "changes" ? <>
+          {tab === "files" ? <>
+            {filesRequest.error && <p className="git-notice" role="alert">{filesRequest.error}</p>}
+            {filesRequest.pending && !filesRequest.data ? <p className="git-history-loading"><Loader2 size={14} className="animate-spin" />Loading files…</p>
+              : filesRequest.data ? <RepositoryTree key={directory} root={nameOf(directory)} files={filesRequest.data.files} statuses={fileStatuses} selected={filePath} onSelect={openFile} disabled={workspaceBusy} />
+              : <div className="git-empty git-sidebar-empty"><FolderOpen size={26} /><strong>No files to display</strong><span>Choose a repository to browse its files.</span></div>}
+            {filesRequest.data?.truncated && <p className="git-notice">File list truncated. Only the first files are shown.</p>}
+          </> : tab === "changes" ? <>
             {displayGroups.map(group => {
               const tree = <FileTree files={group.files} selected={selection?.path ?? null} selectedMode={selection?.mode === "staged" ? "staged" : "unstaged"}
-                disabled={!!busy} view={changeView.view} sortBy={changeView.sortBy} showMode={changeView.groupBy !== "staged"}
-                onSelect={(path, mode) => setSelection({ path, mode: mode ?? "unstaged" })}
+                disabled={workspaceBusy} view={changeView.view} sortBy={changeView.sortBy} showMode={changeView.groupBy !== "staged"}
+                onSelect={(path, mode) => { setDiffClosed(false); setSelection({ path, mode: mode ?? "unstaged" }); }}
                 onAction={(paths, mode) => void execute({ action: mode === "staged" ? "unstage" : "stage", paths }, mode === "staged" ? "Unstage" : "Stage")} />;
               if (!group.name) return <div key="all">{tree}</div>;
               const working = group.files.filter(file => file.mode === "unstaged"), staged = group.files.filter(file => file.mode === "staged");
               return <details className="git-file-group" key={group.name} open aria-label={`${group.name} changes`}>
                 <summary><span>{group.name}<small>{group.files.length}</small></span><span className="git-group-actions">
-                  {working.length > 0 && <button type="button" className="git-text-button" disabled={!!busy} onClick={event => { event.preventDefault(); void execute({ action: "stage", paths: working.map(file => file.path) }, "Stage all"); }}>Stage all</button>}
-                  {staged.length > 0 && <button type="button" className="git-text-button" disabled={!!busy} onClick={event => { event.preventDefault(); void execute({ action: "unstage", paths: staged.map(file => file.path) }, "Unstage all"); }}>Unstage all</button>}
+                  {working.length > 0 && <button type="button" className="git-text-button" disabled={workspaceBusy} onClick={event => { event.preventDefault(); void execute({ action: "stage", paths: working.map(file => file.path) }, "Stage all"); }}>Stage all</button>}
+                  {staged.length > 0 && <button type="button" className="git-text-button" disabled={workspaceBusy} onClick={event => { event.preventDefault(); void execute({ action: "unstage", paths: staged.map(file => file.path) }, "Unstage all"); }}>Unstage all</button>}
                 </span></summary>{tree}
               </details>;
             })}
             {!status?.files.length && <div className="git-empty git-sidebar-empty">{statusRequest.pending && !status ? <Loader2 className="animate-spin" /> : <Check size={26} strokeWidth={1.4} />}<strong>{status ? "Working tree clean" : noRepository ? "No files to display" : statusRequest.error ? "Repository unavailable" : directory ? "Loading repository…" : "No repository selected"}</strong><span>{status ? "No changes to commit." : statusRequest.error ? "Choose a folder containing a Git repository." : "Choose a session or folder to get started."}</span></div>}
           </> : <>
             {historyRequest.error && <p className="git-notice" role="alert">{historyRequest.error}</p>}
-            {history.map(commit => <button type="button" key={commit.hash} className={`git-history-row ${commitHash === commit.hash ? "is-selected" : ""}`} aria-pressed={commitHash === commit.hash} onClick={() => { setCommitHash(commit.hash); setSelection(null); }}>
-              <span className="git-commit-dot"><GitCommitHorizontal size={15} /></span><span className="git-history-text"><strong>{commit.subject}</strong><span>{commit.author} · {new Date(commit.date).toLocaleDateString()} · <code>{commit.hash.slice(0, 7)}</code></span><span className="git-refs">{commit.refs.map(ref => <small key={ref}>{ref}</small>)}</span></span>
-            </button>)}
+            <HistoryList key={directory} commits={history} selected={commitHash} onSelect={chooseCommit} />
             {historyRequest.pending && <p className="git-history-loading"><Loader2 size={14} className="animate-spin" />Loading history…</p>}
             {!history.length && !historyRequest.pending && <div className="git-empty git-sidebar-empty"><History size={26} /><strong>{status?.unborn ? "No commits yet" : "No history to display"}</strong><span>{status?.unborn ? "Stage your changes and create the first commit." : "Choose a repository to browse its commits."}</span></div>}
             {historyRequest.data?.hasMore && <button type="button" className="git-button git-load-more" disabled={historyRequest.pending} onClick={() => setHistoryPage(value => value + 1)}>Load older commits</button>}
           </>}
         </div>
-        {tab === "history" && commitHash && <section className="git-commit-files"><h3>Files in {commitHash.slice(0, 7)}<small>{selectedFiles.length}</small></h3>
+        {tab === "history" && commitHash && <section className="git-commit-files"><h3 title={`Files in ${commitHash}`}>Changed files<small>{selectedFiles.length}</small></h3>
           {detailRequest.error && <p className="git-notice" role="alert">{detailRequest.error}</p>}
-          <FileTree files={selectedFiles} selected={selection?.path ?? null} disabled={false} onSelect={path => setSelection({ path, mode: "commit", revision: commitHash })} />
+          <FileTree files={selectedFiles} selected={selection?.path ?? null} disabled={workspaceBusy} view="list" onSelect={path => { setDiffClosed(false); setSelection({ path, mode: "commit", revision: commitHash }); }} />
         </section>}
 
         <div className="git-remote-controls">
-          <BranchPicker key={directory} status={status} disabled={!!busy}
-            onSwitch={branch => void execute({ action: "switch-branch", branch }, "Switch branch")}
-            onCreate={branch => void execute({ action: "create-branch", branch }, "Create branch")} />
-          <button type="button" className="git-button" disabled={!!busy || !status?.remotes.length} onClick={() => void execute({ action: "fetch", remote: activeRemote }, "Fetch")}><RefreshCw size={13} />Fetch</button>
-          <button type="button" className="git-button" disabled={!!busy || !status?.upstream || !status?.branch} onClick={() => void execute({ action: "pull" }, "Pull")}><ArrowDown size={13} />Pull</button>
-          <button type="button" className="git-button" disabled={!!busy || !status?.remotes.length || !status.branch || status.unborn} onClick={() => void execute({ action: "push", remote: activeRemote }, status?.upstream ? "Push" : "Publish branch")}><ArrowUp size={13} />{status?.upstream ? "Push" : "Publish"}</button>
+          <BranchPicker key={directory} status={status} disabled={workspaceBusy}
+            onSwitch={branch => navigate(() => { documents.clear(); void execute({ action: "switch-branch", branch }, "Switch branch"); })}
+            onCreate={branch => navigate(() => { documents.clear(); void execute({ action: "create-branch", branch }, "Create branch"); })} />
+          <button type="button" className="git-button" disabled={workspaceBusy || !status?.remotes.length} onClick={() => void execute({ action: "fetch", remote: activeRemote }, "Fetch")}><RefreshCw size={13} />Fetch</button>
+          <button type="button" className="git-button" disabled={workspaceBusy || !status?.upstream || !status?.branch} onClick={() => navigate(() => { documents.clear(); void execute({ action: "pull" }, "Pull"); })}><ArrowDown size={13} />Pull</button>
+          <button type="button" className="git-button" disabled={workspaceBusy || !status?.remotes.length || !status.branch || status.unborn} onClick={() => void execute({ action: "push", remote: activeRemote }, status?.upstream ? "Push" : "Publish branch")}><ArrowUp size={13} />{status?.upstream ? "Push" : "Publish"}</button>
         </div>
         {tab === "changes" && <form className="git-commit-form" onSubmit={event => { event.preventDefault(); if (status && groups[0].files.length && message.trim()) void execute({ action: "commit", message }, "Commit"); }}>
-          <textarea aria-label="Commit message" placeholder="Commit message" value={message} disabled={!!busy || !status} onChange={event => setMessage(event.target.value)} rows={3} maxLength={20_000} />
-          <div><span>{groups[0].files.length} staged</span><button className="git-button git-primary" disabled={!!busy || !groups[0].files.length || !message.trim()}><GitCommitHorizontal size={14} />Commit staged</button></div>
+          <textarea aria-label="Commit message" placeholder="Commit message" value={message} disabled={workspaceBusy || !status} onChange={event => setMessage(event.target.value)} rows={3} maxLength={20_000} />
+          <div><span>{groups[0].files.length} staged</span><button className="git-button git-primary" disabled={workspaceBusy || !groups[0].files.length || !message.trim()}><GitCommitHorizontal size={14} />Commit staged</button></div>
         </form>}
       </aside>
     </div>
 
+    <dialog ref={discardDialog} className="git-discard-dialog" aria-labelledby="git-discard-title" onCancel={event => { if (savingFiles) event.preventDefault(); else pendingNavigation.current = null; }}>
+      <h2 id="git-discard-title">Save unsaved changes?</h2><p>{pendingDocuments.length === 1 ? `Your edits to ${pendingDocuments[0]} have not been saved.` : `${pendingDocuments.length} files have unsaved edits.`}</p>
+      {pendingDocuments.length > 1 && <ul>{pendingDocuments.map(path => <li key={path}>{path}</li>)}</ul>}
+      <div><button type="button" className="git-button" autoFocus disabled={savingFiles} onClick={() => { pendingNavigation.current = null; discardDialog.current?.close(); }}>Keep editing</button>
+        <button type="button" className="git-button git-discard-button" disabled={savingFiles} onClick={() => void finishNavigation(false)}>Discard changes</button>
+        <button type="button" className="git-button git-primary" disabled={savingFiles} onClick={() => void finishNavigation(true)}>{savingFiles ? "Saving…" : pendingClose ? "Save and close" : "Save changes"}</button></div>
+    </dialog>
   </main>;
 }

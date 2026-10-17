@@ -10,6 +10,7 @@ async (page) => {
   assert(await handle.count() === 1, "The Git panel has no resize handle");
   const sidebar = page.locator(".git-sidebar");
   const width = async () => (await sidebar.boundingBox()).width;
+  assert((await sidebar.boundingBox()).x > (await page.locator(".git-diff-pane").boundingBox()).x, "Git panel must be to the right of the editor");
   async function drag(delta) {
     const box = await handle.boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + Math.min(80, box.height / 2));
