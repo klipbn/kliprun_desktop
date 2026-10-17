@@ -1,19 +1,23 @@
 /** @type {import('tailwindcss').Config} */
+const themeColor = name => ({ opacityValue }) => opacityValue === undefined
+  ? `var(--theme-${name})`
+  : `color-mix(in srgb, var(--theme-${name}) calc(${opacityValue} * 100%), transparent)`;
+
 export default {
   darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
-        background: "#0d1117",
-        surface: "#161b22",
-        border: "#30363d",
-        "text-primary": "#c9d1d9",
-        "text-secondary": "#8b949e",
-        accent: "#58a6ff",
-        success: "#238636",
-        warning: "#d29922",
-        error: "#f85149",
+        background: themeColor("background"),
+        surface: themeColor("surface"),
+        border: themeColor("border"),
+        "text-primary": themeColor("text"),
+        "text-secondary": themeColor("muted"),
+        accent: themeColor("accent"),
+        success: themeColor("success"),
+        warning: themeColor("warning"),
+        error: themeColor("error"),
       },
     },
   },

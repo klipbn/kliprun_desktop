@@ -35,7 +35,7 @@ struct UpdateView: View {
         .buttonStyle(SettingsButtonStyle())
         .tint(SettingsStyle.accent)
         .background(SettingsStyle.background)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(["daybreak", "paper"].contains(AppPreferences().theme) ? .light : .dark)
         .onDisappear { updater.dismissInstalledNotes() }
     }
 

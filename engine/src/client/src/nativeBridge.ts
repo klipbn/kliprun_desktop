@@ -39,16 +39,18 @@ export function observeNativeRepository(onSelect: (directory: string) => void,
 
 export interface DesktopPreferences {
   detailTab: "user" | "agent-text" | "agent" | "models" | "kanban";
+  theme: "default" | "ember" | "dusk" | "graphite" | "daybreak" | "paper";
   reduceMotion: boolean;
 }
 
-type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; reduceMotion?: unknown } };
+type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; theme?: unknown; reduceMotion?: unknown } };
 
 export function desktopPreferences(host: PreferencesHost = typeof window === "undefined" ? {} : window as PreferencesHost): DesktopPreferences {
   const value = host.kliprunPreferences;
   const tab = value?.detailTab;
   return {
     detailTab: tab === "user" || tab === "agent" || tab === "models" || tab === "kanban" ? tab : "agent-text",
+    theme: value?.theme === "ember" || value?.theme === "dusk" || value?.theme === "graphite" || value?.theme === "daybreak" || value?.theme === "paper" ? value.theme : "default",
     reduceMotion: value?.reduceMotion === true,
   };
 }

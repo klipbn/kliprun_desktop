@@ -1,4 +1,5 @@
 @import "./animations.css";
+@import "./themes.css";
 
 @tailwind base;
 @tailwind components;
@@ -15,15 +16,15 @@
 .agent-markdown ol { list-style: decimal; }
 .agent-markdown li + li { margin-top: .25rem; }
 .agent-markdown li > :is(ul, ol, p) { margin-top: .35rem; }
-.agent-markdown a { color: #58a6ff; text-decoration: underline; text-underline-offset: 2px; }
-.agent-markdown code { font-size: .85em; background: #0d1117; border-radius: 4px; padding: .15em .35em; }
-.agent-markdown pre { overflow-x: auto; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: .75rem; }
+.agent-markdown a { color: var(--theme-accent); text-decoration: underline; text-underline-offset: 2px; }
+.agent-markdown code { font-size: .85em; background: var(--theme-background); border-radius: 4px; padding: .15em .35em; }
+.agent-markdown pre { overflow-x: auto; background: var(--theme-background); border: 1px solid var(--theme-border); border-radius: 6px; padding: .75rem; }
 .agent-markdown pre code { padding: 0; background: transparent; white-space: pre; }
-.agent-markdown blockquote { border-left: 3px solid #58a6ff; padding-left: .75rem; color: #b1bac4; }
+.agent-markdown blockquote { border-left: 3px solid var(--theme-accent); padding-left: .75rem; color: var(--theme-text); }
 .agent-markdown table { border-collapse: collapse; min-width: 100%; }
-.agent-markdown :is(th, td) { border: 1px solid #30363d; padding: .4rem .6rem; }
-.agent-markdown th { background: #0d1117; font-weight: 600; }
-.agent-markdown hr { border-color: #30363d; }
+.agent-markdown :is(th, td) { border: 1px solid var(--theme-border); padding: .4rem .6rem; }
+.agent-markdown th { background: var(--theme-background); font-weight: 600; }
+.agent-markdown hr { border-color: var(--theme-border); }
 
 @layer base {
   body {

@@ -1,0 +1,91 @@
+:root {
+  --theme-background: #0d1117;
+  --theme-surface: #161b22;
+  --theme-border: #30363d;
+  --theme-text: #c9d1d9;
+  --theme-strong: #e6edf3;
+  --theme-muted: #8b949e;
+  --theme-accent: #58a6ff;
+  --theme-success: #238636;
+  --theme-warning: #d29922;
+  --theme-error: #f85149;
+  --theme-raised: #21262d;
+}
+
+:root[data-theme="ember"] {
+  --theme-background: #0d1016;
+  --theme-surface: #1f2127;
+  --theme-border: #3f4043;
+  --theme-text: #bfbdb6;
+  --theme-strong: #bfbdb6;
+  --theme-muted: #8a8986;
+  --theme-accent: #5ac1fe;
+  --theme-success: #aad84c;
+  --theme-warning: #feb454;
+  --theme-error: #ef7177;
+  --theme-raised: #313337;
+}
+
+:root[data-theme="dusk"] {
+  --theme-background: #242835;
+  --theme-surface: #353944;
+  --theme-border: #53565d;
+  --theme-text: #cccac2;
+  --theme-strong: #cccac2;
+  --theme-muted: #9a9a98;
+  --theme-accent: #72cffe;
+  --theme-success: #d5fe80;
+  --theme-warning: #fecf72;
+  --theme-error: #f18779;
+  --theme-raised: #464a52;
+}
+
+:root[data-theme="graphite"] {
+  --theme-background: #282c33;
+  --theme-surface: #2f343e;
+  --theme-border: #464b57;
+  --theme-text: #dce0e5;
+  --theme-strong: #dce0e5;
+  --theme-muted: #a9afbc;
+  --theme-accent: #74ade8;
+  --theme-success: #a1c181;
+  --theme-warning: #dec184;
+  --theme-error: #d07277;
+  --theme-raised: #3b414d;
+}
+
+:root[data-theme="daybreak"] {
+  --theme-background: #fcfcfc;
+  --theme-surface: #ececed;
+  --theme-border: #cfd1d2;
+  --theme-text: #5c6166;
+  --theme-strong: #5c6166;
+  --theme-muted: #8b8e92;
+  --theme-accent: #3b9ee5;
+  --theme-success: #85b304;
+  --theme-warning: #f1ad49;
+  --theme-error: #ef7271;
+  --theme-raised: #dcddde;
+}
+
+:root[data-theme="paper"] {
+  --theme-background: #fafafa;
+  --theme-surface: #ebebec;
+  --theme-border: #c9c9ca;
+  --theme-text: #242529;
+  --theme-strong: #242529;
+  --theme-muted: #58585a;
+  --theme-accent: #5c78e2;
+  --theme-success: #669f59;
+  --theme-warning: #a48819;
+  --theme-error: #d36151;
+  --theme-raised: #dcdcdd;
+}
+
+:root[data-theme]:not([data-theme="default"]) .text-white {
+  color: var(--theme-text);
+}
+
+:root:is([data-theme="daybreak"], [data-theme="paper"]) img[data-testid^="harness-icon-"] {
+  filter: brightness(0);
+}
