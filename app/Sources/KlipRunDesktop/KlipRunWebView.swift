@@ -29,6 +29,8 @@ struct KlipRunWebView: NSViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: "desktopAction")
         configuration.userContentController.add(context.coordinator, name: "exportStatistics")
         configuration.userContentController.add(context.coordinator, name: "gitRepository")
+        configuration.userContentController.add(context.coordinator, name: "gitWorkspace")
+        configuration.userContentController.addUserScript(WKUserScript(source: GitWorkspace().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "repositoryFile")
         if let repository = UserDefaults.standard.string(forKey: "git.repository"),
            let data = try? JSONEncoder().encode(repository), let literal = String(data: data, encoding: .utf8) {
@@ -65,6 +67,7 @@ struct KlipRunWebView: NSViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "desktopAction")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "exportStatistics")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "gitRepository")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "gitWorkspace")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "repositoryFile")
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
@@ -125,6 +128,12 @@ struct KlipRunWebView: NSViewRepresentable {
                 userContentController.removeAllUserScripts()
                 scripts.forEach(userContentController.addUserScript)
                 userContentController.addUserScript(WKUserScript(source: "window.kliprunGitRepository = \(literal);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+            } else if message.name == "gitWorkspace",
+                      let body = message.body as? [String: Any], GitWorkspace().set(body) {
+                let scripts = userContentController.userScripts.filter { !$0.source.hasPrefix("window.kliprunGitWorkspace = ") }
+                userContentController.removeAllUserScripts()
+                scripts.forEach(userContentController.addUserScript)
+                userContentController.addUserScript(WKUserScript(source: GitWorkspace().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
             } else if message.name == "officePreferences",
                       message.frameInfo.isMainFrame,
                       message.frameInfo.securityOrigin.host == "127.0.0.1",
