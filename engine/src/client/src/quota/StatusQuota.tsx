@@ -1,5 +1,5 @@
 import { QUOTA_LABELS, QUOTA_PROVIDERS, type ProviderQuota, type QuotaProvider } from "@shared/quota";
-import { countdown, date, percent, tone } from "./format";
+import { countdown, date, percent, retryHint, tone } from "./format";
 import "./status-quota.css";
 
 type Props = {
@@ -27,7 +27,7 @@ export function StatusQuota({ quotas, errors, pending, now, onOpen }: Props) {
       const live = quota.status === "ready" && !cached && !due;
       const status = cached ? "Cached" : due ? "Reset pending" : quota.status === "sign_in_required" ? "Sign in required" : !live ? "Unavailable" : "";
       const limits = [...quota.limits].sort((a, b) => order[a.kind] - order[b.kind]);
-      const details = [QUOTA_LABELS[provider], status, ...limits.map(limit => `${limit.label}: ${percent(limit.remaining_percent)}% remaining · ${limit.reset_at === null ? "Reset time unavailable" : limit.reset_at <= now ? "Reset pending" : `Resets in ${countdown(limit.reset_at, now)} (${date(limit.reset_at)})`}`), errors[provider] ?? quota.message].filter(Boolean).join("\n");
+      const details = [QUOTA_LABELS[provider], status, ...limits.map(limit => `${limit.label}: ${percent(limit.remaining_percent)}% remaining · ${limit.reset_at === null ? "Reset time unavailable" : limit.reset_at <= now ? "Reset pending" : `Resets in ${countdown(limit.reset_at, now)} (${date(limit.reset_at)})`}`), retryHint(quota.retry_at, now), errors[provider] ?? quota.message].filter(Boolean).join("\n");
       return <button type="button" key={provider} className="status-quota" title={details}
         aria-label={`${QUOTA_LABELS[provider]}${status ? ` · ${status}` : ""}. Open Usage`} onClick={onOpen}>
         <span className="status-quota-name">{labels[provider]}{status && <small>{status}</small>}</span>

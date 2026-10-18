@@ -21,4 +21,5 @@ export interface ProviderQuota {
   limits: QuotaWindow[];
   updated_at: number | null;
   message: string | null;
+  retry_at?: number | null;
 }

@@ -309,7 +309,7 @@ export default function App() {
       </main>}
 
       {page === "usage" && <Suspense fallback={<div className="flex-1 flex items-center justify-center text-text-secondary">Loading usage…</div>}>
-        <Usage {...quotaState} now={now} />
+        <Usage {...quotaState} now={now} activeSessionIds={activeSessionIds} onBoard={openBoardSession} />
       </Suspense>}
 
       <main className="flex-1 min-h-0 flex" style={page !== "board" ? { display: "none" } : undefined}>
