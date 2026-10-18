@@ -1,8 +1,8 @@
-export const QUOTA_PROVIDERS = ["openai", "codex", "zai", "kimi"] as const;
+export const QUOTA_PROVIDERS = ["openai", "codex", "claude", "zai", "kimi"] as const;
 export type QuotaProvider = typeof QUOTA_PROVIDERS[number];
 
 export const QUOTA_LABELS: Record<QuotaProvider, string> = {
-  openai: "OpenAI · OpenCode", codex: "OpenAI · Codex", zai: "Z.ai", kimi: "Kimi",
+  openai: "OpenAI · OpenCode", codex: "OpenAI · Codex", claude: "Claude Code", zai: "Z.ai", kimi: "Kimi",
 };
 
 export interface QuotaWindow {

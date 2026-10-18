@@ -50,7 +50,7 @@ app.use("*", async (c, next) => {
 
 const statistics = new StatsService();
 const service = new BoardService({ observe: observation => statistics.observe(observation) });
-const watcher = new Watcher(undefined, undefined, () => service.codex.watchPaths());
+const watcher = new Watcher(undefined, undefined, () => [...service.codex.watchPaths(), ...service.claude.watchPaths()]);
 
 registerHealthRoute(app, service);
 registerBoardRoute(app, service);

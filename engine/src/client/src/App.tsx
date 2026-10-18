@@ -240,6 +240,10 @@ export default function App() {
             aria-label="New Codex" title="New Codex (⌘⇧C)" className={`${HEADER_BUTTON} border-border text-white hover:bg-white/10`}>
             <HarnessIcon source="codex" className="w-4 h-4" />
           </button>
+          <button type="button" onClick={() => notifyNativeAction("new-claude")} data-testid="new-claude-button"
+            aria-label="New Claude Code" title="New Claude Code (⌘⇧A)" className={`${HEADER_BUTTON} border-border text-white hover:bg-white/10`}>
+            <HarnessIcon source="claude" className="w-4 h-4" />
+          </button>
           <button type="button" onClick={() => notifyNativeAction("show-terminal")} data-testid="show-terminal-button"
             aria-label="Terminal" title="Show or hide terminal (⌘J)" className={`${HEADER_BUTTON} border-border text-white hover:bg-white/10`}>
             <SquareTerminal className="w-4 h-4" />

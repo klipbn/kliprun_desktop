@@ -218,7 +218,7 @@ struct SettingsView: View {
 
     private var about: some View {
         VStack(alignment: .leading, spacing: 16) {
-            SettingsCard(title: "KlipRun Desktop", subtitle: "Your OpenCode and Codex sessions in one place.") {
+            SettingsCard(title: "KlipRun Desktop", subtitle: "Your OpenCode, Codex, and Claude Code sessions in one place.") {
                 shortcut("Version", updater.installedVersion)
                 shortcut("Architecture", AppUpdateClient.architecture == "arm64" ? "Apple Silicon" : "Intel")
                 shortcut("Active terminals", "\(store.terminals.filter(\.isRunning).count)")

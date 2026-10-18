@@ -124,6 +124,7 @@ button.stats-insight:hover:not(:disabled) { border-color: color-mix(in srgb, var
 .stats-import-source b { font-weight: 500; color: var(--theme-text); }
 .stats-source-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--theme-accent); flex-shrink: 0; vertical-align: middle; }
 .stats-source-dot[data-source=codex] { background: #bc8cff; }
+.stats-source-dot[data-source=claude] { background: #d97757; }
 .stats-import-meter { display: block; width: 55px; height: 3px; background: var(--theme-border); border-radius: 10px; overflow: hidden; }
 .stats-import-meter i { display: block; background: var(--theme-accent); height: 100%; }
 .stats-coverage-note { display: flex; align-items: flex-start; gap: 6px; color: var(--theme-muted); font-size: 11px; padding: 0 2px; margin-bottom: 16px; line-height: 1.5; }

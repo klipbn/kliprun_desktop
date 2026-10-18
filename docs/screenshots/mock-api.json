@@ -3497,6 +3497,17 @@
       "updated_at": 1791979200000,
       "message": null
     },
+    "claude": {
+      "provider": "claude",
+      "status": "ready",
+      "plan": "Claude Pro",
+      "limits": [
+        { "kind": "fiveHour", "label": "5-hour", "remaining_percent": 72.5, "reset_at": 1791986400000, "used": null, "total": null },
+        { "kind": "weekly", "label": "Weekly", "remaining_percent": 46, "reset_at": 1792411200000, "used": null, "total": null }
+      ],
+      "updated_at": 1791979200000,
+      "message": null
+    },
     "zai": {
       "provider": "zai",
       "status": "ready",

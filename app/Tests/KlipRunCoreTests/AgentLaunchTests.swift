@@ -33,7 +33,19 @@ import Testing
 }
 
 @Test func resumeRejectsMismatchedOrUnsafeSessionIDs() {
-    for (source, id) in [("codex", "ses_abc"), ("opencode", "ses_a;touch /tmp/oops"), ("terminal", "ses_a"), ("codex", "codex:--last")] {
+    for (source, id) in [("codex", "ses_abc"), ("opencode", "ses_a;touch /tmp/oops"), ("terminal", "ses_a"), ("codex", "codex:--last"), ("claude", "codex:01900000-0000-7000-8000-000000000001"), ("claude", "claude:--continue")] {
         #expect(AgentLaunch.make(source: source, home: "/Users/test", inherited: [:], sessionID: id) == nil)
     }
+}
+
+@Test func claudeLaunchAndResumeUseTheExactSessionWithoutNestingAnotherAgent() {
+    let environment = ["CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "cli", "ANTHROPIC_API_KEY": "test-credential", "CLAUDE_CONFIG_DIR": "/private/claude"]
+    let launch = AgentLaunch.make(source: "claude", home: "/Users/test", inherited: environment)
+    #expect(launch?.arguments == ["-lic", "exec claude"])
+    #expect(launch?.environment["ANTHROPIC_API_KEY"] == "test-credential")
+    #expect(launch?.environment["CLAUDE_CONFIG_DIR"] == "/private/claude")
+    #expect(launch?.environment["CLAUDECODE"] == nil)
+    let id = "01900000-0000-7000-8000-000000000001"
+    let resume = AgentLaunch.make(source: "claude", home: "/Users/test", inherited: [:], sessionID: "claude:\(id)")
+    #expect(resume?.arguments == ["-lic", "exec claude --resume \(id)"])
 }

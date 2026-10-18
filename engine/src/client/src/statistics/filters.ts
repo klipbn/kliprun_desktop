@@ -69,7 +69,7 @@ export function parseFilters(search: string, now = Date.now(), fallbackTimezone 
   const distinct = (key: string) => [...new Set(query.getAll(key).filter(Boolean))];
   const role = query.get("role"), granularity = query.get("granularity");
   return { ...range, timezone,
-    sources: distinct("source").filter((source) => source === "opencode" || source === "codex"), agents: distinct("agent"), models: distinct("model"), projects: distinct("project"),
+    sources: distinct("source").filter((source) => source === "opencode" || source === "codex" || source === "claude"), agents: distinct("agent"), models: distinct("model"), projects: distinct("project"),
     role: role === "roots" || role === "children" ? role : "all", granularity: granularity === "week" || granularity === "month" ? granularity : granularity === "day" ? "day" : preset === "all" ? "month" : "day" };
 }
 export function serializeFilters(filters: StatsFilters): URLSearchParams {

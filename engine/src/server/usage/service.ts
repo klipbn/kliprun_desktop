@@ -4,11 +4,12 @@ import { join } from "node:path";
 import type { StatsFilters, UsageObservation } from "@shared/usage";
 import { getDbPath } from "../storage/db";
 import { codexHome } from "../codex/storage";
+import { claudeHome } from "../claude/journal";
 import { defaultHistoryPath } from "../history";
 import { parseStatsFilters } from "./time";
 import { parseRecentSessionsQuery } from "./recent";
 
-export interface StatsOptions { path: string; historyPath: string; opencodePath: string; codexHome: string }
+export interface StatsOptions { path: string; historyPath: string; opencodePath: string; codexHome: string; claudeHome: string }
 /** All history parsing and aggregation stays off the board's server thread. */
 export class StatsService {
   private worker: Worker;
@@ -32,7 +33,7 @@ export class StatsService {
     };
     this.worker.onerror = failed;
     this.worker.addEventListener("close", failed);
-    this.ready = this.send("init", { path: join(process.env.KLIPRUN_BUN_HOME ?? join(homedir(), ".kliprun_bun"), "usage.sqlite3"), historyPath: defaultHistoryPath(), opencodePath: getDbPath(), codexHome: codexHome(), ...options });
+    this.ready = this.send("init", { path: join(process.env.KLIPRUN_BUN_HOME ?? join(homedir(), ".kliprun_bun"), "usage.sqlite3"), historyPath: defaultHistoryPath(), opencodePath: getDbPath(), codexHome: codexHome(), claudeHome: claudeHome(), ...options });
     // A worker startup failure must not crash the read-only board.
     void this.ready.catch(() => {});
   }
@@ -85,7 +86,7 @@ export function registerStatsRoutes(app: Hono, service: StatsService): void {
   app.get("/api/stats/office-usage", async c => {
     const requested = new URL(c.req.url).searchParams.getAll("session");
     if (!requested.length || requested.length > 50 || requested.some(id =>
-      !/^ses_[a-zA-Z0-9_-]+$/.test(id) && !/^codex:[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id))) {
+      !/^ses_[a-zA-Z0-9_-]+$/.test(id) && !/^(?:codex|claude):[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id))) {
       return c.json({ error: "invalid office sessions" }, 400);
     }
     try {
@@ -111,7 +112,7 @@ export function registerStatsRoutes(app: Hono, service: StatsService): void {
   });
   app.get("/api/stats/session/:id", async c => {
     const id = c.req.param("id");
-    if (!/^ses_[a-zA-Z0-9_-]+$/.test(id) && !/^codex:[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id)) return c.json({ error: "invalid session id" }, 400);
+    if (!/^ses_[a-zA-Z0-9_-]+$/.test(id) && !/^(?:codex|claude):[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id)) return c.json({ error: "invalid session id" }, 400);
     let filters: StatsFilters;
     try { filters = parseStatsFilters(new URL(c.req.url)); } catch { return c.json({ error: "invalid statistics filters" }, 400); }
     try { c.header("Cache-Control", "no-store"); return c.json(await service.query("detail", filters, { sessionId: id })); }

@@ -19,7 +19,7 @@ const groups = [
     ["Next / previous tab", "⌃ Tab / ⌃ ⇧ Tab"],
   ] },
   { title: "Agents", shortcuts: [
-    ["New OpenCode", "⌘ ⇧ O"], ["New Codex", "⌘ ⇧ C"],
+    ["New OpenCode", "⌘ ⇧ O"], ["New Codex", "⌘ ⇧ C"], ["New Claude Code", "⌘ ⇧ A"],
   ] },
   { title: "Zoom", shortcuts: [
     ["Zoom in", "⌘ +"], ["Zoom out", "⌘ −"], ["Actual size", "⌘ 0"], ["Full screen", "⌃ ⌘ F"],

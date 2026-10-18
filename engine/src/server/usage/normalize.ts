@@ -38,3 +38,15 @@ export function normalizeCodexTokens(value: unknown): NormalizedUsage | null {
   if (invalid && normalized) return { tokens: { total: normalized.tokens.total, input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, other: normalized.tokens.total }, incomplete: true };
   return normalized;
 }
+
+/** Anthropic input and cache counters are exclusive; thinking is part of output. */
+export function normalizeClaudeTokens(value: unknown): NormalizedUsage | null {
+  const data = record(value), input = nonnegative(data.input_tokens), output = nonnegative(data.output_tokens);
+  if (input === null && output === null) return null;
+  const cached = nonnegative(data.cache_read_input_tokens) ?? 0, written = nonnegative(data.cache_creation_input_tokens) ?? 0;
+  const reasoning = nonnegative(record(data.output_tokens_details).thinking_tokens) ?? 0;
+  return normalize((input ?? 0) + (output ?? 0) + cached + written, {
+    input: input ?? 0, output: Math.max(0, (output ?? 0) - reasoning), reasoning,
+    cache_read: cached, cache_write: written,
+  }, input === null || output === null || reasoning > (output ?? 0));
+}

@@ -15,6 +15,8 @@ import { CodexAdapter } from "./codex/adapter";
 import { scanCodexCli, type CliProcess } from "./codex/liveness";
 import type { UsageObservation } from "@shared/usage";
 import { exactTerminalLinks, type TerminalLink } from "./terminalLinks";
+import { ClaudeAdapter } from "./claude/adapter";
+import { scanClaudeCli, type ClaudeProcess } from "./claude/liveness";
 
 type BoardEngine = Pick<Engine, "rebuild" | "board" | "setTuiLiveness" | "sessionDirectory" | "detail"> & {
   historyCards(): Array<HistoryCard & Partial<{ title: string; parent_id: string | null; agent: string | null; model: string | null }>>;
@@ -57,6 +59,7 @@ export class BoardService {
   readonly engine: BoardEngine;
   readonly history: StatusHistoryStore;
   readonly codex: CodexAdapter;
+  readonly claude: ClaudeAdapter;
   private cache: BoardCacheEntry | null = null;
   private runningOrder: string[] = [];
   private building = false;
@@ -66,19 +69,23 @@ export class BoardService {
   private scanning = false;
   private stopped = false;
   private codexScanError: string | null = null;
+  private claudeScanError: string | null = null;
   readonly startedAt = Date.now();
   private readonly observe?: (observation: UsageObservation) => void;
   private readonly scanLiveness: () => Promise<TuiLiveness>;
   private readonly scanCodex: () => Promise<CliProcess[]>;
+  private readonly scanClaude: () => Promise<ClaudeProcess[]>;
 
-  constructor(options: { engine?: BoardEngine; history?: StatusHistoryStore; codex?: CodexAdapter; observe?: (observation: UsageObservation) => void;
-    scanLiveness?: () => Promise<TuiLiveness>; scanCodex?: () => Promise<CliProcess[]> } = {}) {
+  constructor(options: { engine?: BoardEngine; history?: StatusHistoryStore; codex?: CodexAdapter; claude?: ClaudeAdapter; observe?: (observation: UsageObservation) => void;
+    scanLiveness?: () => Promise<TuiLiveness>; scanCodex?: () => Promise<CliProcess[]>; scanClaude?: () => Promise<ClaudeProcess[]> } = {}) {
     this.engine = options.engine ?? new Engine();
     this.history = options.history ?? new StatusHistoryStore();
     this.codex = options.codex ?? new CodexAdapter();
+    this.claude = options.claude ?? new ClaudeAdapter();
     this.observe = options.observe;
     this.scanLiveness = options.scanLiveness ?? openTuiSessions;
     this.scanCodex = options.scanCodex ?? scanCodexCli;
+    this.scanClaude = options.scanClaude ?? scanClaudeCli;
   }
 
   start(): void {
@@ -99,13 +106,14 @@ export class BoardService {
     if (intervals.length) this.observe?.({ at: Math.max(...intervals.map(i => i.exited_at!)), intervals, cards: [] });
     this.history.close();
     this.codex.close();
+    this.claude.close();
   }
 
   private async refreshLiveness(): Promise<void> {
     if (this.scanning || this.stopped) return;
     this.scanning = true;
     try {
-      const [openCode, codex] = await Promise.allSettled([this.scanLiveness(), this.scanCodex()]);
+      const [openCode, codex, claude] = await Promise.allSettled([this.scanLiveness(), this.scanCodex(), this.scanClaude()]);
       if (this.stopped) return;
       if (codex.status === "fulfilled") {
         this.codex.setProcesses(codex.value);
@@ -114,6 +122,10 @@ export class BoardService {
         // A failed scan cannot confirm that the previously observed terminals exited.
         this.codexScanError = "Codex CLI process scan unavailable";
       }
+      if (claude.status === "fulfilled") {
+        this.claude.setProcesses(claude.value);
+        this.claudeScanError = null;
+      } else this.claudeScanError = "Claude Code CLI process scan unavailable";
       this.cache = null;
       if (openCode.status === "fulfilled") {
         const liveness = openCode.value;
@@ -152,13 +164,17 @@ export class BoardService {
     return [...(this.codexScanError ? [this.codexScanError] : []), ...this.codex.diagnostics];
   }
 
+  claudeDiagnostics(): string[] {
+    return [...(this.claudeScanError ? [this.claudeScanError] : []), ...this.claude.diagnostics];
+  }
+
   terminalLinks(): TerminalLink[] {
     const board = this.getBoard().data;
     const visible = new Set<string>();
     const visit = (card: CardPayload) => { visible.add(card.session_id); card.children.forEach(visit); };
     for (const key of COLUMNS) board.columns[key].cards.forEach(visit);
     const openCode = exactTerminalLinks(this.lastLiveness?.sessionPids ?? new Map(), [], []);
-    return [...openCode, ...this.codex.terminalLinks()].filter(link => visible.has(link.session_id));
+    return [...openCode, ...this.codex.terminalLinks(), ...this.claude.terminalLinks()].filter(link => visible.has(link.session_id));
   }
 
   selectCodexTerminalSession(pid: number, sessionId: string | null, generation: string): boolean {
@@ -203,14 +219,17 @@ export class BoardService {
         console.warn("[board] OpenCode rebuild failed:", error instanceof Error ? error.message : error);
       }
       const codex = this.codex.cards(now);
+      const claude = this.claude.cards(now);
       const codexSessions = this.codex.historyCards();
+      const claudeSessions = this.claude.historyCards();
       const openCodeHistory = this.engine.historyCards();
-      const intervals = this.history.record([...openCodeHistory, ...codexSessions.map(card => ({ sessionId: card.session_id, directory: card.directory, column: card.column }))], now);
+      const intervals = this.history.record([...openCodeHistory, ...[...codexSessions, ...claudeSessions].map(card => ({ sessionId: card.session_id, directory: card.directory, column: card.column }))], now);
       this.observe?.({ at: now, intervals, cards: [
         ...openCodeHistory.map(card => ({ session_id: card.sessionId, source: "opencode" as const, parent_id: card.parent_id ?? null, title: card.title ?? "Session", directory: card.directory, agent: card.agent ?? null, model: card.model ?? null })),
         ...codexSessions.map(card => ({ session_id: card.session_id, source: "codex" as const, parent_id: card.parent_id, title: card.title, directory: card.directory, agent: card.agent?.name ?? null, model: this.codex.usageModel(card) })),
+        ...claudeSessions.map(card => ({ session_id: card.session_id, source: "claude" as const, parent_id: card.parent_id, title: card.title, directory: card.directory, agent: card.agent?.name ?? null, model: card.model_ref })),
       ] });
-      const data = combineBoard(this.engine.board(now), codex, now);
+      const data = combineBoard(this.engine.board(now), [...codex, ...claude], now);
       const running = data.columns.running.cards;
       const present = new Set(running.map(card => card.session_id));
       this.runningOrder = this.runningOrder.filter(id => present.has(id));
@@ -229,6 +248,10 @@ export class BoardService {
   }
 
   getSessionDetail(sessionId: string): SessionDetailPayload {
+    if (sessionId.startsWith("claude:")) {
+      this.getBoard();
+      return { ...this.claude.detail(sessionId, Date.now()), kanban_history: this.history.get(sessionId, Date.now()) };
+    }
     if (sessionId.startsWith("codex:")) {
       this.getBoard();
       const detail = this.codex.detail(sessionId, Date.now());

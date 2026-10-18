@@ -1,4 +1,5 @@
 import type { UsageTokens } from "@shared/usage";
+import { SESSION_SOURCE_NAMES, type SessionSource } from "@shared/types";
 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
 export const count = (value: number) => new Intl.NumberFormat("en-US").format(value);
@@ -12,7 +13,8 @@ export function duration(value: number | null): string {
   const hours = Math.floor(minutes / 60), remainder = minutes % 60;
   return `${count(hours)}h${remainder ? ` ${remainder}m` : ""}`;
 }
-export const sourceName = (source: string) => source === "codex" ? "Codex CLI" : source === "opencode" ? "OpenCode" : source;
+export const sourceName = (source: string) => SESSION_SOURCE_NAMES[source as SessionSource] ?? source;
+export const sourceColor = (source: string) => source === "claude" ? "#d97757" : source === "codex" ? "#bc8cff" : "#58a6ff";
 export const projectName = (directory: string) => directory === "__unknown__" || directory === "unknown" ? "Unknown" : directory.split(/[\\/]/).filter(Boolean).at(-1) || directory || "Unknown";
 export const readable = (value: string) => value === "unknown" || value === "__unknown__" || !value ? "Unknown" : value;
 export function dateLabel(at: number, timezone: string, full = false): string {

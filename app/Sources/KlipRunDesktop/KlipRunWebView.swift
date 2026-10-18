@@ -174,6 +174,7 @@ struct KlipRunWebView: NSViewRepresentable {
                 switch action {
                 case "new-opencode": store.launch(source: "opencode")
                 case "new-codex": store.launch(source: "codex")
+                case "new-claude": store.launch(source: "claude")
                 case "show-terminal": store.toggleTerminal()
                 case "open-iterm": store.openSelectedInITerm()
                 case "settings": store.showSettings()

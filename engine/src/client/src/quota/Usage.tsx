@@ -6,7 +6,7 @@ import "./usage.css";
 type Quotas = Partial<Record<QuotaProvider, ProviderQuota>>;
 type Errors = Partial<Record<QuotaProvider, string>>;
 type Props = { quotas: Quotas; pending: QuotaProvider[]; errors: Errors; now: number; onRefresh: () => void };
-const SOURCE = { openai: "OpenCode", codex: "Codex", zai: "OpenCode", kimi: "OpenCode" };
+const SOURCE = { openai: "OpenCode", codex: "Codex", claude: "Claude Code", zai: "OpenCode", kimi: "OpenCode" };
 
 function remaining(quota: ProviderQuota): number | null {
   return quota.limits.length ? Math.min(...quota.limits.map(w => w.remaining_percent)) : null;

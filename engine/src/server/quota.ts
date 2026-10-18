@@ -4,14 +4,16 @@ import type { Hono } from "hono";
 import { QUOTA_PROVIDERS, type ProviderQuota, type QuotaProvider, type QuotaWindow } from "@shared/quota";
 import { codexHome } from "./codex/storage";
 import { getDbPath } from "./storage/db";
+import { claudeCredentialLocation, readClaudeKeychain } from "./claude/auth";
 
 type ObjectValue = Record<string, unknown>;
-type Credential = { token: string; account: string | null; expires: number | null };
+type Credential = { token: string; account: string | null; expires: number | null; plan?: string | null };
 type Fetcher = (input: string, init: RequestInit) => Promise<Response>;
-type Options = { opencodeAuth?: string; codexAuth?: string; fetch?: Fetcher; now?: () => number };
+type Options = { opencodeAuth?: string; codexAuth?: string; claudeAuth?: string; claudeKeychain?: () => Promise<string | null>; fetch?: Fetcher; now?: () => number };
 const OPENAI_URL = "https://chatgpt.com/backend-api/wham/usage";
 const ZAI_URL = "https://api.z.ai/api/monitor/usage";
 const KIMI_URL = "https://api.kimi.com/coding/v1/usages";
+const CLAUDE_URL = "https://api.anthropic.com/api/oauth/usage";
 const KIMI_KEYS = ["kimi-for-coding", "kimi-for-coding-oauth", "kimi-code", "kimi", "kimi-code-plan-global", "kimi-code-plan-cn"];
 const object = (v: unknown): ObjectValue => v !== null && typeof v === "object" && !Array.isArray(v) ? v as ObjectValue : {};
 const text = (v: unknown): string | null => typeof v === "string" && v.trim() ? v.trim() : null;
@@ -30,6 +32,11 @@ function jwtAccount(token: string): string | null {
 }
 
 function credentials(auth: ObjectValue, provider: QuotaProvider): Credential | null {
+  if (provider === "claude") {
+    const oauth = object(auth.claudeAiOauth), token = text(oauth.accessToken);
+    const plans: Record<string, string> = { pro: "Claude Pro", max: "Claude Max", team: "Claude Team", enterprise: "Claude Enterprise" };
+    return token ? { token, account: null, expires: numeric(oauth.expiresAt), plan: plans[text(oauth.subscriptionType) ?? ""] ?? null } : null;
+  }
   if (provider === "codex") {
     const tokens = object(auth.tokens), token = text(tokens.access_token);
     return token ? { token, account: text(tokens.account_id) ?? jwtAccount(token), expires: null } : null;
@@ -130,6 +137,15 @@ function parseKimi(data: ObjectValue, now: number) {
   return { limits, plan: text(object(object(root.user).membership).level)?.replace(/^LEVEL_/, "") ?? null };
 }
 
+function parseClaude(data: ObjectValue, now: number): QuotaWindow[] {
+  const limits: QuotaWindow[] = [];
+  for (const [key, kind, label] of [["five_hour", "fiveHour", "5-hour"], ["seven_day", "weekly", "Weekly"]] as const) {
+    const detail = object(data[key]), pct = percentage(detail.utilization);
+    if (pct !== null) limits.push(window(kind, label, pct, { reset_at: detail.resets_at }, now));
+  }
+  return limits;
+}
+
 class QuotaError extends Error {
   constructor(readonly status: "sign_in_required" | "unavailable", message: string) { super(message); }
 }
@@ -137,6 +153,8 @@ class QuotaError extends Error {
 export class QuotaService {
   private readonly opencodeAuth: string;
   private readonly codexAuth: string;
+  private readonly claudeAuth: string;
+  private readonly claudeKeychain: () => Promise<string | null>;
   private readonly fetcher: Fetcher;
   private readonly now: () => number;
   private readonly cache = new Map<QuotaProvider, { identity: string; value: ProviderQuota }>();
@@ -145,24 +163,29 @@ export class QuotaService {
   constructor(options: Options = {}) {
     this.opencodeAuth = options.opencodeAuth ?? join(dirname(getDbPath()), "auth.json");
     this.codexAuth = options.codexAuth ?? join(codexHome(), "auth.json");
+    this.claudeAuth = options.claudeAuth ?? claudeCredentialLocation().path;
+    this.claudeKeychain = options.claudeKeychain ?? (options.claudeAuth ? async () => null : readClaudeKeychain);
     this.fetcher = options.fetch ?? fetch;
     this.now = options.now ?? Date.now;
   }
 
   async get(provider: QuotaProvider, refresh = false): Promise<ProviderQuota> {
     const empty: ProviderQuota = { provider, status: "not_configured", plan: null, limits: [], updated_at: null, message: null };
-    const source = provider === "codex" ? "Codex" : "OpenCode";
+    const source = provider === "claude" ? "Claude Code" : provider === "codex" ? "Codex" : "OpenCode";
     let auth: ObjectValue;
-    try { auth = object(JSON.parse(await readFile(provider === "codex" ? this.codexAuth : this.opencodeAuth, "utf8"))); }
+    try {
+      const keychain = provider === "claude" ? await this.claudeKeychain() : null;
+      auth = object(JSON.parse(keychain ?? await readFile(provider === "claude" ? this.claudeAuth : provider === "codex" ? this.codexAuth : this.opencodeAuth, "utf8")));
+    }
     catch (error) {
       this.cache.delete(provider);
       return { ...empty, status: (error as NodeJS.ErrnoException).code === "ENOENT" ? "not_configured" : "unavailable",
-        message: `Unable to read ${source} auth.json. Sign in with ${source} to connect this provider.` };
+        message: `Unable to read ${source} sign-in. Sign in with ${source} to connect this provider.` };
     }
     const credential = credentials(auth, provider);
     if (!credential) {
       this.cache.delete(provider);
-      return { ...empty, message: provider === "codex" || provider === "openai"
+      return { ...empty, message: provider === "claude" ? "Sign in with a Claude subscription in Claude Code. API keys do not expose subscription limits." : provider === "codex" || provider === "openai"
         ? `Sign in with ChatGPT in ${source}. API keys do not expose subscription limits.`
         : `Connect this provider in OpenCode to see its limits.` };
     }
@@ -181,8 +204,8 @@ export class QuotaService {
     return promise;
   }
 
-  private async request(url: string, credential: Credential, authorization = `Bearer ${credential.token}`): Promise<ObjectValue> {
-    const headers: Record<string, string> = { Authorization: authorization, Accept: "application/json" };
+  private async request(url: string, credential: Credential, authorization = `Bearer ${credential.token}`, extraHeaders: Record<string, string> = {}): Promise<ObjectValue> {
+    const headers: Record<string, string> = { Authorization: authorization, Accept: "application/json", ...extraHeaders };
     if (credential.account) headers["ChatGPT-Account-Id"] = credential.account;
     // Never follow a redirect carrying the provider's authorization header.
     const response = await this.fetcher(url, { headers, redirect: "error", signal: AbortSignal.timeout(10_000) });
@@ -197,6 +220,7 @@ export class QuotaService {
     try {
       let parsed: { limits: QuotaWindow[]; plan: string | null };
       if (provider === "openai" || provider === "codex") parsed = parseOpenAI(await this.request(OPENAI_URL, credential), this.now());
+      else if (provider === "claude") parsed = { limits: parseClaude(await this.request(CLAUDE_URL, credential, undefined, { "anthropic-beta": "oauth-2025-04-20" }), this.now()), plan: credential.plan ?? null };
       else if (provider === "kimi") parsed = parseKimi(await this.request(KIMI_URL, credential), this.now());
       else {
         let lastError: unknown;

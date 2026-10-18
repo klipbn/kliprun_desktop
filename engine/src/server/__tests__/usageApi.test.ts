@@ -11,7 +11,7 @@ const resources: Array<{ service: StatsService; home: string }> = [];
 afterEach(async () => { for (const { service, home } of resources.splice(0)) { await service.close(); rmSync(home, { recursive: true, force: true }); } });
 function fixture() {
   const home = mkdtempSync(join(tmpdir(), "kliprun-usage-api-"));
-  const service = new StatsService({ path: join(home, "usage.sqlite3"), historyPath: join(home, "missing-history"), opencodePath: join(home, "missing-opencode"), codexHome: home });
+  const service = new StatsService({ path: join(home, "usage.sqlite3"), historyPath: join(home, "missing-history"), opencodePath: join(home, "missing-opencode"), codexHome: home, claudeHome: join(home, "missing-claude") });
   resources.push({ service, home });
   const app = new Hono(); registerStatsRoutes(app, service);
   return { service, app };

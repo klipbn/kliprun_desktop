@@ -216,7 +216,7 @@ final class DesktopStore: ObservableObject {
     }
 
     func launch(source: String) {
-        guard projectPanel == nil, source == "opencode" || source == "codex" else { return }
+        guard projectPanel == nil, source == "opencode" || source == "codex" || source == "claude" else { return }
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true; panel.canChooseFiles = false
         panel.prompt = "Open Project"
@@ -249,13 +249,15 @@ final class DesktopStore: ObservableObject {
         alert.informativeText = "Choose what to open."
         alert.addButton(withTitle: "OpenCode")
         alert.addButton(withTitle: "Codex")
+        alert.addButton(withTitle: "Claude Code")
         alert.addButton(withTitle: "Terminal")
         alert.addButton(withTitle: "Cancel")
         NSApp.activate(ignoringOtherApps: true)
         switch alert.runModal() {
         case .alertFirstButtonReturn: launch(source: "opencode")
         case .alertSecondButtonReturn: launch(source: "codex")
-        case .alertThirdButtonReturn: newTerminal()
+        case .alertThirdButtonReturn: launch(source: "claude")
+        case NSApplication.ModalResponse(rawValue: 1003): newTerminal()
         default: break
         }
     }
@@ -273,7 +275,7 @@ final class DesktopStore: ObservableObject {
     }
 
     func resumeSession(_ id: String) {
-        let source = id.hasPrefix("codex:") ? "codex" : "opencode"
+        let source = id.hasPrefix("codex:") ? "codex" : id.hasPrefix("claude:") ? "claude" : "opencode"
         guard AgentLaunch.make(source: source, home: "", inherited: [:], sessionID: id) != nil else { return }
         if let terminal = terminals.first(where: { $0.isRunning && ($0.sessionID == id || ($0.sessionID == nil && $0.resumeSessionID == id)) }) {
             selectTerminalTab(terminal.id)

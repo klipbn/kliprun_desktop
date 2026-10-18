@@ -6,7 +6,7 @@ export interface OfficePlacement { zone: OfficeZone; area: OfficeArea; seat: num
 
 export function stateFor(card: CardPayload) {
   if (card.error) return "error";
-  if (card.source === "codex" && card.stage === "Status unknown") return "unknown";
+  if (card.stage === "Status unknown") return "unknown";
   if (card.column === "running") return "working";
   if (card.column === "attention") return "waiting";
   return "resting";

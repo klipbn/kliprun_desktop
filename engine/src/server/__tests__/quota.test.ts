@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { Hono } from "hono";
 import { QuotaService, registerQuotaRoutes } from "../quota";
 import type { ProviderQuota } from "@shared/quota";
+import { claudeCredentialLocation } from "../claude/auth";
 
 const homes: string[] = [];
 afterEach(() => { for (const home of homes.splice(0)) rmSync(home, { recursive: true, force: true }); });
@@ -16,12 +17,12 @@ function fixture(fetcher: (input: string, init: RequestInit) => Promise<Response
   "kimi-code-plan-global": { type: "oauth", access: "kimi-secret", expires: now + 60_000 },
 }) {
   const home = mkdtempSync(join(tmpdir(), "kliprun-quota-")); homes.push(home);
-  const opencodeAuth = join(home, "opencode-auth.json"), codexAuth = join(home, "codex-auth.json");
+  const opencodeAuth = join(home, "opencode-auth.json"), codexAuth = join(home, "codex-auth.json"), claudeAuth = join(home, "claude-auth.json");
   writeFileSync(opencodeAuth, JSON.stringify(auth));
   writeFileSync(codexAuth, JSON.stringify({ tokens: { access_token: "codex-secret", account_id: "cx-account" } }));
-  const service = new QuotaService({ opencodeAuth, codexAuth, fetch: fetcher, now: () => now });
+  const service = new QuotaService({ opencodeAuth, codexAuth, claudeAuth, fetch: fetcher, now: () => now });
   const app = new Hono(); registerQuotaRoutes(app, service);
-  return { service, app, opencodeAuth, codexAuth };
+  return { service, app, opencodeAuth, codexAuth, claudeAuth };
 }
 
 test("quota API keeps OpenCode and Codex accounts separate and normalizes each provider's remaining limits", async () => {
@@ -145,4 +146,71 @@ test("overlapping refreshes share one provider request", async () => {
   const results = await Promise.all([service.get("openai", true), service.get("openai", true)]);
   expect(calls).toBe(1);
   expect(results.map(q => q.limits[0].remaining_percent)).toEqual([80, 80]);
+});
+
+test("Claude OAuth usage exposes remaining 5-hour and weekly limits without returning credentials", async () => {
+  const { service, app, claudeAuth } = fixture(async (url, init) => {
+    expect(url).toBe("https://api.anthropic.com/api/oauth/usage");
+    expect(new Headers(init.headers).get("Authorization")).toBe("Bearer claude-secret");
+    expect(new Headers(init.headers).get("anthropic-beta")).toBe("oauth-2025-04-20");
+    expect(init.redirect).toBe("error");
+    return Response.json({ five_hour: { utilization: 27.5, resets_at: "2026-10-15T14:00:00Z" },
+      seven_day: { utilization: 54, resets_at: "2026-10-20T12:00:00Z" }, seven_day_opus: null });
+  });
+  writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: "claude-secret", refreshToken: "refresh-secret", expiresAt: now + 3600_000, subscriptionType: "pro" } }));
+  const response = await app.request("/api/quota/claude");
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  const quota = await response.json() as ProviderQuota;
+  expect(quota).toMatchObject({ provider: "claude", status: "ready", plan: "Claude Pro", limits: [
+    { kind: "fiveHour", remaining_percent: 72.5, reset_at: now + 7200_000 },
+    { kind: "weekly", remaining_percent: 46, reset_at: Date.parse("2026-10-20T12:00:00Z") },
+  ] });
+  expect(JSON.stringify(quota)).not.toMatch(/secret|accessToken|refreshToken/);
+  expect(await service.get("claude")).toEqual(quota);
+});
+
+test("Claude missing, expired and malformed usage remains unknown without refreshing credentials", async () => {
+  let calls = 0;
+  const { service, claudeAuth } = fixture(async () => { calls++; return Response.json({ five_hour: { utilization: null }, seven_day: { utilization: "" } }); });
+  expect((await service.get("claude")).status).toBe("not_configured");
+  writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: "expired", expiresAt: now - 1 } }));
+  expect((await service.get("claude")).status).toBe("sign_in_required");
+  expect(calls).toBe(0);
+  writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: "valid", expiresAt: now + 60_000 } }));
+  const quota = await service.get("claude");
+  expect(quota.status).toBe("unavailable");
+  expect(quota.limits).toEqual([]);
+  expect(calls).toBe(1);
+});
+
+test("Claude can read its existing macOS Keychain credential and clears cached balances on account changes", async () => {
+  const home = mkdtempSync(join(tmpdir(), "kliprun-claude-keychain-")); homes.push(home);
+  let token: string | null = "first-secret", denied = false;
+  const service = new QuotaService({ claudeAuth: join(home, "absent.json"), now: () => now,
+    claudeKeychain: async () => token ? JSON.stringify({ claudeAiOauth: { accessToken: token, expiresAt: now + 60_000, subscriptionType: "max" } }) : null,
+    fetch: async () => denied ? new Response("private upstream first-secret", { status: 503 }) : Response.json({ five_hour: { utilization: 10, resets_at: null }, seven_day: null }) });
+  expect(await service.get("claude")).toMatchObject({ status: "ready", plan: "Claude Max", limits: [{ remaining_percent: 90, reset_at: null }] });
+  denied = true;
+  const stale = await service.get("claude", true);
+  expect(stale).toMatchObject({ status: "stale", limits: [{ remaining_percent: 90 }] });
+  expect(JSON.stringify(stale)).not.toMatch(/secret|private upstream/);
+  token = "second-secret";
+  expect(await service.get("claude")).toMatchObject({ status: "unavailable", limits: [] });
+  token = null;
+  expect((await service.get("claude")).status).toBe("not_configured");
+});
+
+test("Claude secure-storage profiles do not read another config directory's Keychain entry", () => {
+  expect(claudeCredentialLocation({}, "/Users/test")).toEqual({ path: "/Users/test/.claude/.credentials.json", service: "Claude Code-credentials" });
+  expect(claudeCredentialLocation({ CLAUDE_CONFIG_DIR: "/private/claude" }, "/Users/test")).toEqual({ path: "/private/claude/.credentials.json", service: "Claude Code-credentials-42189441" });
+  expect(claudeCredentialLocation({ CLAUDE_CONFIG_DIR: "/private/claude", CLAUDE_SECURESTORAGE_CONFIG_DIR: "" }, "/Users/test")).toEqual({ path: "/Users/test/.claude/.credentials.json", service: "Claude Code-credentials" });
+});
+
+test("Claude rejected sign-in is reported without exposing the upstream error", async () => {
+  const { service, claudeAuth } = fixture(async () => new Response("claude-secret private upstream", { status: 401 }));
+  writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: "claude-secret", expiresAt: now + 60_000 } }));
+  const quota = await service.get("claude");
+  expect(quota).toMatchObject({ status: "sign_in_required", limits: [] });
+  expect(JSON.stringify(quota)).not.toMatch(/secret|private upstream/);
 });

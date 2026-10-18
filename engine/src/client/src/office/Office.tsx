@@ -89,7 +89,7 @@ export default function Office({ board, onSelect, onBack, isRead, activeTerminal
     <div className="office-stage" ref={stage}>
       <Scene skin={skin} world={world} residents={visibleResidents} departures={departures} onDeparture={finishDeparture} placements={placements} preferences={preferences} quiet={quiet} now={now}
         isRead={isRead} activeTerminalId={activeTerminalId} selectedId={selectedId} onSelect={onSelect} />
-      {!board ? <div className="office-empty" role="status">Loading office…</div> : !visibleResidents.length ? <div className="office-empty"><h3>The office is quiet</h3><p>Open an OpenCode or Codex session to bring a coworker in.</p></div> : null}
+      {!board ? <div className="office-empty" role="status">Loading office…</div> : !visibleResidents.length ? <div className="office-empty"><h3>The office is quiet</h3><p>Open an OpenCode, Codex, or Claude Code session to bring a coworker in.</p></div> : null}
     </div>
     <footer className="office-footer">
       <span className="office-count-working">{counts.working} working</span><span className="office-count-waiting">{counts.waiting} waiting</span><span>{counts.resting} resting</span>

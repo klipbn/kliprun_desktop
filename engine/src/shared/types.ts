@@ -1,5 +1,6 @@
 export type ColumnKey = "attention" | "running" | "idle";
-export type SessionSource = "opencode" | "codex";
+export type SessionSource = "opencode" | "codex" | "claude";
+export const SESSION_SOURCE_NAMES: Record<SessionSource, string> = { opencode: "OpenCode", codex: "Codex CLI", claude: "Claude Code" };
 
 export const COLUMNS: readonly ColumnKey[] = ["attention", "running", "idle"] as const;
 

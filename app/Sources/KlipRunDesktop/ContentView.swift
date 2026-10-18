@@ -133,6 +133,7 @@ struct ContentView: View {
                     Button("New Terminal") { store.newTerminal() }
                     Button("New OpenCode") { store.launch(source: "opencode") }
                     Button("New Codex") { store.launch(source: "codex") }
+                    Button("New Claude Code") { store.launch(source: "claude") }
                 } label: {
                     Image(systemName: "plus").frame(width: 22, height: 22)
                 }

@@ -73,7 +73,7 @@ describe("read-only history importer", () => {
     db.query("INSERT INTO threads (id,cwd,title,source,rollout_path,created_at,updated_at,archived,model,model_provider,originator,name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
       .run("cli", "/project", "Original prompt", "cli", rollout, at / 1000, at / 1000, 0, "final-model", "openai", null, "Current name");
     writeFileSync(rollout, usage(counter(10, 8, 2)));
-    const importer = new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink);
+    const importer = new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink);
     await importer.runOnce();
     expect(sink.sessions.get("codex:cli")?.title).toBe("Current name");
     db.query("UPDATE threads SET name = ? WHERE id = ?").run("Renamed again", "cli");
@@ -91,7 +91,7 @@ describe("read-only history importer", () => {
       insert.run("user", "child", at, at, JSON.stringify({ role: "user", agent: "plan", time: { created: at }, text: "DO NOT STORE THIS" }));
     })();
     db.close(); const before = readFileSync(path);
-    const importer = new UsageImporter({ opencodePath: path, codexHome: join(dir, "missing") }, sink);
+    const importer = new UsageImporter({ opencodePath: path, claudeHome: join(dir, "missing-claude"), codexHome: join(dir, "missing") }, sink);
     const status = await importer.runOnce();
     expect(sink.sessions.get("child")?.parent_id).toBe("root");
     expect([...sink.events.values()].filter(row => row.kind === "usage")).toHaveLength(2105);
@@ -119,7 +119,7 @@ describe("read-only history importer", () => {
     writeFileSync(join(dir, "tui.jsonl"), usage(counter(9, 7, 2)));
     writeFileSync(join(dir, "hermes.jsonl"), usage(counter(50, 40, 10)));
     const before = readFileSync(path);
-    const importer = new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink);
+    const importer = new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink);
     await importer.runOnce();
     const cliUsage = [...sink.events.values()].filter(row => row.session_id === "codex:cli" && row.kind === "usage");
     expect(cliUsage.map(row => row.tokens?.total)).toEqual([120, 37]);
@@ -131,7 +131,7 @@ describe("read-only history importer", () => {
     expect([...sink.events.values()].filter(row => row.kind === "turn")).toHaveLength(1);
     expect(readFileSync(path)).toEqual(before);
     appendFileSync(rollout, usage(counter(157, 130, 27, 50, 7), at + 4) + usage(counter(12, 10, 2), at + 5));
-    await new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink).runOnce();
+    await new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink).runOnce();
     expect([...sink.events.values()].filter(row => row.session_id === "codex:cli" && row.kind === "usage").map(row => row.tokens?.total)).toEqual([120, 37, 12]);
     await importer.runOnce();
     expect([...sink.events.values()].filter(row => row.session_id === "codex:cli" && row.kind === "usage")).toHaveLength(3);
@@ -141,7 +141,7 @@ describe("read-only history importer", () => {
   test("rebuilds truncated or rewritten journals and waits for incomplete writes", async () => {
     const dir = temp(); const { db } = codexDatabase(dir); const sink = memorySink(); const rollout = join(dir, "session.jsonl");
     insertThread(db, "cli", rollout); db.close(); writeFileSync(rollout, usage(counter(20, 15, 5)));
-    const importer = new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink);
+    const importer = new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink);
     await importer.runOnce();
     writeFileSync(rollout, usage(counter(7, 5, 2)));
     await importer.runOnce();
@@ -149,7 +149,7 @@ describe("read-only history importer", () => {
     const next = usage(counter(12, 8, 4), at + 1); appendFileSync(rollout, next.slice(0, -5));
     await importer.runOnce(); expect(sink.events.size).toBe(1);
     appendFileSync(rollout, next.slice(-5));
-    await new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink).runOnce();
+    await new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink).runOnce();
     expect([...sink.events.values()].map(row => row.tokens?.total)).toEqual([7, 5]);
     const current = readFileSync(rollout, "utf8");
     writeFileSync(rollout, current.replaceAll('"total_tokens":7', '"total_tokens":9'));
@@ -159,8 +159,8 @@ describe("read-only history importer", () => {
 
   test("reports unavailable sources without creating source files and flags unknown dates and damaged lines", async () => {
     const dir = temp(); const sink = memorySink(); const missing = join(dir, "opencode.db");
-    const importer = new UsageImporter({ opencodePath: missing, codexHome: dir }, sink);
-    expect((await importer.runOnce()).map(row => row.state)).toEqual(["unavailable", "unavailable"]);
+    const importer = new UsageImporter({ opencodePath: missing, claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink);
+    expect((await importer.runOnce()).map(row => row.state)).toEqual(["unavailable", "unavailable", "unavailable"]);
     expect(() => readFileSync(missing)).toThrow();
     const { db } = codexDatabase(dir); const rollout = join(dir, "session.jsonl"); insertThread(db, "cli", rollout); db.close();
     writeFileSync(rollout, "bad json\n" + event("response_item", { text: "x".repeat(2 * 1024 * 1024) }) + event("event_msg", { type: "token_count", info: { total_token_usage: { total_tokens: 42 } } }, null));
@@ -174,7 +174,7 @@ describe("read-only history importer", () => {
     const dir = temp(); const { db } = codexDatabase(dir); const rollout = join(dir, "session.jsonl"); const sink = memorySink();
     insertThread(db, "cli", rollout); db.close();
     writeFileSync(rollout, event("turn_context", { model: "actual-model", model_provider: "openai" }) + event("event_msg", { type: "token_count", info: { total_token_usage: counter(120, 100, 20), last_token_usage: counter(12, 10, 2) } }));
-    await new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink).runOnce();
+    await new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink).runOnce();
     const rows = [...sink.events.values()];
     expect(rows.filter(row => row.at === at).reduce((sum, row) => sum + (row.tokens?.total ?? 0), 0)).toBe(12);
     expect(rows.find(row => row.at === null)).toMatchObject({ model: null, incomplete: true, tokens: { total: 108 } });
@@ -184,7 +184,7 @@ describe("read-only history importer", () => {
     const dir = temp(); const { db } = codexDatabase(dir); const rollout = join(dir, "session.jsonl"); const sink = memorySink();
     insertThread(db, "cli", rollout); db.close();
     writeFileSync(rollout, event("event_msg", { type: "task_started", turn_id: "turn" }) + event("event_msg", { type: "token_count", info: { total_token_usage: counter(120, 100, 20), last_token_usage: counter(12, 10, 2) } }));
-    await new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink).runOnce();
+    await new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink).runOnce();
     const rows = [...sink.events.values()];
     expect(rows.find(row => row.kind === "turn")?.agent).toBe("Codex");
     expect(rows.find(row => row.kind === "usage" && row.at === at)?.agent).toBe("Codex");
@@ -194,7 +194,7 @@ describe("read-only history importer", () => {
   test("rebuilds pre-attribution Codex checkpoints so previously indexed usage joins the agent filter", async () => {
     const dir = temp(); const { db } = codexDatabase(dir); const rollout = join(dir, "session.jsonl"); const sink = memorySink();
     insertThread(db, "cli", rollout); db.close(); writeFileSync(rollout, usage(counter(15, 10, 5)));
-    const options = { opencodePath: join(dir, "missing"), codexHome: dir };
+    const options = { opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir };
     await new UsageImporter(options, sink).runOnce();
     for (const row of sink.events.values()) row.agent = null;
     const key = "codex:journal:cli"; sink.checkpoints.set(key, { ...sink.checkpoints.get(key) as object, version: 2 });
@@ -207,7 +207,7 @@ describe("read-only history importer", () => {
     insertThread(db, "cli", rollout); db.close();
     const padding = event("response_item", { text: "x".repeat(10_000) });
     writeFileSync(rollout, padding + usage(counter(20, 15, 5)) + padding);
-    const importer = new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink); await importer.runOnce();
+    const importer = new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink); await importer.runOnce();
     const old = readFileSync(rollout, "utf8");
     writeFileSync(rollout, old.replaceAll('"total_tokens":20', '"total_tokens":25') + usage(counter(30, 20, 10), at + 1));
     await importer.runOnce();
@@ -218,7 +218,7 @@ describe("read-only history importer", () => {
     const dir = temp(); const { db } = codexDatabase(dir); const rollout = join(dir, "session.jsonl"); const sink = memorySink();
     insertThread(db, "agent", rollout); db.close();
     writeFileSync(rollout, event("session_meta", { source: { subagent: { thread_spawn: { parent_thread_id: "root" } } } }) + usage(counter(15, 10, 5)));
-    await new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink).runOnce();
+    await new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink).runOnce();
     expect(sink.sessions.size).toBe(0); expect(sink.events.size).toBe(0);
   });
 
@@ -227,7 +227,7 @@ describe("read-only history importer", () => {
     db.query("INSERT INTO session VALUES (?,?,?,?,?,?,?)").run("root", null, "/project", "Root", at, at, null);
     db.query("INSERT INTO message VALUES (?,?,?,?,?)").run("turn", "root", at, at, JSON.stringify({ role: "user", agent: "build", model: { providerID: "actual-provider", modelID: "actual-model" }, time: { created: at } }));
     db.query("INSERT INTO message VALUES (?,?,?,?,?)").run("response", "root", at + 1, at + 1, JSON.stringify({ role: "assistant", agent: "build", providerID: "actual-provider", modelID: "actual-model", tokens: { total: 0, input: 0, output: 0 }, time: { completed: at + 1 } })); db.close();
-    await new UsageImporter({ opencodePath: path, codexHome: join(dir, "missing") }, sink).runOnce();
+    await new UsageImporter({ opencodePath: path, claudeHome: join(dir, "missing-claude"), codexHome: join(dir, "missing") }, sink).runOnce();
     expect(sink.events.get("opencode:message:turn")?.model).toBe("actual-provider/actual-model");
     expect(sink.events.get("opencode:message:response")).toMatchObject({ kind: "usage", tokens: { total: 0 } });
   });
@@ -236,7 +236,7 @@ describe("read-only history importer", () => {
     const dir = temp(); const { db, path } = opencodeDatabase(dir); const sink = memorySink();
     db.query("INSERT INTO session VALUES (?,?,?,?,?,?,?)").run("root", null, "/project", "Root", at, at, null);
     db.query("INSERT INTO message VALUES (?,?,?,?,?)").run("response", "root", at, at, JSON.stringify({ role: "assistant", modelID: "actual-model", cost: 0.5, time: { completed: at } })); db.close();
-    await new UsageImporter({ opencodePath: path, codexHome: join(dir, "missing") }, sink).runOnce();
+    await new UsageImporter({ opencodePath: path, claudeHome: join(dir, "missing-claude"), codexHome: join(dir, "missing") }, sink).runOnce();
     expect(sink.events.get("opencode:message:response")).toMatchObject({ kind: "usage", cost: 0.5, tokens: null, incomplete: true });
   });
 
@@ -247,8 +247,8 @@ describe("read-only history importer", () => {
     codex.query("INSERT INTO threads VALUES (?,?,?,?,?,?)").run("app", "/project", "App", "vscode", rollout, at / 1000); codex.close();
     writeFileSync(rollout, usage(counter(15, 10, 5)));
     const path = join(dir, "opencode.db"); const opencode = new Database(path); opencode.exec("CREATE TABLE session (id TEXT)"); opencode.close();
-    const statuses = await new UsageImporter({ opencodePath: path, codexHome: dir }, sink).runOnce();
-    expect(statuses.map(row => row.state)).toEqual(["unavailable", "ready"]);
+    const statuses = await new UsageImporter({ opencodePath: path, claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink).runOnce();
+    expect(statuses.map(row => row.state)).toEqual(["unavailable", "ready", "unavailable"]);
     expect([...sink.sessions.keys()]).toEqual(["codex:cli"]);
     expect([...sink.events.values()].map(row => row.tokens?.total)).toEqual([15]);
   });
@@ -258,7 +258,7 @@ describe("read-only history importer", () => {
     db.query("INSERT INTO session VALUES (?,?,?,?,?,?,?)").run("root", null, "/project", "Root", at, at, null);
     const insert = db.query("INSERT INTO message VALUES (?,?,?,?,?)");
     db.transaction(() => { for (let i = 0; i < 600; i++) insert.run(`m${i}`, "root", at + i, at + i, JSON.stringify({ role: "assistant", time: { completed: at + i }, tokens: { total: 1 } })); })(); db.close();
-    const importer = new UsageImporter({ opencodePath: path, codexHome: dir }, sink);
+    const importer = new UsageImporter({ opencodePath: path, claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink);
     const upsert = sink.upsertEvents; let stopped = false;
     sink.upsertEvents = (id, events) => {
       expect(stopped).toBe(false); upsert(id, events);
@@ -268,7 +268,7 @@ describe("read-only history importer", () => {
     expect(sink.events.size).toBe(250);
     expect(statuses.find(row => row.source === "opencode")?.state).not.toBe("unavailable");
     sink.upsertEvents = upsert;
-    await new UsageImporter({ opencodePath: path, codexHome: join(dir, "missing") }, sink).runOnce();
+    await new UsageImporter({ opencodePath: path, claudeHome: join(dir, "missing-claude"), codexHome: join(dir, "missing") }, sink).runOnce();
     expect(sink.events.size).toBe(600);
   });
 
@@ -277,14 +277,14 @@ describe("read-only history importer", () => {
     insertThread(db, "cli", rollout); db.close();
     const padding = event("response_item", { text: "x".repeat(700_000) });
     writeFileSync(rollout, usage(counter(20, 15, 5)) + padding.repeat(7) + usage(counter(30, 20, 10), at + 1));
-    const importer = new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink);
+    const importer = new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink);
     const set = sink.setCheckpoint; let stopped = false;
     sink.setCheckpoint = (key, value) => { expect(stopped).toBe(false); set(key, value); stopped = true; (importer as UsageImporter & { stop?: () => void }).stop?.(); };
     const statuses = await importer.runOnce();
     expect([...sink.events.values()].map(row => row.tokens?.total)).toEqual([20]);
     expect(statuses.find(row => row.source === "codex")?.state).not.toBe("unavailable");
     sink.setCheckpoint = set;
-    await new UsageImporter({ opencodePath: join(dir, "missing"), codexHome: dir }, sink).runOnce();
+    await new UsageImporter({ opencodePath: join(dir, "missing"), claudeHome: join(dir, "missing-claude"), codexHome: dir }, sink).runOnce();
     expect([...sink.events.values()].map(row => row.tokens?.total)).toEqual([20, 10]);
   });
 
@@ -293,7 +293,7 @@ describe("read-only history importer", () => {
     db.query("INSERT INTO session VALUES (?,?,?,?,?,?,?)").run("root", null, "/project", "Root", at, at, null);
     db.query("INSERT INTO message VALUES (?,?,?,?,?)").run("stream", "root", at, at, JSON.stringify({ role: "assistant", tokens: { total: 1 } }));
     db.query("INSERT INTO message VALUES (?,?,?,?,?)").run("later", "root", at + 100, at + 100, JSON.stringify({ role: "assistant", time: { completed: at + 100 }, tokens: { total: 2 } })); db.close();
-    const importer = new UsageImporter({ opencodePath: path, codexHome: join(dir, "missing") }, sink); await importer.runOnce();
+    const importer = new UsageImporter({ opencodePath: path, claudeHome: join(dir, "missing-claude"), codexHome: join(dir, "missing") }, sink); await importer.runOnce();
     const writer = new Database(path); writer.query("UPDATE message SET data=?,time_updated=? WHERE id='stream'").run(JSON.stringify({ role: "assistant", time: { completed: at + 50 }, tokens: { total: 5 } }), at + 50); writer.close();
     await importer.runOnce();
     expect(sink.events.get("opencode:message:stream")).toMatchObject({ at: at + 50, tokens: { total: 5 } });
@@ -303,7 +303,7 @@ describe("read-only history importer", () => {
     const dir = temp(); const { db, path } = opencodeDatabase(dir); const sink = memorySink();
     db.query("INSERT INTO session VALUES (?,?,?,?,?,?,?)").run("root", null, "/project", "Root", at, at, null);
     db.query("INSERT INTO message VALUES (?,?,?,?,?)").run("response", "root", at, at, JSON.stringify({ role: "assistant", time: { completed: at }, tokens: { total: 1 } })); db.close();
-    const importer = new UsageImporter({ opencodePath: path, codexHome: join(dir, "missing") }, sink); await importer.runOnce();
+    const importer = new UsageImporter({ opencodePath: path, claudeHome: join(dir, "missing-claude"), codexHome: join(dir, "missing") }, sink); await importer.runOnce();
     const replacement = opencodeDatabase(temp()); replacement.db.query("INSERT INTO session VALUES (?,?,?,?,?,?,?)").run("root", null, "/project", "Root", at, at, null);
     replacement.db.query("INSERT INTO message VALUES (?,?,?,?,?)").run("response", "root", at, at, JSON.stringify({ role: "assistant", time: { completed: at }, tokens: { total: 9 } })); replacement.db.close(); renameSync(replacement.path, path);
     await importer.runOnce();

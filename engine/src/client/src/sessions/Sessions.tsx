@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock3, Fold
 import type { CatalogSession } from "@shared/usage";
 import type { CardPayload } from "@shared/types";
 import { HarnessIcon } from "../components/HarnessIcon";
-import { duration as formatDuration } from "../statistics/format";
+import { duration as formatDuration, sourceName } from "../statistics/format";
 import { createGroup, createProject, groupFor, loadWorkspace, moveSessions, projectFor, saveWorkspace, sortSessions, type SessionWorkspace } from "./model";
 import "./sessions.css";
 
@@ -121,7 +121,7 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
         onClick={() => change({ ...state, collapsed: allCollapsed ? state.collapsed.filter(id => !sections.some(s => s.id === id)) : [...new Set([...state.collapsed, ...sections.map(s => s.id)])] })}>{allCollapsed ? <ChevronsUpDown /> : <ChevronsDownUp />}</button></div>
         <div className="sw-filters">{currentProject && <button onClick={() => setDialog({ kind: "group", projectId: currentProject.id })}><Plus /> New group</button>}
           <label className="sw-search"><Search /><input ref={searchInput} type="search" aria-label="Search sessions" placeholder="Search sessions…" maxLength={200} value={search} onChange={e => setSearch(e.target.value)} /></label>
-          <select aria-label="Session agent" value={source} onChange={e => setSource(e.target.value)}><option value="">All agents</option><option value="codex">Codex</option><option value="opencode">OpenCode</option></select>
+          <select aria-label="Session agent" value={source} onChange={e => setSource(e.target.value)}><option value="">All agents</option><option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="claude">Claude Code</option></select>
           <select aria-label="Group sessions by" value={grouping} onChange={e => setGrouping(e.target.value)}><option value="project">{currentProject ? "Group" : "Project"}</option><option value="recent">Last updated</option></select>
         </div>
       </header>
@@ -151,12 +151,12 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
                 <time className="sw-updated" title={new Date(session.updated_at).toLocaleString("en-US")}>{updated(session.updated_at)}</time>
                 <button className="sw-icon sw-move" aria-label={`Move ${session.title}`} title="Move to project or group" onClick={() => setDialog({ kind: "move", ids: [session.id] })}><Folder /></button>
                 <button className={`sw-icon sw-star ${favorite ? "is-favorite" : ""}`} aria-label={`Favorite ${session.title}`} aria-pressed={favorite} title={favorite ? "Remove favorite" : "Add favorite"} onClick={() => change({ ...state, favorites: favorite ? state.favorites.filter(id => id !== session.id) : [...state.favorites, session.id] })}><Star /></button>
-                {onResume && <button className="sw-icon sw-resume" aria-label={`Resume ${session.title}`} title={`Resume in ${session.source === "codex" ? "Codex" : "OpenCode"}`} onClick={() => onResume(session.id, session.directory)}><SquareTerminal /></button>}
+                {onResume && <button className="sw-icon sw-resume" aria-label={`Resume ${session.title}`} title={`Resume in ${sourceName(session.source)}`} onClick={() => onResume(session.id, session.directory)}><SquareTerminal /></button>}
               </div>;
             })}
           </div>
         </section>)}
-        {!sections.length && <div className="sw-empty"><Folder /><h2>{pending ? "Loading sessions…" : error ? "Sessions unavailable" : search || source ? "No matching sessions" : view.kind === "favorites" ? "No favorites yet" : "No sessions"}</h2><p>{search || source ? "Try another search or agent." : view.kind === "favorites" ? "Star a session to find it here." : currentProject ? "Assign sessions from All sessions using Move to…." : "Sessions appear here after using Codex or OpenCode."}</p>{(search || source) && <button onClick={resetFilters}>Clear filters</button>}{currentProject && !search && !source && <button onClick={() => navigate({ kind: "all" })}>All sessions</button>}</div>}
+        {!sections.length && <div className="sw-empty"><Folder /><h2>{pending ? "Loading sessions…" : error ? "Sessions unavailable" : search || source ? "No matching sessions" : view.kind === "favorites" ? "No favorites yet" : "No sessions"}</h2><p>{search || source ? "Try another search or agent." : view.kind === "favorites" ? "Star a session to find it here." : currentProject ? "Assign sessions from All sessions using Move to…." : "Sessions appear here after using OpenCode, Codex, or Claude Code."}</p>{(search || source) && <button onClick={resetFilters}>Clear filters</button>}{currentProject && !search && !source && <button onClick={() => navigate({ kind: "all" })}>All sessions</button>}</div>}
       </div>
       <footer className="sw-footer"><span>{total} sessions{pending && sessions.length ? " · Updating…" : ""}</span>{lastPage > 0 && <div><button aria-label="Previous sessions" disabled={activePage === 0} onClick={() => setPage(activePage - 1)}>‹</button><span>{activePage + 1} / {lastPage + 1}</span><button aria-label="Next sessions" disabled={activePage === lastPage} onClick={() => setPage(activePage + 1)}>›</button></div>}<span className="sw-footer-hint">{currentProject ? "Drag to a group to organize" : "Drag to a project to move"}</span></footer>
     </div>

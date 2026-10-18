@@ -1,7 +1,7 @@
 {
   "name": "kliprun",
   "version": "0.0.24",
-  "description": "A local, read-only Kanban board for observing OpenCode and Codex CLI sessions",
+  "description": "A local, read-only Kanban board for observing OpenCode, Codex, and Claude Code CLI sessions",
   "type": "module",
   "module": "src/server/index.ts",
   "scripts": {
