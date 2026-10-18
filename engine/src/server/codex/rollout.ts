@@ -42,6 +42,7 @@ export interface RolloutState {
   turnId: string | null;
   /** null when the bounded journal has no confirmed start or end. */
   turnActive: boolean | null;
+  pendingAsyncInput: boolean;
   column: ColumnKey;
   stage: string;
   since: number;
@@ -66,6 +67,7 @@ export class RolloutReader {
   private partial = Buffer.alloc(0);
   private skipping = false;
   private pending = new Map<string, { question: boolean; tool: ToolEntry }>();
+  private asyncQuestions = new Map<string, number>();
   private state = this.empty();
   private limit: number | null = null;
   private used: number | null = null;
@@ -74,7 +76,7 @@ export class RolloutReader {
   private modelUsage = new Map<string, ModelUsageSummary>();
 
   private empty(): RolloutState {
-    return { turnId: null, turnActive: null, column: "idle", stage: "Status unknown", since: 0, startedAt: null, finishedAt: null,
+    return { turnId: null, turnActive: null, pendingAsyncInput: false, column: "idle", stage: "Status unknown", since: 0, startedAt: null, finishedAt: null,
       lastEventAt: 0, model: null, tokens: null, context: null, messages: [], models: [], lastTool: null, prompt: null,
       reason: "No confirmed turn status in the local journal" };
   }
@@ -106,6 +108,9 @@ export class RolloutReader {
     const state = !this.state.model && persistedModel && this.limit && this.used !== null
       ? { ...this.state, context: { model: persistedModel, percent: Math.min(100, this.used / this.limit * 100), used: this.used, limit: this.limit } }
       : this.state;
+    // Async tool output only acknowledges the question; the reply is a later user message.
+    if (this.asyncQuestions.size) return { ...state, pendingAsyncInput: true, column: "attention", stage: "Waiting for input",
+      since: this.asyncQuestions.values().next().value!, finishedAt: null, reason: null };
     const stale = state.turnActive && state.column === "running" && now - state.lastEventAt > STALE_STREAM_MS;
     if (stale) return { ...state, column: "idle", stage: "Status unknown", since: state.lastEventAt + STALE_STREAM_MS,
       finishedAt: null, reason: "No recent events; work or permission waiting cannot be confirmed" };
@@ -114,7 +119,7 @@ export class RolloutReader {
 
   private reset(): void {
     this.offset = 0; this.partial = Buffer.alloc(0); this.skipping = false;
-    this.pending.clear(); this.state = this.empty();
+    this.pending.clear(); this.asyncQuestions.clear(); this.state = this.empty();
     this.limit = null; this.used = null;
     this.previousUsage = null; this.truncatedHistory = false; this.modelUsage.clear();
   }
@@ -174,6 +179,11 @@ export class RolloutReader {
     if (!Number.isFinite(at)) return;
     const type = string(payload.type);
     this.state.lastEventAt = Math.max(this.state.lastEventAt, at);
+    if ((entry.type === "response_item" && type === "message" && payload.role === "user") ||
+      (entry.type === "event_msg" && type === "user_message")) {
+      if (this.asyncQuestions.size && this.state.column === "running") this.state.since = at;
+      this.asyncQuestions.clear();
+    }
     if (entry.type === "turn_context") {
       const model = string(payload.model);
       if (model && this.state.model && model !== this.state.model) {
@@ -193,6 +203,7 @@ export class RolloutReader {
         this.state.turnActive = false;
         for (const { tool } of this.pending.values()) { tool.status = "unknown"; tool.ended = at; }
         this.pending.clear();
+        if (type !== "task_complete") this.asyncQuestions.clear();
         this.state.finishedAt = type === "task_complete" ? at : null;
         this.transition("idle", type === "task_complete" ? "Finished" : type === "turn_aborted" ? "Interrupted" : "Error", at);
       } else if (type === "token_count") {
@@ -216,6 +227,10 @@ export class RolloutReader {
         if (name && callId && this.state.turnActive) {
           const tool: ToolEntry = { tool: scrub(name), status: "running", started: at, ended: null, duration_ms: null, skill_name: null };
           const question = /(?:^|\.)request_user_input$/.test(name);
+          if (/(?:^|\.)request_user_input_async$/.test(name)) {
+            this.asyncQuestions.set(callId, at);
+            if (this.asyncQuestions.size > 100) this.asyncQuestions.delete(this.asyncQuestions.keys().next().value!);
+          }
           this.pending.set(callId, { question, tool });
           // Bound pending calls even if a journal never emits their outputs.
           if (this.pending.size > 100) this.pending.delete(this.pending.keys().next().value!);
@@ -225,6 +240,15 @@ export class RolloutReader {
         }
       } else if (["function_call_output", "custom_tool_call_output"].includes(type ?? "")) {
         const callId = string(payload.call_id) ?? "";
+        if (this.asyncQuestions.has(callId)) {
+          let accepted = false;
+          try { accepted = object(typeof payload.output === "string" ? JSON.parse(payload.output) : payload.output).accepted === true; }
+          catch { /* a failed question call has no outstanding user input */ }
+          if (!accepted) {
+            this.asyncQuestions.delete(callId);
+            if (!this.asyncQuestions.size && this.state.column === "running") this.state.since = at;
+          }
+        }
         const pending = this.pending.get(callId);
         if (pending) {
           pending.tool.status = "completed"; pending.tool.ended = at;

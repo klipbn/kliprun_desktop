@@ -230,6 +230,62 @@ describe("Codex rollout state", () => {
     writeFileSync(path, event("event_msg", { type: "task_started" }) + event("response_item", { type: "function_call", name: "request_user_input", call_id: "q" }));
     expect(new RolloutReader().read(path, t + 60 * 60_000).column).toBe("attention");
   });
+  test.each(["request_user_input_async", "functions.request_user_input_async"])("%s waits for a user reply rather than the tool acknowledgement", name => {
+    const path = join(temp(), "session.jsonl");
+    writeFileSync(path, event("event_msg", { type: "task_started", turn_id: "a" }) +
+      event("response_item", { type: "function_call", name, call_id: "q" }, t + 1));
+    const reader = new RolloutReader();
+    expect(reader.read(path, t + 1)).toMatchObject({ column: "attention", stage: "Waiting for input", since: t + 1 });
+    appendFileSync(path, event("response_item", { type: "function_call_output", call_id: "q", output: '{"accepted":true}' }, t + 2) +
+      event("response_item", { type: "function_call", name: "exec_command", call_id: "cmd" }, t + 3) +
+      event("response_item", { type: "function_call_output", call_id: "cmd", output: "done" }, t + 4));
+    expect(reader.read(path, t + 4)).toMatchObject({ column: "attention", since: t + 1 });
+    appendFileSync(path, event("response_item", { type: "message", role: "user", content: [{ type: "input_text", text: "First option" }] }, t + 5));
+    expect(reader.read(path, t + 5)).toMatchObject({ column: "running", stage: "Working", since: t + 5 });
+    appendFileSync(path, event("response_item", { type: "function_call", name, call_id: "q2" }, t + 6) +
+      event("response_item", { type: "function_call_output", call_id: "q2", output: '{"accepted":true}' }, t + 7) +
+      event("event_msg", { type: "task_complete", turn_id: "a" }, t + 8));
+    const later = t + 60 * 60_000;
+    for (const current of [reader, new RolloutReader()]) {
+      expect(current.read(path, later)).toMatchObject({ column: "attention", stage: "Waiting for input", since: t + 6, finishedAt: null });
+    }
+    appendFileSync(path, event("event_msg", { type: "task_started", turn_id: "b" }, later + 1) +
+      event("response_item", { type: "message", role: "user", content: [{ type: "input_text", text: "Continue" }] }, later + 2));
+    expect(reader.read(path, later + 2)).toMatchObject({ column: "running", stage: "Working" });
+    appendFileSync(path, event("event_msg", { type: "task_complete", turn_id: "b" }, later + 3));
+    expect(reader.read(path, later + 3)).toMatchObject({ column: "idle", stage: "Finished", finishedAt: later + 3 });
+  });
+  test.each(['{"accepted":false}', "Error: question unavailable"])("an unsuccessful async question does not keep waiting: %s", output => {
+    const path = join(temp(), "session.jsonl");
+    writeFileSync(path, event("event_msg", { type: "task_started" }) +
+      event("response_item", { type: "function_call", name: "request_user_input_async", call_id: "q" }, t + 1) +
+      event("response_item", { type: "function_call_output", call_id: "q", output }, t + 2));
+    expect(new RolloutReader().read(path, t + 2)).toMatchObject({ column: "running", stage: "Working", since: t + 2 });
+  });
+  test.each(["turn_aborted", "task_failed"])("%s cancels an outstanding async question", type => {
+    const path = join(temp(), "session.jsonl");
+    writeFileSync(path, event("event_msg", { type: "task_started" }) +
+      event("response_item", { type: "function_call", name: "request_user_input_async", call_id: "q" }, t + 1) +
+      event("response_item", { type: "function_call_output", call_id: "q", output: '{"accepted":true}' }, t + 2) +
+      event("event_msg", { type }, t + 3));
+    expect(new RolloutReader().read(path, t + 3)).toMatchObject({ column: "idle", stage: type === "task_failed" ? "Error" : "Interrupted" });
+  });
+  test("a failed async question leaves other questions waiting until a user event", () => {
+    const path = join(temp(), "session.jsonl");
+    writeFileSync(path, event("event_msg", { type: "task_started" }) +
+      event("response_item", { type: "custom_tool_call", name: "functions.request_user_input_async", call_id: "first" }, t + 1) +
+      event("response_item", { type: "custom_tool_call_output", call_id: "first", output: '{"accepted":true}' }, t + 2) +
+      event("response_item", { type: "function_call", name: "request_user_input_async", call_id: "second" }, t + 3) +
+      event("response_item", { type: "function_call_output", call_id: "second", output: '{"accepted":false}' }, t + 4));
+    const reader = new RolloutReader();
+    expect(reader.read(path, t + 4)).toMatchObject({ column: "attention", since: t + 1 });
+    appendFileSync(path, event("event_msg", { type: "user_message", message: "Proceed" }, t + 5));
+    expect(reader.read(path, t + 5)).toMatchObject({ column: "running", since: t + 5 });
+    appendFileSync(path, event("response_item", { type: "function_call", name: "request_user_input_async", call_id: "third" }, t + 6));
+    expect(reader.read(path, t + 6).column).toBe("attention");
+    writeFileSync(path, event("event_msg", { type: "task_started" }, t + 7));
+    expect(reader.read(path, t + 7).column).toBe("running");
+  });
   test("tracks start, confirmed question, answer, completion and interruption incrementally", () => {
     const path = join(temp(), "session.jsonl");
     writeFileSync(path, event("event_msg", { type: "task_started", turn_id: "a" }));

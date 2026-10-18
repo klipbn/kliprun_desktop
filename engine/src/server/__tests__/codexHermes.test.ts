@@ -78,6 +78,19 @@ test("busy clears a recorded question while a newer journal event overrides an o
   expect(adapter.cards(t + 4)[0].column).toBe("attention");
 });
 
+test("Hermes busy cannot acknowledge an async question on behalf of the user", () => {
+  const { adapter, heartbeat, status, rollout } = fixture();
+  appendFileSync(rollout, event("response_item", { type: "function_call", name: "request_user_input_async", call_id: "q" }, t + 2) +
+    event("response_item", { type: "function_call_output", call_id: "q", output: '{"accepted":true}' }, t + 3));
+  heartbeat(t + 4); status("busy", t + 4);
+  expect(adapter.cards(t + 4)[0]).toMatchObject({ column: "attention", stage: "Waiting for input", stage_since: t + 2, running_since: null });
+  const later = t + 60 * 60_000;
+  heartbeat(later); status("busy", later);
+  expect(adapter.cards(later)[0]).toMatchObject({ column: "attention", stage_since: t + 2 });
+  appendFileSync(rollout, event("response_item", { type: "message", role: "user", content: [{ type: "input_text", text: "Proceed" }] }, later + 1));
+  expect(adapter.cards(later + 1)[0]).toMatchObject({ column: "running", stage: "Working", stage_since: later + 1 });
+});
+
 test("hook waits survive long silence only for the same active journal turn", () => {
   const { adapter, heartbeat, status, rollout } = fixture();
   status("waiting", t + 3, { daemon: undefined });
