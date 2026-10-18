@@ -56,7 +56,10 @@ async (page, base = "http://127.0.0.1:18796") => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await selectSession("ses_demo_review"); await waitForRepository(aurora);
     assert(await message.inputValue() === "Aurora draft", "Switching repositories lost the original draft");
-    await repository.click(); await page.getByRole("option").filter({ hasText: atlas }).click(); await waitForRepository(atlas);
+    await repository.click(); await page.getByRole("option").filter({ hasText: atlas }).click();
+    await page.waitForFunction(directory => document.querySelector('button[aria-label="Repository"]')?.title === directory, atlas);
+    assert(await page.getByRole("tab", { name: "History", exact: true }).getAttribute("aria-selected") === "true", "Returning to a repository lost its active tab");
+    await page.getByRole("tab", { name: /Changes/ }).click(); await waitForRepository(atlas);
     assert(await message.inputValue() === "Atlas draft", "Manual repository selection lost its draft");
     await selectSession("ses_demo_release"); await waitForRepository(aurora);
     await page.getByRole("button", { name: "Commit staged", exact: true }).click();

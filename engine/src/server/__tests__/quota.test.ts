@@ -15,12 +15,12 @@ function fixture(fetcher: (input: string, init: RequestInit) => Promise<Response
   openai: { type: "oauth", access: "opencode-secret", accountId: "oc-account" },
   "zai-coding-plan": { type: "api", key: "zai-secret" },
   "kimi-code-plan-global": { type: "oauth", access: "kimi-secret", expires: now + 60_000 },
-}) {
+}, clock: () => number = () => now) {
   const home = mkdtempSync(join(tmpdir(), "kliprun-quota-")); homes.push(home);
   const opencodeAuth = join(home, "opencode-auth.json"), codexAuth = join(home, "codex-auth.json"), claudeAuth = join(home, "claude-auth.json");
   writeFileSync(opencodeAuth, JSON.stringify(auth));
   writeFileSync(codexAuth, JSON.stringify({ tokens: { access_token: "codex-secret", account_id: "cx-account" } }));
-  const service = new QuotaService({ opencodeAuth, codexAuth, claudeAuth, fetch: fetcher, now: () => now });
+  const service = new QuotaService({ opencodeAuth, codexAuth, claudeAuth, fetch: fetcher, now: clock });
   const app = new Hono(); registerQuotaRoutes(app, service);
   return { service, app, opencodeAuth, codexAuth, claudeAuth };
 }
@@ -213,4 +213,98 @@ test("Claude rejected sign-in is reported without exposing the upstream error", 
   const quota = await service.get("claude");
   expect(quota).toMatchObject({ status: "sign_in_required", limits: [] });
   expect(JSON.stringify(quota)).not.toMatch(/secret|private upstream/);
+});
+
+test("Claude 429 respects Retry-After even for forced and overlapping refreshes, then recovers", async () => {
+  let at = now, calls = 0;
+  const { service, app, claudeAuth } = fixture(async () => {
+    calls++;
+    return calls === 1 ? new Response("claude-secret private upstream", { status: 429, headers: { "Retry-After": "900" } })
+      : Response.json({ five_hour: { utilization: 20, resets_at: null } });
+  }, undefined, () => at);
+  writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: "claude-secret", expiresAt: now + 86400_000 } }));
+  const first = await service.get("claude");
+  expect(first).toMatchObject({ status: "unavailable", limits: [], retry_at: now + 900_000 });
+  expect(JSON.stringify(first)).not.toMatch(/secret|private upstream/);
+  at = now + 60_000;
+  const responses = await Promise.all([service.get("claude"), service.get("claude", true), app.request("/api/quota/claude?refresh=1")]);
+  expect(responses[0]).toEqual(first); expect(responses[1]).toEqual(first);
+  expect(calls).toBe(1);
+  at = now + 899_999; await service.get("claude", true); expect(calls).toBe(1);
+  at = now + 900_000;
+  expect(await service.get("claude")).toMatchObject({ status: "ready", limits: [{ remaining_percent: 80 }] });
+  expect(calls).toBe(2);
+});
+
+test("normal Claude polling reuses a successful report for five minutes", async () => {
+  let at = now, calls = 0;
+  const { service, claudeAuth } = fixture(async () => { calls++; return Response.json({ five_hour: { utilization: 20, resets_at: null } }); }, undefined, () => at);
+  writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: "claude-secret", expiresAt: now + 86400_000 } }));
+  await service.get("claude");
+  at += 60_000; await service.get("claude"); expect(calls).toBe(1);
+  at = now + 299_999; await service.get("claude"); expect(calls).toBe(1);
+  at = now + 300_000; await service.get("claude"); expect(calls).toBe(2);
+});
+
+test("repeated Claude 429 responses back off up to thirty minutes and success resets the delay", async () => {
+  let at = now, calls = 0, limited = true;
+  const { service, claudeAuth } = fixture(async () => {
+    calls++;
+    return limited ? new Response(null, { status: 429 }) : Response.json({ five_hour: { utilization: 20, resets_at: null } });
+  }, undefined, () => at);
+  writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: "claude-secret", expiresAt: now + 86400_000 } }));
+  for (const delay of [300_000, 600_000, 1200_000, 1800_000, 1800_000]) {
+    const report = await service.get("claude", true), previousCalls = calls;
+    expect(report.retry_at).toBe(at + delay);
+    at += delay - 1;
+    await service.get("claude", true); expect(calls).toBe(previousCalls);
+    at++;
+  }
+  limited = false;
+  expect(await service.get("claude")).toMatchObject({ status: "ready", retry_at: null });
+  limited = true;
+  expect((await service.get("claude", true)).retry_at).toBe(at + 300_000);
+});
+
+test("Retry-After accepts an HTTP date and malformed or short delays keep a safe cooldown", async () => {
+  for (const [header, delay] of [["Thu, 15 Oct 2026 12:20:00 GMT", 1200_000], ["120", 300_000], ["0", 300_000], ["-5", 300_000], ["not-a-date", 300_000], ["1e999", 300_000], ["1000000000000000000000", 300_000]] as const) {
+    const { service, claudeAuth } = fixture(async () => new Response(null, { status: 429, headers: { "Retry-After": header } }));
+    writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: "claude-secret", expiresAt: now + 86400_000 } }));
+    expect((await service.get("claude")).retry_at).toBe(now + delay);
+  }
+});
+
+test("rate-limited reports preserve old limits only for the same credential and stop endpoint fallbacks", async () => {
+  let calls = 0;
+  const { service, claudeAuth } = fixture(async () => {
+    calls++;
+    return calls === 1 ? Response.json({ five_hour: { utilization: 20, resets_at: null } }) : new Response(null, { status: 429 });
+  });
+  writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: "first-secret", expiresAt: now + 86400_000 } }));
+  const first = await service.get("claude");
+  expect(await service.get("claude", true)).toMatchObject({ status: "stale", limits: first.limits, updated_at: now, retry_at: now + 300_000 });
+  writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: "second-secret", expiresAt: now + 86400_000 } }));
+  expect(await service.get("claude")).toMatchObject({ status: "unavailable", limits: [], retry_at: now + 300_000 });
+  expect(calls).toBe(3);
+  let zaiCalls = 0;
+  const zai = fixture(async () => { zaiCalls++; return new Response(null, { status: 429 }); });
+  await zai.service.get("zai"); await zai.service.get("zai", true);
+  expect(zaiCalls).toBe(1);
+});
+
+test("a late response for an old credential cannot erase the current credential's cooldown", async () => {
+  let begin!: () => void, release!: () => void, currentCalls = 0;
+  const started = new Promise<void>(resolve => { begin = resolve; }), blocked = new Promise<void>(resolve => { release = resolve; });
+  const { service, claudeAuth } = fixture(async (_url, init) => {
+    if (new Headers(init.headers).get("Authorization") === "Bearer first-secret") {
+      begin(); await blocked; return new Response(null, { status: 429 });
+    }
+    currentCalls++; return new Response(null, { status: 429, headers: { "Retry-After": "900" } });
+  });
+  const auth = (token: string) => writeFileSync(claudeAuth, JSON.stringify({ claudeAiOauth: { accessToken: token, expiresAt: now + 86400_000 } }));
+  auth("first-secret"); const previous = service.get("claude"); await started;
+  auth("second-secret"); const current = await service.get("claude");
+  release(); await previous;
+  expect(await service.get("claude", true)).toEqual(current);
+  expect(currentCalls).toBe(1);
 });

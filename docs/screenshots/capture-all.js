@@ -10,7 +10,7 @@ async (page, directory = "docs/screenshots", base = "http://127.0.0.1:18796") =>
     await page.goto(`${base}${path}`);
     if (!path.startsWith("/__demo/")) {
       await page.locator('[data-testid="version"]').waitFor();
-      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.25") throw new Error("Build the 0.0.25 client before capturing.");
+      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.26") throw new Error("Build the 0.0.26 client before capturing.");
     }
   }
   async function save(name) {
@@ -49,7 +49,9 @@ async (page, directory = "docs/screenshots", base = "http://127.0.0.1:18796") =>
     await page.getByRole("button", { name: "Weekly", exact: true }).click();
     await page.locator('.stats-token-cell strong').first().waitFor();
     await save("statistics-weekly");
-    await visit("/usage", 1600, 900);
+    await visit("/usage", 1600, 1600);
+    await page.getByTestId("usage-total-tokens").waitFor();
+    await page.locator(".usage-task-open").first().waitFor();
     await page.locator('.usage-provider[data-provider="kimi"] .usage-balance').waitFor();
     await page.getByText("Checking providers…", { exact: true }).waitFor({ state: "hidden" });
     const providers = await page.locator(".usage-provider h2").allTextContents();

@@ -82,14 +82,31 @@ test("confirmed native Claude status reports permission prompts and resumes with
   expect(adapter.cards(at + 2000)[0].column).toBe("running");
 });
 
+test("Claude keeps the original project and live session link after working in a subdirectory", () => {
+  const { adapter, path, entry } = fixture();
+  appendFileSync(path, entry("assistant", { cwd: "/demo/output", message: { id: "subdirectory", content: [{ type: "text", text: "Working in output" }] } }, 1));
+  adapter.setProcesses([{ pid: "42", cwd: "/demo", sessionId: id, status: "waiting", statusUpdatedAt: at + 2000 }]);
+
+  expect(adapter.cards(at + 2000)[0]).toMatchObject({ session_id: `claude:${id}`, directory: "/demo", column: "attention", stage: "Waiting for input" });
+  expect(adapter.terminalLinks()).toEqual([{ session_id: `claude:${id}`, pid: 42 }]);
+  expect(adapter.historyCards()).toHaveLength(1);
+  expect(adapter.detail(`claude:${id}`, at + 2000)).toMatchObject({ exists: true, directory: "/demo" });
+  expect(readClaudeJournal(path, at + 2000, Infinity).session.directory).toBe("/demo");
+
+  adapter.setProcesses([{ pid: "42", cwd: "/other", sessionId: id }]);
+  expect(adapter.cards(at + 2000)[0]).toMatchObject({ session_id: "claude-terminal:42", stage: "Status unknown" });
+  expect(adapter.terminalLinks()).toEqual([]);
+});
+
 test("large Claude journals retain head metadata while board reads stay bounded and statistics read all usage", async () => {
   const { adapter, path, entry } = fixture();
-  appendFileSync(path, entry("assistant", { message: { id: "early", model: "claude-sonnet-4-6", stop_reason: "end_turn", usage: { input_tokens: 50, output_tokens: 5 } } }, 1));
+  appendFileSync(path, entry("assistant", { cwd: "/demo/output", message: { id: "early", model: "claude-sonnet-4-6", stop_reason: "end_turn", usage: { input_tokens: 50, output_tokens: 5 } } }, 1));
   for (let i = 0; i < 6; i++) appendFileSync(path, JSON.stringify({ type: "api-request-blob", ignored: "x".repeat(900_000) }) + "\n");
   appendFileSync(path, entry("user", { message: { content: "Continue search" } }, 2));
   appendFileSync(path, entry("assistant", { message: { id: "late", model: "claude-sonnet-4-6", stop_reason: "end_turn", usage: { input_tokens: 60, output_tokens: 5, context_window: 1000 } } }, 3));
-  expect(adapter.cards(at + 3000)[0]).toMatchObject({ title: "Implement search", tokens_total: null, context: { used: 65, limit: 1000, percent: 7 } });
+  expect(adapter.cards(at + 3000)[0]).toMatchObject({ session_id: `claude:${id}`, directory: "/demo", title: "Implement search", tokens_total: null, context: { used: 65, limit: 1000, percent: 7 } });
   const complete = readClaudeJournal(path, at + 3000, Infinity);
+  expect(complete.session.directory).toBe("/demo");
   expect(complete.tokens).toBe(120);
   expect(complete.events.filter(e => e.kind === "turn")).toHaveLength(2);
 });

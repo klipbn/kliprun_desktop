@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { GitFileContent } from "@shared/git";
 import { closeFileTab, editFileTab, isFileDirty, openFileTab, type FileDraft, type FileTab, type FileTabs } from "./fileTabs";
 import { gitRequest } from "./useGitRequest";
+import { loadRepositoryWorkspace, saveRepositoryWorkspace } from "./workspaceState";
 
 const drafts = new Map<string, FileDraft>();
 export const hasUnsavedFileDrafts = () => drafts.size > 0;
@@ -9,8 +10,14 @@ const notifyDrafts = () => window.dispatchEvent(new Event("kliprun:menu-state-re
 let nextId = 0;
 const keyFor = (directory: string, path: string) => JSON.stringify([directory, path]);
 function restored(directory: string): FileTabs {
-  const tabs: FileTab[] = [...drafts.entries()].filter(([key]) => JSON.parse(key)[0] === directory).map(([, file]) => ({ id: ++nextId, path: file.path, pinned: true, file, loading: false, error: null, saving: false, savedAt: 0 }));
-  return { directory, tabs, activeId: tabs[0]?.id ?? null };
+  const saved = loadRepositoryWorkspace(directory);
+  const entries = [...saved.files];
+  for (const [key, file] of drafts) if (JSON.parse(key)[0] === directory && !entries.some(entry => entry.path === file.path)) entries.push({ path: file.path, pinned: true });
+  const tabs: FileTab[] = entries.map(entry => {
+    const file = drafts.get(keyFor(directory, entry.path)) ?? null;
+    return { ...entry, id: ++nextId, pinned: entry.pinned || !!file, file, loading: !file, error: null, saving: false, savedAt: 0 };
+  });
+  return { directory, tabs, activeId: tabs.find(tab => tab.path === saved.activeFile)?.id ?? tabs[0]?.id ?? null };
 }
 export function useFileTabs(directory: string, onSaved: () => void) {
   const [state, setState] = useState(() => restored(directory));
@@ -20,6 +27,7 @@ export function useFileTabs(directory: string, onSaved: () => void) {
   const mounted = useRef(true);
   function update(change: (state: FileTabs) => FileTabs) {
     const next = change(stateRef.current); stateRef.current = next;
+    saveRepositoryWorkspace(next.directory, { files: next.tabs.map(tab => ({ path: tab.path, pinned: tab.pinned })), activeFile: next.tabs.find(tab => tab.id === next.activeId)?.path ?? null });
     if (mounted.current) setState(next);
   }
   function patch(id: number, changes: Partial<FileTab>) { update(previous => ({ ...previous, tabs: previous.tabs.map(tab => tab.id === id ? { ...tab, ...changes } : tab) })); }
@@ -28,9 +36,11 @@ export function useFileTabs(directory: string, onSaved: () => void) {
     return () => { mounted.current = false; for (const controller of controllers.current.values()) controller.abort(); controllers.current.clear(); };
   }, []);
   useEffect(() => {
-    if (stateRef.current.directory === directory) return;
-    for (const controller of controllers.current.values()) controller.abort(); controllers.current.clear();
-    update(() => restored(directory));
+    if (stateRef.current.directory !== directory) {
+      for (const controller of controllers.current.values()) controller.abort(); controllers.current.clear();
+      update(() => restored(directory));
+    }
+    for (const document of stateRef.current.tabs) if (document.loading) void read(document, directory);
   }, [directory]);
   function clear() {
     for (const controller of controllers.current.values()) controller.abort(); controllers.current.clear();
@@ -44,15 +54,19 @@ export function useFileTabs(directory: string, onSaved: () => void) {
     update(previous => openFileTab(previous, document));
     if (existing) return;
     for (const [id, controller] of controllers.current) if (!stateRef.current.tabs.some(tab => tab.id === id)) { controller.abort(); controllers.current.delete(id); }
+    await read(document, directory);
+  }
+  async function read(document: FileTab, target: string) {
+    if (controllers.current.has(document.id)) return;
     const controller = new AbortController(); controllers.current.set(document.id, controller);
     try {
-      const data = await gitRequest<GitFileContent>(`/api/git/file?${new URLSearchParams({ directory, path })}`, { signal: controller.signal });
-      if (!controller.signal.aborted && currentDirectory.current === directory) {
+      const data = await gitRequest<GitFileContent>(`/api/git/file?${new URLSearchParams({ directory: target, path: document.path })}`, { signal: controller.signal });
+      if (!controller.signal.aborted && currentDirectory.current === target) {
         const current = stateRef.current.tabs.find(tab => tab.id === document.id);
         patch(document.id, { file: current?.file ?? { ...data, draft: data.content }, loading: false });
       }
     } catch (error) {
-      if (!controller.signal.aborted && currentDirectory.current === directory) patch(document.id, { loading: false, error: error instanceof Error ? error.message : "Unable to read file." });
+      if (!controller.signal.aborted && currentDirectory.current === target) patch(document.id, { loading: false, error: error instanceof Error ? error.message : "Unable to read file." });
     } finally { controllers.current.delete(document.id); }
   }
   function edit(id: number, content: string) {

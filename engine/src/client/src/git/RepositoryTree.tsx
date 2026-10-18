@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEven
 import { Braces, ChevronDown, ChevronRight, ChevronsDownUp, Code2, Database, FileCode2, FileText, Folder, FolderOpen, Notebook, Search, X } from "lucide-react";
 import "./repositoryTree.css";
 import { RepositoryFileMenu } from "./RepositoryFileMenu";
+import { loadRepositoryWorkspace, saveRepositoryWorkspace } from "./workspaceState";
 
 type Node = { name: string; path: string; children?: Node[]; status?: string };
 type Row = { node: Node; depth: number; parent: string | null; position: number; siblings: number };
@@ -60,9 +61,11 @@ export function RepositoryTree({ root, files, selected, onSelect, disabled, stat
   root: string; files: string[]; selected: string | null; onSelect: (path: string, permanent?: boolean) => void; disabled: boolean; statuses?: Record<string, string>;
   onMove?: (path: string, destination: string) => void; onRename?: (path: string) => void; onIgnore?: (path: string) => void; onError?: (error: string) => void;
 }) {
-  const [filter, setFilter] = useState("");
+  const saved = useMemo(() => loadRepositoryWorkspace(root), [root]);
+  const [filter, setFilter] = useState(saved.fileFilter);
   const tree = useMemo(() => buildTree(files, statuses), [files, statuses]);
-  const [expanded, setExpanded] = useState(() => initialExpanded(tree, selected));
+  const [expanded, setExpanded] = useState(() => saved.expandedFiles === null ? initialExpanded(tree, selected) : new Set(saved.expandedFiles));
+  const previousSelected = useRef(selected);
   const [focused, setFocused] = useState<string | null>(selected);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const filterInput = useRef<HTMLInputElement>(null);
@@ -71,8 +74,10 @@ export function RepositoryTree({ root, files, selected, onSelect, disabled, stat
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const query = filter.trim().toLowerCase();
   const filtered = useMemo(() => query ? buildTree(files.filter(path => path.toLowerCase().includes(query)), statuses) : tree, [files, statuses, tree, query]);
-  useEffect(() => { setFilter(""); setExpanded(initialExpanded(tree, selected)); }, [root]);
+  useEffect(() => { saveRepositoryWorkspace(root, { expandedFiles: [...expanded], fileFilter: filter }); }, [root, expanded, filter]);
   useEffect(() => {
+    if (selected === previousSelected.current) return;
+    previousSelected.current = selected;
     if (!selected) return;
     if (filter && !selected.toLowerCase().includes(filter.trim().toLowerCase())) setFilter("");
     setExpanded(previous => {

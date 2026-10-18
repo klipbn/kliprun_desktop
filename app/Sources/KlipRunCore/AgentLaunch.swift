@@ -5,9 +5,13 @@ public struct AgentLaunch {
     public let environment: [String: String]
 
     public static func make(source: String, home: String, inherited: [String: String], sessionID: String? = nil,
+                            settings: AgentSettings = AgentSettings(),
                             isExecutable: (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }) -> Self? {
         guard source == "opencode" || source == "codex" || source == "claude" || source == "terminal" else { return nil }
-        let command = source == "codex" && isExecutable("\(home)/.local/bin/codex-vk") ? "codex-vk" : source
+        if source != "terminal", settings.validationMessage != nil { return nil }
+        let configured = settings.cliPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        var command = source == "codex" && isExecutable("\(home)/.local/bin/codex-vk") ? "codex-vk" : source
+        if !configured.isEmpty { command = configured.hasPrefix("~/") ? home + "/" + configured.dropFirst(2) : configured }
         var resume = ""
         if let sessionID {
             switch source {
@@ -35,6 +39,14 @@ public struct AgentLaunch {
         environment["COLORTERM"] = "truecolor"
         if environment["LANG"]?.isEmpty != false { environment["LANG"] = "en_US.UTF-8" }
         let title = source == "codex" ? " -c 'tui.terminal_title=[\"session-id\"]'" : ""
-        return Self(arguments: source == "terminal" ? ["-l", "-i"] : ["-lic", "exec \(command)\(title)\(resume)"], environment: environment)
+        let model = settings.model.trimmingCharacters(in: .whitespacesAndNewlines)
+        let options = (model.isEmpty ? [] : ["--model", model]) + (settings.parsedArguments ?? [])
+        let extra = options.isEmpty ? "" : " " + options.map(shellQuote).joined(separator: " ")
+        return Self(arguments: source == "terminal" ? ["-l", "-i"] : ["-lic", "exec \(shellQuote(command))\(title)\(resume)\(extra)"], environment: environment)
+    }
+
+    private static func shellQuote(_ value: String) -> String {
+        if value.range(of: "^[a-zA-Z0-9_./:@%+=,-]+$", options: .regularExpression) != nil { return value }
+        return "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 }

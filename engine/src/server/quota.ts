@@ -147,7 +147,14 @@ function parseClaude(data: ObjectValue, now: number): QuotaWindow[] {
 }
 
 class QuotaError extends Error {
-  constructor(readonly status: "sign_in_required" | "unavailable", message: string) { super(message); }
+  constructor(readonly status: "sign_in_required" | "unavailable", message: string, readonly retryAfterMs?: number) { super(message); }
+}
+
+function retryAfter(value: string | null, now: number): number {
+  if (!value) return 0;
+  const seconds = numeric(value);
+  const delay = seconds !== null ? Math.max(0, seconds * 1000) : Math.max(0, Date.parse(value) - now);
+  return Number.isFinite(new Date(now + delay).getTime()) ? delay : 0;
 }
 
 export class QuotaService {
@@ -157,7 +164,8 @@ export class QuotaService {
   private readonly claudeKeychain: () => Promise<string | null>;
   private readonly fetcher: Fetcher;
   private readonly now: () => number;
-  private readonly cache = new Map<QuotaProvider, { identity: string; value: ProviderQuota }>();
+  private readonly cache = new Map<QuotaProvider, { identity: string; value: ProviderQuota; rateLimits: number }>();
+  private readonly identities = new Map<QuotaProvider, string>();
   private readonly pending = new Map<string, Promise<ProviderQuota>>();
 
   constructor(options: Options = {}) {
@@ -179,26 +187,40 @@ export class QuotaService {
     }
     catch (error) {
       this.cache.delete(provider);
+      this.identities.delete(provider);
       return { ...empty, status: (error as NodeJS.ErrnoException).code === "ENOENT" ? "not_configured" : "unavailable",
         message: `Unable to read ${source} sign-in. Sign in with ${source} to connect this provider.` };
     }
     const credential = credentials(auth, provider);
     if (!credential) {
       this.cache.delete(provider);
+      this.identities.delete(provider);
       return { ...empty, message: provider === "claude" ? "Sign in with a Claude subscription in Claude Code. API keys do not expose subscription limits." : provider === "codex" || provider === "openai"
         ? `Sign in with ChatGPT in ${source}. API keys do not expose subscription limits.`
         : `Connect this provider in OpenCode to see its limits.` };
     }
     const identity = JSON.stringify(credential), cached = this.cache.get(provider);
+    this.identities.set(provider, identity);
     const previous = cached?.identity === identity ? cached.value : undefined;
     if (credential.expires !== null && credential.expires <= this.now()) return { ...empty, status: "sign_in_required", message: `Open ${source} to renew your sign-in, then refresh.` };
+    // Manual refresh and reset deadlines must not bypass an upstream cooldown.
+    if (previous?.retry_at != null && previous.retry_at > this.now()) return previous;
     const resetDue = previous?.limits.some(w => w.reset_at !== null && w.reset_at > (previous.updated_at ?? 0) && w.reset_at <= this.now());
-    if (!refresh && previous?.status === "ready" && this.now() - previous.updated_at! < 60_000 && !resetDue) return previous;
+    const cacheTime = provider === "claude" ? 5 * 60_000 : 60_000;
+    if (!refresh && previous?.status === "ready" && this.now() - previous.updated_at! < cacheTime && !resetDue) return previous;
     const key = `${provider}:${identity}`;
     const inFlight = this.pending.get(key);
     if (inFlight) return inFlight;
-    const promise = this.load(provider, credential, empty, previous).then(value => {
-      this.cache.set(provider, { identity, value }); return value;
+    const promise = this.load(provider, credential, empty, previous).then(result => {
+      let rateLimits = previous ? cached!.rateLimits : 0;
+      let delay = result.value.status === "ready" ? 0 : 60_000;
+      if (result.retryAfterMs !== undefined) {
+        rateLimits = Math.min(rateLimits + 1, 4);
+        delay = Math.max(result.retryAfterMs, Math.min(30 * 60_000, 5 * 60_000 * 2 ** (rateLimits - 1)));
+      } else if (result.value.status === "ready") rateLimits = 0;
+      const value = { ...result.value, retry_at: delay ? Math.min(8.64e15, this.now() + delay) : null };
+      if (this.identities.get(provider) === identity) this.cache.set(provider, { identity, value, rateLimits });
+      return value;
     }).finally(() => this.pending.delete(key));
     this.pending.set(key, promise);
     return promise;
@@ -210,13 +232,13 @@ export class QuotaService {
     // Never follow a redirect carrying the provider's authorization header.
     const response = await this.fetcher(url, { headers, redirect: "error", signal: AbortSignal.timeout(10_000) });
     if (response.status === 401 || response.status === 403) throw new QuotaError("sign_in_required", "Provider rejected the saved sign-in. Open the agent to sign in again, then refresh.");
-    if (response.status === 429) throw new QuotaError("unavailable", "Provider is rate limiting requests. Try again shortly.");
+    if (response.status === 429) throw new QuotaError("unavailable", "Provider is rate limiting usage checks. Automatic retries are paused.", retryAfter(response.headers.get("Retry-After"), this.now()));
     if (!response.ok) throw new QuotaError("unavailable", `Provider is temporarily unavailable (HTTP ${response.status}).`);
     // Upstream bodies and errors may contain secrets; only fixed messages leave this service.
     return object(await response.json());
   }
 
-  private async load(provider: QuotaProvider, credential: Credential, empty: ProviderQuota, previous?: ProviderQuota): Promise<ProviderQuota> {
+  private async load(provider: QuotaProvider, credential: Credential, empty: ProviderQuota, previous?: ProviderQuota): Promise<{ value: ProviderQuota; retryAfterMs?: number }> {
     try {
       let parsed: { limits: QuotaWindow[]; plan: string | null };
       if (provider === "openai" || provider === "codex") parsed = parseOpenAI(await this.request(OPENAI_URL, credential), this.now());
@@ -229,18 +251,22 @@ export class QuotaService {
           try {
             parsed = parseZai(await this.request(url, credential, `${prefix}${credential.token}`), this.now());
             if (parsed.limits.length) break;
-          } catch (error) { lastError = error; }
+          } catch (error) {
+            if (error instanceof QuotaError && error.retryAfterMs !== undefined) throw error;
+            lastError = error;
+          }
         }
         if (!parsed.limits.length && lastError) throw lastError;
       }
       if (!parsed.limits.length) throw new QuotaError("unavailable", "Provider did not return any recognized usage limits.");
       const order = { fiveHour: 0, weekly: 1, monthly: 2, period: 3 };
       parsed.limits.sort((a, b) => order[a.kind] - order[b.kind]);
-      return { ...empty, ...parsed, status: "ready", updated_at: this.now() };
+      return { value: { ...empty, ...parsed, status: "ready", updated_at: this.now() } };
     } catch (error) {
       const message = error instanceof QuotaError ? error.message : "Unable to reach the provider or read its limits. Try again shortly.";
-      if (previous?.limits.length) return { ...previous, status: "stale", message };
-      return { ...empty, status: error instanceof QuotaError ? error.status : "unavailable", message };
+      const value: ProviderQuota = previous?.limits.length ? { ...previous, status: "stale", message }
+        : { ...empty, status: error instanceof QuotaError ? error.status : "unavailable", message };
+      return { value, retryAfterMs: error instanceof QuotaError ? error.retryAfterMs : undefined };
     }
   }
 }

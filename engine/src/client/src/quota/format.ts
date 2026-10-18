@@ -15,3 +15,7 @@ export function date(at: number): string {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(at);
 }
 
+export function retryHint(at: number | null | undefined, now: number): string | null {
+  return at == null ? null : at > now ? `Retry in ${countdown(at, now)}` : "Retry available";
+}
+

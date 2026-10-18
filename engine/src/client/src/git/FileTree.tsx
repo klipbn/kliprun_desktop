@@ -8,10 +8,11 @@ export function Counts({ additions, deletions }: { additions: number | null; del
 type FileEntry = GitCommitFile & { mode?: "staged" | "unstaged" };
 type Tree = { folders: Map<string, Tree>; files: FileEntry[] };
 const statusLabels: Record<string, string> = { M: "Modified", A: "Added", D: "Deleted", R: "Renamed", C: "Copied", U: "Conflicted", T: "Type changed", "?": "Untracked" };
-export function FileTree({ files, selected, selectedMode, onSelect, onAction, actionLabel, disabled, view = "tree", sortBy = "path", showMode = false }: {
+export function FileTree({ files, selected, selectedMode, onSelect, onAction, actionLabel, disabled, view = "tree", sortBy = "path", showMode = false, folderOpen, onFolderToggle }: {
   files: FileEntry[]; selected: string | null; selectedMode?: FileEntry["mode"]; onSelect: (path: string, mode?: FileEntry["mode"]) => void;
   onAction?: (paths: string[], mode?: FileEntry["mode"]) => void; actionLabel?: string; disabled: boolean;
   view?: "list" | "tree"; sortBy?: "path" | "name"; showMode?: boolean;
+  folderOpen?: (path: string) => boolean; onFolderToggle?: (path: string, open: boolean) => void;
 }) {
   const root: Tree = { folders: new Map(), files: [] };
   for (const file of files) {
@@ -22,11 +23,15 @@ export function FileTree({ files, selected, selectedMode, onSelect, onAction, ac
     }
     node.files.push(file);
   }
-  function render(node: Tree) {
+  function render(node: Tree, parent = "") {
     return <ul className={`git-tree git-review-tree${view === "list" ? " git-file-list" : ""}`}>
-      {[...node.folders].sort(([a], [b]) => a.localeCompare(b)).map(([name, folder]) => <li key={`folder:${name}`}><details open>
-        <summary><Folder size={14} /><span>{name}</span></summary>{render(folder)}
-      </details></li>)}
+      {[...node.folders].sort(([a], [b]) => a.localeCompare(b)).map(([name, folder]) => {
+        const path = parent ? `${parent}/${name}` : name;
+        return <li key={`folder:${name}`}><details open={folderOpen?.(path) ?? true}
+          onToggle={onFolderToggle ? event => { if (event.currentTarget.open !== folderOpen?.(path)) onFolderToggle(path, event.currentTarget.open); } : undefined}>
+          <summary><Folder size={14} /><span>{name}</span></summary>{render(folder, path)}
+        </details></li>;
+      })}
       {[...node.files].sort((a, b) => (sortBy === "name" ? a.path.split("/").at(-1)!.localeCompare(b.path.split("/").at(-1)!) : 0) || a.path.localeCompare(b.path)).map(file => {
         const chosen = file.path === selected && (selectedMode === undefined || file.mode === selectedMode);
         const label = file.mode ? file.mode === "staged" ? "Unstage" : "Stage" : actionLabel;

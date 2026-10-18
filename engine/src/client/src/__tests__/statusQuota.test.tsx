@@ -52,6 +52,13 @@ test("footer provides a Usage entry when no balances are connected", () => {
   expect(html).not.toContain('role="meter"');
 });
 
+test("footer exposes the cooldown without marking cached limits as current", () => {
+  const html = renderToStaticMarkup(<StatusQuota quotas={{ claude: { ...quota, provider: "claude", status: "stale", retry_at: now + 300_000 } }} errors={{}} pending={[]} now={now} onOpen={() => {}} />);
+  expect(html).toContain("Retry in 5m");
+  expect(html).toContain("Cached");
+  expect(html).not.toContain('data-tone="healthy"');
+});
+
 test("footer shows Claude after Codex and opens Usage with its own limits", () => {
   const html = renderToStaticMarkup(<StatusQuota quotas={{ codex: quota, claude: { ...quota, provider: "claude" } }} errors={{}} pending={[]} now={now} onOpen={() => {}} />);
   expect(html).toContain('aria-label="Claude Code 5-hour: 72.4% remaining"');

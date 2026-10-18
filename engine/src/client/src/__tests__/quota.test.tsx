@@ -47,3 +47,17 @@ test("Usage includes Claude Code with its independent subscription windows", () 
   expect(html).toContain("Via Claude Code");
   expect(html).toContain('aria-label="5-hour: 90% remaining"');
 });
+
+test("a ready response without any windows cannot claim available subscription capacity", () => {
+  const html = render({ openai: { ...quota, limits: [] } });
+  expect(html).not.toContain('aria-label="Available"');
+  expect(html).toContain("No limit windows returned");
+});
+
+test("Usage shows a rate-limit cooldown while retaining the last known balance", () => {
+  const html = render({ claude: { ...quota, provider: "claude", status: "stale", retry_at: now + 300_000, message: "Provider is rate limiting usage checks. Automatic retries are paused." } });
+  expect(html).toContain("Retry in 5m");
+  expect(html).toContain("Automatic retries are paused");
+  expect(html).toContain('aria-label="Claude Code: 0% remaining"');
+  expect(render({ claude: { ...quota, provider: "claude", status: "stale", retry_at: now - 1 } })).toContain("Retry available");
+});

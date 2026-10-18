@@ -12,7 +12,9 @@ import { HistoryList } from "./HistoryList";
 import { PanelHeightResizer } from "./PanelHeightResizer";
 import { BranchPicker } from "./BranchPicker";
 import { ChangeViewSettings } from "./ChangeViewSettings";
-import { CHANGE_VIEW_KEY, groupChangeFiles, readChangeView } from "./changeView";
+import { groupChangeFiles } from "./changeView";
+import { hasRepositoryWorkspace, loadChangeView, saveChangeView, saveRepositoryWorkspace } from "./workspaceState";
+import { useRepositoryWorkspace } from "./useRepositoryWorkspace";
 import { resizedDetailsWidth } from "../components/detailsSizing";
 import { RecentSessionFilter } from "../components/RecentSessionFilter";
 import { gitRequest, useGitRequest } from "./useGitRequest";
@@ -30,12 +32,11 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const [followingSession, setFollowingSession] = useState(!!sessionId);
   const lastSession = useRef({ id: sessionId, directory: sessionDirectory });
   const [refresh, setRefresh] = useState(0);
-  const [tab, setTab] = useState<"files" | "changes" | "history">("changes");
-  const [changeView, setChangeView] = useState(() => {
-    try { return readChangeView(localStorage.getItem(CHANGE_VIEW_KEY)); }
-    catch { return readChangeView(null); }
-  });
-  useEffect(() => { try { localStorage.setItem(CHANGE_VIEW_KEY, JSON.stringify(changeView)); } catch { /* storage unavailable */ } }, [changeView]);
+  const [workspace, updateWorkspace] = useRepositoryWorkspace(directory);
+  const tab = workspace.tab;
+  const setTab = (tab: typeof workspace.tab) => updateWorkspace({ tab });
+  const [changeView, setChangeView] = useState(loadChangeView);
+  useEffect(() => { saveChangeView(changeView); }, [changeView]);
   const [panelWidth, setPanelWidth] = useState<number | null>(() => {
     try { const saved = Number(localStorage.getItem(PANEL_WIDTH_KEY)); return saved >= 320 && saved <= 850 ? saved : null; }
     catch { return null; }
@@ -58,8 +59,22 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
     catch { /* storage unavailable */ }
   }, [panelWidth]);
   function stopResize() { resizeDrag.current = null; setResizing(false); }
-  const [selection, setSelection] = useState<Selection | null>(null);
-  const [diffClosed, setDiffClosed] = useState(false);
+  const [historySelection, setHistorySelection] = useState<Selection | null>(null);
+  const [historyDiffClosed, setHistoryDiffClosed] = useState(false);
+  const selection: Selection | null = tab === "history" ? historySelection : workspace.selection;
+  const diffClosed = tab === "history" ? historyDiffClosed : workspace.diffClosed;
+  function setSelection(value: Selection | null) {
+    if (tab === "history") setHistorySelection(value);
+    else updateWorkspace({ selection: value && value.mode !== "commit" ? { path: value.path, mode: value.mode } : null });
+  }
+  function setDiffClosed(value: boolean) {
+    if (tab === "history") setHistoryDiffClosed(value);
+    else updateWorkspace({ diffClosed: value });
+  }
+  const folderOpen = (key: string) => workspace.changeFolders[key] ?? workspace.changesDefaultOpen;
+  function toggleChangeFolder(key: string, open: boolean) {
+    updateWorkspace(previous => ({ changeFolders: { ...previous.changeFolders, [key]: open } }));
+  }
   const documents = useFileTabs(directory, () => setRefresh(value => value + 1));
   const documentTabs = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -100,11 +115,11 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   function closeFile(id: number) { navigate(() => documents.close(id), [id], true); }
   function chooseTab(value: typeof tab) {
     if (value === tab) return;
-    setTab(value); setSelection(null); setDiffClosed(false);
+    setTab(value);
   }
   function openFile(path: string, permanent = false) {
     if (busyRef.current) return;
-    setSelection(null); void documents.open(path, permanent);
+    void documents.open(path, permanent);
   }
   useEffect(() => {
     if (!dirty) return;
@@ -164,13 +179,13 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const displayGroups = useMemo(() => groupChangeFiles(changeEntries, changeView.groupBy), [changeEntries, changeView.groupBy]);
   const stagePaths = [...new Set(groups.slice(1).flatMap(group => group.files.map(file => file.path)))];
 
-  function chooseRepository(value: string, remember = true, fromSession = false, nextTab?: typeof tab) {
+  function chooseRepository(value: string, remember = true, fromSession = false) {
     if (busyRef.current) return;
     navigate(() => {
       commitDrafts.set(directory, message); setMessage(commitDrafts.get(value) ?? "");
-      setDirectory(value); documents.clear(); setDiffClosed(false); setSelection(null); setCommitHash(null); setHistoryPage(0);
+      if (!hasRepositoryWorkspace(value)) saveRepositoryWorkspace(value, { tab: fromSession ? "changes" : tab });
+      setDirectory(value); setHistorySelection(null); setHistoryDiffClosed(false); setCommitHash(null); setHistoryPage(0);
       setFollowingSession(fromSession); setShowManualDirectory(false);
-      if (nextTab) setTab(nextTab);
       setOperationError(null); setNotice(null);
       if (remember) saveGitRepository(value);
     });
@@ -181,7 +196,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
     if (lastSession.current.id === sessionId && lastSession.current.directory === sessionDirectory) return;
     if (busyRef.current || savingFiles) return;
     lastSession.current = { id: sessionId, directory: sessionDirectory };
-    chooseRepositoryRef.current(sessionDirectory ?? "", false, !!sessionId, "changes");
+    chooseRepositoryRef.current(sessionDirectory ?? "", false, !!sessionId);
   }, [sessionId, sessionDirectory, busy, savingFiles]);
   useEffect(() => {
     if (!directory && !sessionId && repositories.data?.repositories[0]) chooseRepositoryRef.current(repositories.data.repositories[0], false);
@@ -353,7 +368,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
           <span className="git-changes-count">{status?.files.length ?? 0} files</span><Counts {...totals} />
           <div className="git-changes-tools"><ChangeViewSettings preferences={changeView} onChange={setChangeView} />
             <button type="button" className="git-button git-view-settings-trigger" aria-label="Collapse all folders" title="Collapse all folders" disabled={!status?.files.length}
-              onClick={() => sidebar.current?.querySelectorAll("details").forEach(folder => { folder.open = false; })}><ChevronsDownUp size={14} /></button>
+              onClick={() => updateWorkspace({ changesDefaultOpen: false, changeFolders: {} })}><ChevronsDownUp size={14} /></button>
             <button type="button" className="git-button" disabled={workspaceBusy || !stagePaths.length} onClick={() => void execute({ action: "stage", paths: stagePaths }, "Stage all")}>Stage all</button>
             <button type="button" className="git-button git-view-settings-trigger" aria-label="Unstage all" title="Unstage all" disabled={workspaceBusy || !groups[0].files.length}
               onClick={() => void execute({ action: "unstage", paths: groups[0].files.map(file => file.path) }, "Unstage all")}><Minus size={14} /></button>
@@ -372,11 +387,14 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
             {displayGroups.map(group => {
               const tree = <FileTree files={group.files} selected={selection?.path ?? null} selectedMode={selection?.mode === "staged" ? "staged" : "unstaged"}
                 disabled={workspaceBusy} view={changeView.view} sortBy={changeView.sortBy} showMode={changeView.groupBy !== "staged"}
+                folderOpen={path => folderOpen(`${group.name ?? "all"}:${path}`)} onFolderToggle={(path, open) => toggleChangeFolder(`${group.name ?? "all"}:${path}`, open)}
                 onSelect={(path, mode) => { setDiffClosed(false); setSelection({ path, mode: mode ?? "unstaged" }); }}
                 onAction={(paths, mode) => void execute({ action: mode === "staged" ? "unstage" : "stage", paths }, mode === "staged" ? "Unstage" : "Stage")} />;
               if (!group.name) return <div key="all">{tree}</div>;
               const working = group.files.filter(file => file.mode === "unstaged"), staged = group.files.filter(file => file.mode === "staged");
-              return <details className="git-file-group" key={group.name} open aria-label={`${group.name} changes`}>
+              const key = `${group.name}:`;
+              return <details className="git-file-group" key={group.name} open={folderOpen(key)} aria-label={`${group.name} changes`}
+                onToggle={event => { if (event.currentTarget.open !== folderOpen(key)) toggleChangeFolder(key, event.currentTarget.open); }}>
                 <summary><span>{group.name}<small>{group.files.length}</small></span><span className="git-group-actions">
                   {working.length > 0 && <button type="button" className="git-text-button" disabled={workspaceBusy} onClick={event => { event.preventDefault(); void execute({ action: "stage", paths: working.map(file => file.path) }, "Stage all"); }}>Stage all</button>}
                   {staged.length > 0 && <button type="button" className="git-text-button" disabled={workspaceBusy} onClick={event => { event.preventDefault(); void execute({ action: "unstage", paths: staged.map(file => file.path) }, "Unstage all"); }}>Unstage all</button>}

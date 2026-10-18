@@ -4,6 +4,20 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.26] - 2026-10-19
+
+### Added
+
+- Redesign Usage around token consumption and live subscription capacity, with period/source filters, measured comparisons, token composition and trends, model/project breakdowns, task details, provider plans/statuses, and the full reset schedule. Adapt grids to the actual pane width, retain readable narrow layouts beside the terminal dock, and distinguish cached limits, unknown history, and partial coverage.
+- Make the terminal icon at the far left of the tab bar open a scrollable terminal switcher. Show every tab's number, title, project, running/pinned state, and active checkmark, with matching ⌘1–9 hints for the first nine. Preserve numbering after pinning or reordering and switch both the terminal and its linked session on selection.
+- Add Settings → Agents between Notifications and Updates, with independent model, CLI path, file picker, launch arguments, validation, and reset for OpenCode, Codex, and Claude Code. Save preferences across restarts and apply them to new and resumed sessions while preserving automatic CLI discovery and Codex terminal matching.
+
+### Fixed
+
+- Reduce normal Claude subscription checks to once per five-minute cache period. Respect Retry-After and exponential cooldowns after HTTP 429, including manual refresh and concurrent requests; retain cached balances, show retry timing, and keep cooldowns scoped to the current sign-in. Stop alternate quota endpoint attempts after a rate-limit response.
+- Restore Git Files and Changes workspace state per repository: active tab, open files and active file, file filter, folder expansion, selected diff, and closed diff. Persist display settings through the native app store so List/Tree, sorting, grouping, and collapsed folders survive navigation, refreshes, and application restarts.
+- Keep Claude Code sessions linked and their live status visible after the agent works in a subdirectory. Preserve the original project folder in session details, history, and resume instead of replacing it with later shell working directories, including for large journals.
+
 ## [0.0.25] - 2026-10-18
 
 ### Added
