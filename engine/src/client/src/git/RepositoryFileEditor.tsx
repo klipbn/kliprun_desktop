@@ -32,6 +32,8 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
   const view = useRef<EditorView | null>(null);
   const editable = useRef(new Compartment());
   const [preview, setPreview] = useState(() => /\.ipynb$/i.test(path));
+  const [sourceOpened, setSourceOpened] = useState(() => !/\.ipynb$/i.test(path));
+  const pendingFind = useRef(false);
   const [showSaved, setShowSaved] = useState(false);
   const [position, setPosition] = useState({ line: 1, column: 1 });
   const [indentation, setIndentation] = useState(() => repositoryIndentUnit(path, content));
@@ -48,7 +50,7 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
     root.current.dataset.menuSearch = String(!!getSearchQuery(state).search);
   };
   useEffect(() => {
-    if (!host.current) return;
+    if (!host.current || !sourceOpened) return;
     const canEdit = (locked: boolean) => [EditorState.readOnly.of(locked), EditorView.editable.of(!locked),
       EditorView.contentAttributes.of({ "aria-label": `Edit ${path}`, "aria-readonly": String(locked), spellcheck: "false" })];
     const editor = new EditorView({
@@ -89,9 +91,23 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
     element?.addEventListener('kliprun:editor-command', menu);
     setIndentation(repositoryIndentUnit(path, current.current.content));
     setPosition({ line: 1, column: 1 });
-    setPreview(/\.ipynb$/i.test(path));
+    if (pendingFind.current) {
+      pendingFind.current = false;
+      openSearchPanel(editor);
+      requestAnimationFrame(() => editor.dom.querySelector<HTMLInputElement>('.cm-search input[name=search]')?.focus());
+    }
     return () => { element?.removeEventListener('kliprun:editor-command', menu); editor.destroy(); view.current = null; };
-  }, [path]);
+  }, [path, sourceOpened]);
+
+  useEffect(() => {
+    const element = root.current;
+    const find = (event: Event) => {
+      if (view.current || !element?.getClientRects().length || element.closest('[hidden]')) return;
+      if ((event as CustomEvent<string>).detail === "find") { pendingFind.current = true; setSourceOpened(true); setPreview(false); }
+    };
+    element?.addEventListener("kliprun:editor-command", find);
+    return () => element?.removeEventListener("kliprun:editor-command", find);
+  }, []);
 
   useEffect(() => {
     const editor = view.current;
@@ -136,7 +152,7 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
       </nav>
       {dirty && <span className="repository-editor-dirty" aria-label="Unsaved changes">Unsaved</span>}
       <span className="repository-editor-feedback" role="status">{saving ? "Saving…" : showSaved && !dirty && !error ? "Saved" : ""}</span>
-      {(markdown || notebook) && <button type="button" className="git-icon-button" aria-label={previewLabel} title={previewLabel} aria-pressed={preview} onClick={() => setPreview(value => !value)}>{preview ? <EyeOff size={14} /> : <Eye size={14} />}</button>}
+      {(markdown || notebook) && <button type="button" className="git-icon-button" aria-label={previewLabel} title={previewLabel} aria-pressed={preview} onClick={() => { setSourceOpened(true); setPreview(value => !value); }}>{preview ? <EyeOff size={14} /> : <Eye size={14} />}</button>}
       <button type="button" className="git-icon-button repository-editor-save" disabled={!dirty || saving} aria-label="Save file" title="Save (⌘S / Ctrl+S)" onClick={onSave}><Save size={14} /></button>
     </div>
     {error && <p className="git-feedback is-error" role="alert">{error}</p>}
