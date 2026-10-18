@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type FormEvent } from "react";
 import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Clock3, Folder, History, Plus, Search, SquareTerminal, Star, X } from "lucide-react";
 import type { CatalogSession } from "@shared/usage";
 import type { CardPayload } from "@shared/types";
@@ -32,6 +32,20 @@ function updated(at: number) {
 
 export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, cards, pending, error, selectedId, onRetry, onSelect, onResume }: Props) {
   const [state, setState] = useState(loadWorkspace);
+  const workspace = useRef<HTMLElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
+  const resize = useRef<{ x: number; start: number; width: number } | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(state.sidebarWidth);
+  const [availableWidth, setAvailableWidth] = useState(980);
+  const [resizing, setResizing] = useState(false);
+  const maximumWidth = Math.max(118, Math.min(480, availableWidth - 240));
+  const fitWidth = (width: number) => Math.round(Math.max(118, Math.min(maximumWidth, width)));
+  useEffect(() => {
+    if (!workspace.current) return;
+    const observer = new ResizeObserver(entries => setAvailableWidth(entries[0].contentRect.width));
+    observer.observe(workspace.current);
+    return () => observer.disconnect();
+  }, []);
   const [view, setView] = useState<View>({ kind: "all" });
   const [search, setSearch] = useState("");
   const [source, setSource] = useState("");
@@ -55,6 +69,10 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
   const change = (next: SessionWorkspace) => {
     try { saveWorkspace(next); setState(next); setFailure(null); return true; }
     catch (err) { setFailure(err instanceof Error ? err.message : "Unable to save workspace."); return false; }
+  };
+  const finishResize = () => {
+    const drag = resize.current; resize.current = null; setResizing(false);
+    if (drag) change({ ...state, sidebarWidth: drag.width });
   };
   const navigate = (next: View) => { setView(next); setSelected([]); setPage(0); };
   const resetFilters = () => { setSearch(""); setSource(""); setPage(0); };
@@ -105,8 +123,9 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
   const dragOver = (event: DragEvent) => { if (dragIds.current.length) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; event.currentTarget.classList.add("is-drop-target"); } };
   const dragLeave = (event: DragEvent) => event.currentTarget.classList.remove("is-drop-target");
 
-  return <section className="session-workspace" aria-label="Session workspace">
-    <aside className="sw-sidebar" aria-label="Session views">
+  return <section ref={workspace} className="session-workspace" aria-label="Session workspace" data-resizing={resizing}
+    style={sidebarWidth === undefined ? undefined : { "--sw-sidebar-width": `${Math.min(sidebarWidth, maximumWidth)}px` } as CSSProperties}>
+    <aside ref={sidebar} className="sw-sidebar" aria-label="Session views">
       <button className={view.kind === "all" ? "is-active" : ""} onClick={() => navigate({ kind: "all" })} aria-current={view.kind === "all" ? "page" : undefined}><History /><span>All sessions</span><small>{sessions.length}</small></button>
       <button className={view.kind === "favorites" ? "is-active" : ""} onClick={() => navigate({ kind: "favorites" })} aria-current={view.kind === "favorites" ? "page" : undefined}><Star /><span>Favorites</span><small>{sessions.filter(s => state.favorites.includes(s.id)).length}</small></button>
       <div className="sw-project-heading"><button onClick={() => change({ ...state, sidebarCollapsed: !state.sidebarCollapsed })} aria-expanded={!state.sidebarCollapsed} aria-controls="sw-projects">{state.sidebarCollapsed ? <ChevronRight /> : <ChevronDown />}Projects</button><button className="sw-icon" onClick={() => setDialog({ kind: "project" })} aria-label="New project" title="New project"><Plus /></button></div>
@@ -116,6 +135,27 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
         {!state.projects.length && <p className="sw-sidebar-hint">Create a project to organize sessions.</p>}
       </div>
     </aside>
+    <div className="sw-sidebar-resizer" role="separator" aria-label="Resize session sidebar" aria-orientation="vertical" tabIndex={0}
+      aria-valuemin={118} aria-valuemax={maximumWidth} aria-valuenow={Math.min(sidebarWidth ?? (availableWidth <= 440 ? 118 : availableWidth <= 720 ? 145 : 184), maximumWidth)}
+      onPointerDown={event => {
+        if (event.button !== 0) return;
+        const width = sidebar.current?.getBoundingClientRect().width ?? 184;
+        resize.current = { x: event.clientX, start: width, width }; setResizing(true);
+        event.currentTarget.setPointerCapture(event.pointerId); event.preventDefault();
+      }} onPointerMove={event => {
+        if (!resize.current) return;
+        const width = fitWidth(resize.current.start + event.clientX - resize.current.x);
+        resize.current.width = width; setSidebarWidth(width);
+      }} onPointerUp={event => {
+        finishResize();
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+      }} onPointerCancel={finishResize} onLostPointerCapture={finishResize}
+      onKeyDown={event => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        const width = fitWidth((sidebar.current?.getBoundingClientRect().width ?? 184) + (event.key === "ArrowRight" ? 20 : -20));
+        setSidebarWidth(width); change({ ...state, sidebarWidth: width });
+      }} />
     <div className="sw-content">
       <header className="sw-toolbar"><div className="sw-title"><h1 title={heading}>{heading}</h1><button className="sw-icon" aria-label={allCollapsed ? "Expand all groups" : "Collapse all groups"} title={allCollapsed ? "Expand all groups" : "Collapse all groups"} disabled={!sections.length}
         onClick={() => change({ ...state, collapsed: allCollapsed ? state.collapsed.filter(id => !sections.some(s => s.id === id)) : [...new Set([...state.collapsed, ...sections.map(s => s.id)])] })}>{allCollapsed ? <ChevronsUpDown /> : <ChevronsDownUp />}</button></div>

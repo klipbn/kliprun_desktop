@@ -25,6 +25,33 @@ import Testing
     #expect(store.selectedTerminalID == 103)
 }
 
+@MainActor @Test func pinnedTerminalTabsKeepTheirPrefixAndSelectionAcrossPinningAndDragging() throws {
+    let store = DesktopStore()
+    let directory = FileManager.default.temporaryDirectory.path
+    let a = try #require(TerminalSession(id: 101, source: "terminal", directory: directory))
+    let b = try #require(TerminalSession(id: 102, source: "terminal", directory: directory))
+    let c = try #require(TerminalSession(id: 103, source: "terminal", directory: directory))
+    defer { store.stop() }
+    store.terminals = [a, b, c]
+    store.selectTerminalTab(101)
+    let pids = [a.pid, b.pid, c.pid]
+    store.toggleTerminalPin(103)
+    store.toggleTerminalPin(102)
+    #expect(store.terminals.map(\.id) == [103, 102, 101])
+    #expect(store.pinnedTerminalIDs == [102, 103])
+    #expect(store.selectedTerminalID == 101)
+    store.moveTerminal(101, to: 103)
+    #expect(store.terminals.map(\.id) == [103, 102, 101])
+    store.moveTerminal(102, to: 103)
+    #expect(store.terminals.map(\.id) == [102, 103, 101])
+    store.toggleTerminalPin(102)
+    #expect(store.terminals.map(\.id) == [103, 102, 101])
+    #expect(store.pinnedTerminalIDs == [103])
+    #expect([a.pid, b.pid, c.pid] == pids)
+    store.selectTerminalTab(number: 1)
+    #expect(store.selectedTerminalID == 103)
+}
+
 @MainActor @Test func explicitTerminalLinkSwitchesCardsWithoutOpeningHiddenDock() throws {
     let store = DesktopStore()
     let directory = FileManager.default.temporaryDirectory.path

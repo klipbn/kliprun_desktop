@@ -356,6 +356,9 @@ export default function App() {
         subagentsRunning={counts.subagents_running}
         unread={counts.unread}
         agents={board?.agents ?? []}
+        cards={[...catalogCards.values()]}
+        isRead={isRead}
+        onSelect={id => { select(id); if (page !== "board" && page !== "sessions" && page !== "office") backToBoard(); }}
         usage={<StatusQuota {...quotaState} now={now} onOpen={openUsage} />}
       />
     </div>

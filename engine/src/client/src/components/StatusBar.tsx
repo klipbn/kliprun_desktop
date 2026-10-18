@@ -1,6 +1,13 @@
 import { Folder, Loader2, Mail, SquareTerminal } from "lucide-react";
-import type { AgentSummary } from "@shared/types";
+import type { AgentSummary, CardPayload } from "@shared/types";
 import type { ReactNode } from "react";
+import type { TrackedCard } from "@shared/readTracker";
+import { StatusSessions } from "./StatusSessions";
+
+export function statusSessions<T extends TrackedCard>(cards: T[], isRead: (card: T) => boolean) {
+  const resolved = cards.filter(card => card.terminal?.session_id !== null);
+  return { running: resolved.filter(card => card.column === "running"), unread: resolved.filter(card => card.column === "idle" && !isRead(card)) };
+}
 
 interface Props {
   sessionCount: number;
@@ -10,6 +17,9 @@ interface Props {
   subagentsRunning: number;
   unread: number;
   agents: AgentSummary[];
+  cards: CardPayload[];
+  isRead: (card: TrackedCard) => boolean;
+  onSelect: (id: string) => void;
   usage?: ReactNode;
 }
 
@@ -18,7 +28,8 @@ function plural(count: number, word: string): string {
 }
 
 /** Bottom application status bar. */
-export function StatusBar({ sessionCount, projectCount, running, agentsRunning, subagentsRunning, unread, agents, usage }: Props) {
+export function StatusBar({ sessionCount, projectCount, running, agentsRunning, subagentsRunning, unread, agents, cards, isRead, onSelect, usage }: Props) {
+  const lists = statusSessions(cards, isRead);
   return (
     <footer
       className="status-bar shrink-0 flex items-center gap-3 px-4 py-1.5 border-t border-border bg-surface text-xs"
@@ -35,7 +46,8 @@ export function StatusBar({ sessionCount, projectCount, running, agentsRunning, 
         </span>
       </div>
 
-      <div className="status-bar-activity flex-1 flex items-center justify-center gap-3 min-w-0 overflow-hidden">
+      <div className="status-bar-activity flex-1 flex items-center justify-center gap-3 min-w-0">
+        <StatusSessions label="Running sessions" cards={lists.running} onSelect={onSelect}>
         <span
           className="flex items-center gap-1.5 text-text-primary"
           title="Running agents and subagents"
@@ -50,6 +62,8 @@ export function StatusBar({ sessionCount, projectCount, running, agentsRunning, 
             </span>
           )}
         </span>
+        </StatusSessions>
+        <StatusSessions label="Unread sessions" cards={lists.unread} onSelect={onSelect}>
         <span
           className={`flex items-center gap-1.5 ${unread > 0 ? "text-warning" : "text-text-secondary"}`}
           title="Unread IDLE cards"
@@ -59,9 +73,11 @@ export function StatusBar({ sessionCount, projectCount, running, agentsRunning, 
           <Mail className="w-3.5 h-3.5" />
           {unread}
         </span>
+        </StatusSessions>
         {agents.length > 0 && (
           <span className="flex items-center gap-1.5 min-w-0 overflow-hidden" aria-label="Agents">
             {agents.map((agent) => (
+              <StatusSessions label={`${agent.name} sessions`} cards={cards.filter(card => card.agent?.name === agent.name && card.terminal?.session_id !== null)} onSelect={onSelect} key={agent.name}>
               <span
                 key={agent.name}
                 className={`px-2 py-0.5 rounded-full border shrink-0 ${
@@ -72,6 +88,7 @@ export function StatusBar({ sessionCount, projectCount, running, agentsRunning, 
               >
                 {agent.name}
               </span>
+              </StatusSessions>
             ))}
           </span>
         )}
