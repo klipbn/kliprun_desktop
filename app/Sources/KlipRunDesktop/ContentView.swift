@@ -116,7 +116,7 @@ struct ContentView: View {
     private var terminalDock: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Image(systemName: "terminal").foregroundStyle(SettingsStyle.accent)
+                TerminalSwitcher(store: store)
                 ScrollViewReader { reader in
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 4) {

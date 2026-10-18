@@ -11,5 +11,6 @@ export CLANG_MODULE_CACHE_PATH="/private/tmp/kliprun-desktop-clang-cache"
 export SWIFT_MODULE_CACHE_PATH="/private/tmp/kliprun-desktop-swift-cache"
 export SWIFTPM_CUSTOM_LIBS_DIR="/private/tmp/kliprun-swiftpm-libs"
 cd "$project_dir/app"
-swift test --disable-sandbox --disable-xctest -Xswiftc -load-plugin-library \
+# AppKit integration tests share the process-wide key window and popovers.
+swift test --no-parallel --disable-sandbox --disable-xctest -Xswiftc -load-plugin-library \
   -Xswiftc "$testing_plugin"
