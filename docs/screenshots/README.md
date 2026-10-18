@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All eighteen current screenshots were captured from **KlipRun Desktop 0.0.22** on **2026-10-17**, using Graphite, the new default. The original palette is now named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All eighteen current screenshots were captured from **KlipRun Desktop 0.0.23** on **2026-10-18**, using Graphite, the new default. The original palette is now named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -47,12 +47,14 @@ The toolbar follows **Sessions → Kanban → Office → Git → Usage → Stati
 
 The Office image now shows the Shared loft floor plan with the same fictional sessions. [`../../scripts/office.test.js`](../../scripts/office.test.js) checks all three floor plans, persistent settings, new and removed helpers, observed-state transitions and idle grace, selection, active-terminal highlighting, usage, zoom, and reduced motion in normal and constrained web-view sizes.
 
+[`../../scripts/office-density.test.js`](../../scripts/office-density.test.js) expands the fictional fixture into 45 coworkers and 24 separate project rooms. It checks all three floor plans in five window sizes, including very short windows, for horizontal space use and clipping. Review screenshots stay in `/private/tmp`; they are not the committed demo screenshots.
+
 Office includes an EXIT door in the lower central passage. [`../../scripts/office-exit.test.js`](../../scripts/office-exit.test.js) uses only fixture sessions and deterministic animation frames to check that roots and helpers remain visible while walking, disappear only at the door, cancel departure on reappearance, leave live counts immediately, and respect reduced motion. It also checks resizing during departure and delays the empty-office overlay until the last character has left. Review images are written to `/private/tmp`.
 
 Klopik skin thumbnails in `engine/src/client/public/klopik-skins/` are generated from the live SVG `Mascot` component, with four fictional color/variant examples per set. Run `bun scripts/render-klopik-previews.tsx` from `engine/src/client`, then pass the emitted HTML to [`capture-klopik-skins.js`](capture-klopik-skins.js). This captures six transparent PNG strips; the app build copies them into `Resources/KlopikSkins` for native Appearance settings. [`../../scripts/office-skins.test.js`](../../scripts/office-skins.test.js) verifies six skins across 36 layout/size combinations, live preference changes, matching leaderboard avatars, stable variations, working animation, reduced motion, and restoration of Default artwork. Review screenshots contain only fixture sessions and are saved under `/private/tmp`.
 
 [`../../scripts/git-review-layout.test.js`](../../scripts/git-review-layout.test.js) checks the compact repository toolbar, staging controls before filenames, loaded-commit search, keyboard navigation, automatic first-file diffs, persistent close, and small layouts using fixture data without Git writes.
 
-[`capture-files.js`](capture-files.js) takes `(page, outputDirectory, fixture, base)` and captures Files, Markdown, and Jupyter Notebook from `git.text_files` in `mock-api.json`, with all file reads intercepted and no writes. All eighteen current images were refreshed for 0.0.22.
+[`capture-files.js`](capture-files.js) takes `(page, outputDirectory, fixture, base)` and captures Files, Markdown, and Jupyter Notebook from `git.text_files` in `mock-api.json`, with all file reads intercepted and no writes. All eighteen current images were refreshed for 0.0.23.
 
 The shortcut image includes the native File/Edit/View/Navigate/Terminal commands. `scripts/native-menus.test.js` verifies the real web command bridge using fixture files and in-memory saves, including CodeMirror history, native-menu capability updates, unsaved-state reporting, close/cancel and draft-preserving refresh. Native focus/routing and standard menu shortcuts are checked separately with Swift tests and a disposable menu probe.
