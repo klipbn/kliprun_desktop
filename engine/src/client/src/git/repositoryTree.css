@@ -26,3 +26,10 @@
 
 .repository-browser-guides{position:absolute;left:14px;top:0;bottom:0;pointer-events:none;opacity:.45;background:repeating-linear-gradient(to right,var(--theme-border) 0 1px,transparent 1px 20px)}
 :root:is([data-theme="daybreak"],[data-theme="paper"]) .repository-browser{--repository-yellow:#866000;--repository-cyan:#086d7a;--repository-blue:#2266a3;--repository-purple:#8447a0;--repository-green:#35732a;--repository-red:#b23e49}
+.repository-browser .is-drop-target{outline:1px solid var(--theme-accent);outline-offset:-1px;background:color-mix(in srgb,var(--theme-accent) 16%,var(--theme-surface))}
+.repository-context-menu{position:fixed;z-index:100;width:220px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;padding:4px;border:1px solid var(--theme-border);border-radius:6px;background:var(--theme-surface);color:var(--theme-text);box-shadow:0 8px 30px #0007;font-size:12px}
+.repository-context-menu button{display:block;width:100%;padding:6px 10px;text-align:left;border-radius:3px;white-space:nowrap}
+.repository-context-menu button:hover:not(:disabled),.repository-context-menu button:focus-visible{background:var(--theme-raised);outline:1px solid var(--theme-accent);outline-offset:-1px}
+.repository-context-menu button:disabled{opacity:.45;cursor:default}.repository-context-menu [role=separator]{height:1px;margin:4px;background:var(--theme-border)}
+.git-rename-input{display:block;width:100%;margin:6px 0 16px;padding:7px;border:1px solid var(--theme-border);border-radius:4px;background:var(--theme-background);color:var(--theme-text);font-size:12px}
+.git-discard-dialog form>div{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}.git-discard-dialog form label{display:block;margin-top:12px;font-size:12px}

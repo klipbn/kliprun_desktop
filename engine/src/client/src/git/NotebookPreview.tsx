@@ -14,6 +14,13 @@ const text = (value: unknown): string => typeof value === "string" ? value : Arr
 const plainText = (value: unknown) => text(value).replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
 const imageTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 const htmlSchema = { ...defaultSchema, protocols: { ...defaultSchema.protocols, src: ["data"] } };
+const MARKUP_LIMIT = 128 * 1024;
+
+function NotebookText({ source, error = false }: { source: string; error?: boolean }) {
+  const limit = 32 * 1024;
+  return <><pre className={`notebook-output-text${error ? " is-error" : ""}`}>{source.slice(0, limit)}</pre>
+    {source.length > limit && <p className="notebook-notice">Output shortened in preview. The full output is preserved in the JSON source.</p>}</>;
+}
 
 function imageSource(data: Json): string | null {
   for (const mime of imageTypes) {
@@ -24,6 +31,7 @@ function imageSource(data: Json): string | null {
 }
 
 function NotebookMarkup({ source, html = false, attachments = {} }: { source: string; html?: boolean; attachments?: Json }) {
+  if (source.length > MARKUP_LIMIT) return <><p className="notebook-notice">Large markup shown as text in preview.</p><NotebookText source={source} /></>;
   return <div className="repository-markdown-preview notebook-markup"><Markdown remarkPlugins={[remarkGfm]}
     skipHtml={!html} rehypePlugins={html ? [rehypeRaw, [rehypeSanitize, htmlSchema]] : []}
     urlTransform={(url, key) => {
@@ -56,16 +64,22 @@ function NotebookCode({ source, language }: { source: string; language: string }
 }
 
 function NotebookOutput({ output }: { output: Json }) {
-  if (output.output_type === "stream") return <pre className={`notebook-output-text${output.name === "stderr" ? " is-error" : ""}`}>{plainText(output.text)}</pre>;
+  if (output.output_type === "stream") return <NotebookText source={plainText(output.text)} error={output.name === "stderr"} />;
   if (output.output_type === "error") {
     const traceback = Array.isArray(output.traceback) ? output.traceback.map(plainText).join("\n") : "";
-    return <pre className="notebook-output-text is-error">{traceback || `${text(output.ename)}: ${text(output.evalue)}`}</pre>;
+    return <NotebookText source={traceback || `${text(output.ename)}: ${text(output.evalue)}`} error />;
   }
   const data = record(output.data), image = imageSource(data);
   if (image) return <img className="notebook-output-image" src={image} alt="Saved notebook output" loading="lazy" />;
-  if (text(data["text/html"])) return <NotebookMarkup source={text(data["text/html"])} html />;
+  const html = text(data["text/html"]);
+  // Plotly embeds its entire JavaScript bundle; feeding it to Markdown can block for minutes.
+  if (html.length > MARKUP_LIMIT || /plotly-graph-div|Plotly\.newPlot\s*\(/i.test(html)) return <>
+    <p className="notebook-notice">{html.length > MARKUP_LIMIT ? "Large HTML output" : "Interactive chart"} is not rendered in preview. Use Open in Default App from the file menu to view it. The saved output is preserved.</p>
+    {"text/plain" in data && <NotebookText source={plainText(data["text/plain"])} />}
+  </>;
+  if (html) return <NotebookMarkup source={html} html />;
   if (text(data["text/markdown"])) return <NotebookMarkup source={text(data["text/markdown"])} />;
-  if ("text/plain" in data) return <pre className="notebook-output-text">{plainText(data["text/plain"])}</pre>;
+  if ("text/plain" in data) return <NotebookText source={plainText(data["text/plain"])} />;
   return <p className="notebook-notice">This saved output cannot be displayed ({Object.keys(data).join(", ") || "unknown format"}).</p>;
 }
 

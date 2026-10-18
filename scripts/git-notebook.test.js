@@ -61,9 +61,22 @@ async (page, base = "http://127.0.0.1:18796") => {
     await page.getByRole("treeitem", { name: "Open file README.md", exact: true }).click();
     await page.getByRole("tablist", { name: "Open files", exact: true }).getByRole("tab").filter({ hasText: "activity.ipynb" }).click();
     await preview().getByRole("heading", { name: "Edited notebook", exact: true }).waitFor();
+    await page.getByRole("button", { name: `Close ${path}`, exact: true }).click();
+    saved = { ...saved, content: JSON.stringify({ nbformat: 4, cells: [
+      { cell_type: "markdown", source: "# Large notebook loaded" },
+      { cell_type: "code", source: "plot()", outputs: [{ output_type: "display_data", data: {
+        "text/html": `<div><script>${"const chart = '<div>';".repeat(240000)}</script></div>`, "text/plain": "Saved chart fallback",
+      } }] },
+    ] }) };
+    const started = await page.evaluate(() => performance.now());
+    await notebook().click(); await preview().getByRole("heading", { name: "Large notebook loaded", exact: true }).waitFor();
+    const largeNotebookMs = Math.round(await page.evaluate(() => performance.now()) - started);
+    check(await preview().getByText("Saved chart fallback", { exact: true }).count() === 1, "Large HTML lost its text fallback");
+    check(await page.locator('.git-document-view:not([hidden]) .cm-editor').count() === 0, "Notebook preview eagerly created its hidden JSON editor");
+    check((await preview().innerText()).length < 10000, "Notebook expanded the embedded JavaScript bundle into the DOM");
     check(errors.length === 0, `Browser errors: ${errors.join("; ")}`);
     check(external.length === 0, `External requests: ${external.join("; ")}`);
-    return { readableCells: true, savedTablesAndImages: true, jsonEditingAndSave: true, malformedFallback: true, metadataPreserved: true, layouts: 3, externalRequests: external.length, browserErrors: errors.length };
+    return { readableCells: true, savedTablesAndImages: true, jsonEditingAndSave: true, malformedFallback: true, metadataPreserved: true, largeNotebookMs, lazyJSONEditor: true, layouts: 3, externalRequests: external.length, browserErrors: errors.length };
   } finally {
     page.off("pageerror", onError); page.off("request", onRequest);
     await page.unroute(`${base}/api/git/file**`, routeFile);

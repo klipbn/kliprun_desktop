@@ -151,3 +151,20 @@ test("notebook syntax highlighting keeps token boundaries after CRLF line breaks
   const html = renderToStaticMarkup(<RepositoryFileEditor {...defaults} path="crlf.ipynb" content={content} savedContent={content} />);
   expect(html).toContain('class="repository-token-number">42</span>');
 });
+
+test("large and interactive notebook HTML uses a bounded text fallback while other cells remain readable", () => {
+  const content = JSON.stringify({ nbformat: 4, cells: [
+    { cell_type: "code", source: "plot()", outputs: [
+      { output_type: "display_data", data: { "text/html": `<div><script>${"plotly bundle;".repeat(100000)}</script></div>`, "text/plain": "Saved chart" } },
+      { output_type: "display_data", data: { "text/html": '<div class="plotly-graph-div"></div><script>Plotly.newPlot("chart", []);</script>', "text/plain": "Interactive chart" } },
+    ] },
+    { cell_type: "markdown", source: "# Still readable" },
+  ] });
+  const html = renderToStaticMarkup(<RepositoryFileEditor {...defaults} path="large.ipynb" content={content} savedContent={content} />);
+  expect(html).toContain("Saved chart");
+  expect(html).toContain("Interactive chart");
+  expect(html).toContain("Open in Default App");
+  expect(html).toContain("<h1>Still readable</h1>");
+  expect(html).not.toContain("plotly bundle");
+  expect(html.length).toBeLessThan(10000);
+});

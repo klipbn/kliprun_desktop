@@ -21,6 +21,10 @@ async (page, directory = "docs/screenshots", fixture, base = "http://127.0.0.1:1
     await page.getByRole("treeitem", { name: "Open file src/search.py", exact: true }).click();
     await page.getByRole("textbox", { name: "Edit src/search.py", exact: true }).waitFor();
     await page.screenshot({ path: `${directory}/git-files.png`, animations: "disabled" });
+    await page.getByRole("treeitem", { name: "Open file src/search.py", exact: true }).click({ button: "right" });
+    await page.getByRole("menu", { name: "File actions", exact: true }).waitFor();
+    await page.screenshot({ path: `${directory}/git-file-menu.png`, animations: "disabled" });
+    await page.keyboard.press("Escape");
     await page.getByRole("tab", { name: "README.md", exact: true }).click();
     await page.locator('button[aria-label="Preview Markdown"]:visible').click();
     await page.getByRole("heading", { name: "Atlas search", exact: true }).waitFor();
@@ -29,7 +33,7 @@ async (page, directory = "docs/screenshots", fixture, base = "http://127.0.0.1:1
     await page.getByRole("heading", { name: "Atlas project activity", exact: true }).waitFor();
     await page.screenshot({ path: `${directory}/git-notebook.png`, animations: "disabled" });
     if (external.length) throw new Error("Capture made external requests");
-    return { captures: ["git-files.png", "git-markdown.png", "git-notebook.png"], externalRequests: 0 };
+    return { captures: ["git-files.png", "git-file-menu.png", "git-markdown.png", "git-notebook.png"], externalRequests: 0 };
   } finally {
     page.off("request", watch); await page.unroute(`${base}/api/git/files?*`, list); await page.unroute(`${base}/api/git/file?*`, read);
   }
