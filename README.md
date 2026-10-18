@@ -6,6 +6,10 @@ A macOS app for OpenCode and Codex sessions: a Kanban board, embedded terminals,
 
 ![Kanban](docs/screenshots/kanban.png)
 
+![Kanban with the embedded terminal on the left and session details on the right](docs/screenshots/desktop-terminal.png)
+
+Show or hide the embedded terminal with **⌘J**; click a session card to open its details.
+
 ![Office](docs/screenshots/office.png)
 
 ![Sessions](docs/screenshots/sessions.png)
