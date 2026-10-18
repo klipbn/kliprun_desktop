@@ -4,6 +4,18 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.23] - 2026-10-18
+
+### Changed
+
+- Remove Context and Top model from Sessions. Show Updated as a full local date and time (`YYYY-MM-DD HH:mm`), including in narrow windows.
+
+### Fixed
+
+- Spread crowded Office floors across the available width instead of adding an ever-taller column of desks. Allow Team rooms to use additional room columns while preserving paths to the entrance and exit.
+- Keep Office or Sessions open when selecting Open session in a notification, and show the matching session's details there.
+- Recognize Codex asynchronous questions in Kanban and Office. Keep Needs attention / Waiting until a user reply, including after the tool acknowledgement or turn completion, and prevent Hermes busy updates from hiding unanswered questions.
+
 ## [0.0.22] - 2026-10-17
 
 ### Added

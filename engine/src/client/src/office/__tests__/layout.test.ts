@@ -55,6 +55,33 @@ test('all live residents have separate bounded destinations in short, tall, and 
   }
 });
 
+test('busy offices use the available horizontal space instead of growing into a narrow tower', () => {
+  for (const column of ['running', 'attention', 'idle'] as const) {
+    const cards = Array.from({ length: 45 }, (_, i) => card(String(i), {
+      column, directory: `/work/project-${i % 8}`, directory_name: `project-${i % 8}`,
+    }));
+    for (const plan of Object.keys(OFFICE_LAYOUTS) as OfficeLayout[]) for (const aspect of [2, .8, 5, 24]) {
+      const world = build(cards, plan, aspect);
+      expect(world.width / world.height / aspect).toBeGreaterThanOrEqual(.9);
+      expect(world.spots.size).toBe(45);
+    }
+  }
+});
+
+test('many project rooms share additional columns while keeping entrance and exit routes open', () => {
+  const cards = Array.from({ length: 24 }, (_, i) => card(String(i), {
+    directory: `/work/project-${i}`, directory_name: `project-${i}`,
+  }));
+  const world = build(cards, 'pods', 2);
+  const rooms = world.rooms.filter(room => room.kind === 'work');
+  expect(new Set(rooms.map(room => room.x)).size).toBeGreaterThan(2);
+  for (const index of [0, 7, 15, 23]) {
+    const point = world.spots.get(String(index))!.point;
+    expect(routeBetween(world.entry, point, world).at(-1)).toEqual(point);
+    expect(routeBetween(point, world.exit, world).at(-1)).toEqual(world.exit);
+  }
+});
+
 test('walk routes go around a solid desk instead of crossing it', () => {
   const world = { width: 400, height: 300, obstacles: [{ x: 150, y: 100, width: 100, height: 90 }] };
   const path = routeBetween({ x: 80, y: 150 }, { x: 320, y: 150 }, world);

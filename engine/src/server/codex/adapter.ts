@@ -163,7 +163,7 @@ export class CodexAdapter {
       this.diagnostics.push(`Session ${row.id}: local journal unavailable`);
     }
     const previous = this.statuses.get(row.id);
-    if (state && hermes && hermes.updatedAt >= state.lastEventAt &&
+    if (state && !state.pendingAsyncInput && hermes && hermes.updatedAt >= state.lastEventAt &&
       (!state.turnId || !hermes.turnId || state.turnId === hermes.turnId) &&
       state.turnActive !== false &&
       (hermes.daemon || (state.turnId !== null && state.turnId === hermes.turnId))) {

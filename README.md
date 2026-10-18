@@ -22,7 +22,7 @@ A macOS app for OpenCode and Codex sessions: a Kanban board, embedded terminals,
 
 Requires **Apple Silicon and macOS 13+**.
 
-1. Download `KlipRun-0.0.22-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.23-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip and move `KlipRun.app` to **Applications**. Quit KlipRun before replacing an older version.
 3. Open the app. If macOS blocks it, use **System Settings → Privacy & Security → Open Anyway**. The build is locally signed and not notarized.
 
@@ -44,13 +44,17 @@ The editor includes Python, SQL, Markdown, JavaScript/TypeScript, and JSON highl
 
 **Sessions** opens before Kanban in the toolbar. **All sessions** lists assigned projects first and **No project** last; **Favorites** keeps starred sessions nearby. Create projects with **+**, then select a project to create groups such as Research and Work. Sessions without a group appear under **Uncategorized**. Use checkboxes and **Move to…**, the row's folder button, or drag sessions onto a project or group; **Undo** restores the previous assignment. Organization is saved by KlipRun and never changes the original agent folder. New installations start on Sessions; an existing startup choice is preserved in Settings.
 
-Search covers the complete indexed root-session history, including project and group names; lists show 100 sessions per page. **Worked** is observed running time, excluding idle periods and child agents. **Context** is the latest board context snapshot; hover for used/limit tokens. **Top model** is the model with the most observed running time. Missing measurements show **—**. Selecting a session opens its details; the terminal button resumes it in its original agent. Kanban no longer has a Recent Sessions sidebar.
+Search covers the complete indexed root-session history, including project and group names; lists show 100 sessions per page. **Worked** is observed running time, excluding idle periods and child agents; missing measurements show **—**. **Updated** shows the full local date and time as `YYYY-MM-DD HH:mm`, including in narrow windows. Selecting a session opens its details; the terminal button resumes it in its original agent. Kanban no longer has a Recent Sessions sidebar.
 
 Navigation shortcuts follow toolbar order: **Control+1 Sessions**, **Control+2 Kanban**, **Control+3 Office**, **Control+4 Git**, **Control+5 Usage**, **Control+6 Statistics**. **Command+1–9** continues to select terminal tabs.
 
-**Office** offers three saved floor plans: **Shared loft**, **Team rooms**, and **Long studio**. Coworkers walk between working, meeting, and lounge areas as session states change. Larger team leads check on their smaller subagents; labels and team connections show which sessions belong together. Use **Office settings** to toggle names, connections, and movement; app and system reduced motion take priority. **Fit**, zoom, and dragging keep the floor accessible beside the terminal, while **Find a task** selects any coworker by title. The trophy button opens the token-usage leaderboard.
+**Office** offers three saved floor plans: **Shared loft**, **Team rooms**, and **Long studio**. Crowded floors add desk columns to use the window's width, and Team rooms can spread across additional columns. Coworkers walk between working, meeting, and lounge areas as session states change. Larger team leads check on their smaller subagents; labels and team connections show which sessions belong together. Use **Office settings** to toggle names, connections, and movement; app and system reduced motion take priority. **Fit**, zoom, and dragging keep the floor accessible beside the terminal, while **Find a task** selects any coworker by title. The trophy button opens the token-usage leaderboard.
 
 Codex subagents appear with their confirmed parent session, including nested helpers. Active helpers share their parent's card when they are in the same column and appear separately when their status differs. Finished helpers stay in the parent's counters; failures appear in its error badge. Subagents do not need a separate terminal.
+
+Codex questions appear in **Needs attention** on Kanban and **Waiting** in Office. Asynchronous questions keep that status until the next user message, including while Codex continues other work or finishes its turn. A tool acknowledgement does not count as an answer; interrupted or failed turns clear the outstanding question.
+
+**Open session** in a notification shows the session's details in the current Office or Sessions view. From other views, it opens Kanban.
 
 When an agent or subagent disappears from the observed board, its Office character walks to the **EXIT** door before leaving the scene. If the session returns on the way, the character resumes its place. Departing characters are excluded from live counts and cannot open stale session details. Reduced motion or disabled animations removes them without walking.
 

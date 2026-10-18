@@ -186,6 +186,35 @@ test("Codex card links to its sole CLI process when the shared daemon owns the s
   expect(service.terminalLinks()).not.toContainEqual({ session_id: id, pid: 10 });
 });
 
+test("async Codex questions update the board API and keep attention until a user reply", async () => {
+  const at = Date.parse("2026-10-18T09:00:00Z");
+  setSystemTime(at);
+  try {
+    const { app, service, rollout, id } = fixture();
+    const initial = await app.request("/api/board");
+    const initialTag = initial.headers.get("etag")!;
+    const append = (type: string, payload: Record<string, unknown>, offset: number) => {
+      appendFileSync(rollout, JSON.stringify({ timestamp: new Date(at + offset).toISOString(), type, payload }) + "\n");
+      setSystemTime(at + offset); service.invalidate();
+    };
+    append("response_item", { type: "function_call", name: "request_user_input_async", call_id: "q" }, 1000);
+    append("response_item", { type: "function_call_output", call_id: "q", output: '{"accepted":true}' }, 2000);
+    const waiting = await app.request("/api/board", { headers: { "If-None-Match": initialTag } });
+    expect(waiting.status).toBe(200);
+    const card = (await waiting.json() as BoardPayload).columns.attention.cards[0];
+    expect(card).toMatchObject({ session_id: id, column: "attention", stage: "Waiting for input", stage_since: at + 1000, running_since: null });
+    append("event_msg", { type: "task_complete" }, 3000);
+    expect(service.getBoard().data.columns.attention.cards[0]).toMatchObject({ session_id: id, stage_since: at + 1000, finished_at: null });
+    append("event_msg", { type: "task_started" }, 4000);
+    append("response_item", { type: "message", role: "user", content: [{ type: "input_text", text: "Proceed" }] }, 5000);
+    const resumed = await app.request("/api/board", { headers: { "If-None-Match": waiting.headers.get("etag")! } });
+    expect(resumed.status).toBe(200);
+    const board = await resumed.json() as BoardPayload;
+    expect(board.columns.attention.count).toBe(0);
+    expect(board.columns.running.cards.find(card => card.session_id === id)).toMatchObject({ stage: "Working", stage_since: at + 5000 });
+  } finally { setSystemTime(); }
+});
+
 test("Hermes waiting changes the API ETag and excludes the wait from observed Running statistics", async () => {
   const at = Date.parse("2026-10-11T18:20:00Z");
   const observed: UsageObservation[] = [];

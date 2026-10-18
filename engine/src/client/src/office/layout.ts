@@ -44,15 +44,9 @@ export function buildOfficeLayout(cards: CardPayload[], placements: Map<string, 
   const work = sorted.filter(c => area(c) === 'work' || area(c) === 'superwork');
   const waiting = sorted.filter(c => area(c) === 'waiting');
   const lounge = sorted.filter(c => area(c) === 'lounge');
-  const ratio = Number.isFinite(aspect) && aspect > 0 ? Math.max(.6, Math.min(8, aspect)) : 2;
+  const ratio = Number.isFinite(aspect) && aspect > 0 ? Math.max(.6, Math.min(32, aspect)) : 2;
   const compact = ratio > 3;
-  const width = Math.max(ratio < 1.4 ? 960 : 1200, compact ? ratio * 390 : 0);
   const margin = 36, gap = 30, top = 105;
-  const world: OfficeWorld = { width, height: 0, entry: { x: 65, y: 0 }, exit: { x: width / 2, y: 0 }, rooms: [], furniture: [], obstacles: [], spots: new Map() };
-  const workWidth = plan === 'studio' ? width * .57 : width * .64;
-  const sideWidth = width - workWidth - margin * 2 - gap * (plan === 'studio' ? 2 : 1);
-  const workX = plan === 'studio' ? margin + sideWidth * .48 + gap : margin;
-  const sideX = plan === 'studio' ? margin : margin + workWidth + gap;
   const groups = new Map<string, CardPayload[]>();
   if (plan === 'pods') {
     for (const c of work) {
@@ -62,21 +56,33 @@ export function buildOfficeLayout(cards: CardPayload[], placements: Map<string, 
     }
   } else groups.set('work', work);
   if (!groups.size) groups.set('work', []);
-  const groupCols = plan === 'pods' && groups.size > 1 && workWidth > 650 ? 2 : 1;
-  const groupWidth = (workWidth - gap * (groupCols - 1)) / groupCols;
   const capacity = (w: number) => Math.max(1, Math.floor((w - 34) / 140));
   const roomHeight = (count: number, w: number) => 60 + Math.max(1, Math.ceil(count / capacity(w))) * 160;
-  const roomRows: Array<Array<[string, CardPayload[]]>> = [];
-  [...groups].forEach((g, i) => { const row = Math.floor(i / groupCols); (roomRows[row] ??= []).push(g); });
-  const rowHeights = roomRows.map(row => Math.max(...row.map(([, items]) => roomHeight(items.length, groupWidth))));
-  const buildHeight = rowHeights.reduce((a, b) => a + b, 0) + gap * (rowHeights.length - 1);
-  const sideWaitingWidth = compact || plan === 'studio' ? sideWidth * .48 : sideWidth;
-  const sideLoungeWidth = compact || plan === 'studio' ? sideWidth * .52 : sideWidth;
-  const waitingHeight = roomHeight(waiting.length, sideWaitingWidth), loungeHeight = roomHeight(lounge.length, sideLoungeWidth);
-  const sideHeight = compact || plan === 'studio' ? Math.max(waitingHeight, loungeHeight) : waitingHeight + loungeHeight + gap;
-  world.height = Math.max(top + Math.max(buildHeight, sideHeight) + 65, width / ratio);
-  world.entry.y = world.height - 45;
-  world.exit.y = world.height - 40;
+  const measure = (width: number) => {
+    const workWidth = plan === 'studio' ? width * .57 : width * .64;
+    const sideWidth = width - workWidth - margin * 2 - gap * (plan === 'studio' ? 2 : 1);
+    const groupCols = plan === 'pods' ? Math.min(groups.size, Math.max(1, Math.floor((workWidth + gap) / (325 + gap)))) : 1;
+    const groupWidth = (workWidth - gap * (groupCols - 1)) / groupCols;
+    const roomRows: Array<Array<[string, CardPayload[]]>> = [];
+    [...groups].forEach((g, i) => { const row = Math.floor(i / groupCols); (roomRows[row] ??= []).push(g); });
+    const rowHeights = roomRows.map(row => Math.max(...row.map(([, items]) => roomHeight(items.length, groupWidth))));
+    const buildHeight = rowHeights.reduce((a, b) => a + b, 0) + gap * (rowHeights.length - 1);
+    const sideWaitingWidth = compact || plan === 'studio' ? sideWidth * .48 : sideWidth;
+    const sideLoungeWidth = compact || plan === 'studio' ? sideWidth * .52 : sideWidth;
+    const waitingHeight = roomHeight(waiting.length, sideWaitingWidth), loungeHeight = roomHeight(lounge.length, sideLoungeWidth);
+    const sideHeight = compact || plan === 'studio' ? Math.max(waitingHeight, loungeHeight) : waitingHeight + loungeHeight + gap;
+    const height = Math.max(top + Math.max(buildHeight, sideHeight) + 65, width / ratio);
+    return { width, height, workWidth, sideWidth, groupWidth, roomRows, rowHeights, buildHeight,
+      sideWaitingWidth, sideLoungeWidth, waitingHeight, loungeHeight, sideHeight };
+  };
+  let size = measure(Math.max(ratio < 1.4 ? 960 : 1200, compact ? ratio * 390 : 0));
+  // Add desk columns before a growing crowd makes Fit leave most of the viewport empty.
+  while (size.height > size.width / ratio * 1.1) size = measure(size.width * 1.1);
+  const { width, height, workWidth, sideWidth, groupWidth, roomRows, rowHeights, buildHeight,
+    sideWaitingWidth, sideLoungeWidth, waitingHeight, loungeHeight, sideHeight } = size;
+  const workX = plan === 'studio' ? margin + sideWidth * .48 + gap : margin;
+  const sideX = plan === 'studio' ? margin : margin + workWidth + gap;
+  const world: OfficeWorld = { width, height, entry: { x: 65, y: height - 45 }, exit: { x: width / 2, y: height - 40 }, rooms: [], furniture: [], obstacles: [], spots: new Map() };
   const addFurniture = (f: Furniture, obstacle?: Rect) => { world.furniture.push(f); if (obstacle) world.obstacles.push(obstacle); };
   const populate = (room: OfficeRoom, members: CardPayload[]) => {
     world.rooms.push(room);

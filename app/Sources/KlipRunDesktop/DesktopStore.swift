@@ -156,7 +156,10 @@ final class DesktopStore: ObservableObject {
         guard webReady, let webView, let literal = try? String(data: JSONEncoder().encode(id), encoding: .utf8) else {
             pendingWebSessionID = id; return
         }
-        let script = "window.history.pushState(null, '', '/?session=' + encodeURIComponent(\(literal))); window.dispatchEvent(new PopStateEvent('popstate'));"
+        let script = """
+        window.history.pushState(null, '', (['/office', '/sessions'].includes(window.location.pathname) ? window.location.pathname : '/') + '?session=' + encodeURIComponent(\(literal)));
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        """
         webView.evaluateJavaScript(script)
     }
 

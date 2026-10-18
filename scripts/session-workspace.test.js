@@ -16,7 +16,9 @@ async (page, base = "http://127.0.0.1:19876") => {
     await p.waitForFunction(() => document.querySelectorAll('.sw-row').length === 7);
     check(await section('No project').locator('.sw-row').count() === 7, 'Initially unassigned');
     const text = await row('Implement search API').innerText();
-    check(text.includes('10h 59m') && text.includes('42%') && text.includes('glm-5.3'), 'Metrics');
+    check(text.includes('10h 59m') && !text.includes('42%') && !text.includes('glm-5.3'), 'Worked without context or model');
+    check((await p.locator('.sw-column-labels').innerText()).replace(/\s+/g, ' ').trim() === 'Session Worked Updated', 'Session columns');
+    check(await p.locator('.sw-updated').evaluateAll(times => times.every(time => /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(time.textContent))), 'Complete update timestamps');
     await create('project', 'aurora'); await create('group', 'Research'); await create('group', 'Work');
     await click('New group'); await p.getByLabel('Group name', { exact: true }).fill('research'); await click('Create group');
     check(await p.getByRole('alert').count() === 1, 'Duplicate group rejected'); await click('Cancel');
@@ -54,6 +56,7 @@ async (page, base = "http://127.0.0.1:19876") => {
       await p.setViewportSize({width,height:850});
       check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), `Page width ${width}`);
       check(await p.locator('.sw-list').evaluate(el=>el.scrollWidth<=el.clientWidth), `List width ${width}`);
+      check(await row('Review database migration').locator('.sw-updated').isVisible(), `Updated visible at ${width}`);
       await click('Open session: Review database migration');
       check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), `Details width ${width}`);
       await click('Close details'); await click('New group');
