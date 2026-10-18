@@ -29,6 +29,7 @@ struct KlipRunWebView: NSViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: "desktopAction")
         configuration.userContentController.add(context.coordinator, name: "exportStatistics")
         configuration.userContentController.add(context.coordinator, name: "gitRepository")
+        configuration.userContentController.add(context.coordinator, name: "repositoryFile")
         if let repository = UserDefaults.standard.string(forKey: "git.repository"),
            let data = try? JSONEncoder().encode(repository), let literal = String(data: data, encoding: .utf8) {
             configuration.userContentController.addUserScript(WKUserScript(source: "window.kliprunGitRepository = \(literal);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -64,6 +65,7 @@ struct KlipRunWebView: NSViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "desktopAction")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "exportStatistics")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "gitRepository")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "repositoryFile")
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
     }
@@ -91,6 +93,22 @@ struct KlipRunWebView: NSViewRepresentable {
                let filename = body["filename"], let content = body["content"],
                let request = StatisticsExport(filename: filename, content: content) {
                 saveStatistics(request, webView: message.webView)
+            } else if message.name == "repositoryFile",
+                      message.frameInfo.isMainFrame,
+                      message.frameInfo.securityOrigin.host == "127.0.0.1",
+                      message.frameInfo.securityOrigin.port == loadedBaseURL?.port,
+                      let body = message.body as? [String: String],
+                      let action = body["action"], ["reveal", "open", "copy"].contains(action),
+                      let path = body["path"], !path.isEmpty,
+                      path.utf8.count <= 4096, !path.utf8.contains(0) {
+                if action == "copy" {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(path, forType: .string)
+                } else if path.hasPrefix("/"), FileManager.default.fileExists(atPath: path) {
+                    let url = URL(fileURLWithPath: path)
+                    if action == "reveal" { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                    else { NSWorkspace.shared.open(url) }
+                }
             } else if message.name == "gitRepository",
                       message.frameInfo.isMainFrame,
                       message.frameInfo.securityOrigin.host == "127.0.0.1",

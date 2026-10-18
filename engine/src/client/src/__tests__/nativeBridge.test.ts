@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { desktopPreferences, exportStatisticsCSV, notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection, observeNativePreferences, observeNativeUpdate } from "../nativeBridge";
+import { desktopPreferences, exportStatisticsCSV, notifyNativeFileAction, notifyNativeSelection, observeNativeNavigation, observeNativeTerminalSelection, observeNativePreferences, observeNativeUpdate } from "../nativeBridge";
 
 test("update availability arrives initially and live and stops after cleanup", () => {
   const host = Object.assign(new EventTarget(), { kliprunUpdateVersion: "0.0.10" as unknown });
@@ -113,4 +113,16 @@ test("repository selection validates paths, prefers native preferences and persi
 test("fresh web preferences use Graphite while explicit Midnight keeps its legacy key", () => {
   expect(desktopPreferences({}).theme).toBe("graphite");
   expect(desktopPreferences({ kliprunPreferences: { theme: "default" } }).theme).toBe("default");
+});
+
+test("Finder and default-app actions pass exact absolute paths and reject invalid requests", () => {
+  const received: unknown[] = [];
+  const host = { webkit: { messageHandlers: { repositoryFile: { postMessage: (value: unknown) => received.push(value) } } } };
+  expect(notifyNativeFileAction("reveal", "/demo/space [folder]/report.ipynb", host)).toBe(true);
+  expect(notifyNativeFileAction("open", "/demo/report.ipynb", host)).toBe(true);
+  expect(notifyNativeFileAction("copy", "space [folder]/report.ipynb", host)).toBe(true);
+  expect(notifyNativeFileAction("reveal", "relative", host)).toBe(false);
+  expect(notifyNativeFileAction("reveal", "/demo/\0file", host)).toBe(false);
+  expect(notifyNativeFileAction("reveal", "/demo/report.ipynb", {})).toBe(false);
+  expect(received).toEqual([{ action: "reveal", path: "/demo/space [folder]/report.ipynb" }, { action: "open", path: "/demo/report.ipynb" }, { action: "copy", path: "space [folder]/report.ipynb" }]);
 });

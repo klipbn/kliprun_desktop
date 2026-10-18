@@ -18,7 +18,8 @@ function fixture() {
   const app = new Hono(); registerGitRoutes(app);
   const get = (route: string, path?: string) => app.request(`/api/git/${route}?${new URLSearchParams({ directory: root, ...(path ? { path } : {}) })}`);
   const save = (body: Record<string, unknown>, headers = {}) => app.request("/api/git/file", { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify({ directory: root, ...body }) });
-  return { root, app, git, get, save };
+  const action = (body: Record<string, unknown>, headers = {}) => app.request("/api/git/file-action", { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify({ directory: root, ...body }) });
+  return { root, app, git, get, save, action };
 }
 
 test("file browser lists tracked and untracked files only from the selected repository", async () => {
@@ -144,4 +145,67 @@ test("file save rejects foreign origins and malformed bodies before writing", as
   }
   expect((await save({ path, content: "changed", revision: original.revision }, { "Content-Type": "text/plain" })).status).toBe(400);
   expect(readFileSync(join(root, path), "utf8")).toBe("# Original\n");
+});
+
+test("moving a folder preserves all contents and the index, and never replaces an existing destination", async () => {
+  const { root, git, get, action } = fixture();
+  mkdirSync(join(root, "src")); mkdirSync(join(root, "dest"));
+  writeFileSync(join(root, "src", "run.py"), "original"); git("add", "src/run.py");
+  writeFileSync(join(root, "src", "run.py"), "local edits");
+  writeFileSync(join(root, "src", "untracked.txt"), "keep me");
+  expect((await action({ action: "move", path: "src", destination: "dest/src" })).status).toBe(200);
+  expect(readFileSync(join(root, "dest/src/run.py"), "utf8")).toBe("local edits");
+  expect(readFileSync(join(root, "dest/src/untracked.txt"), "utf8")).toBe("keep me");
+  expect(Bun.spawnSync(["git", "-C", root, "show", ":src/run.py"]).stdout.toString()).toBe("original");
+  expect((await (await get("files")).json() as GitFileList).files).toEqual(["dest/src/run.py", "dest/src/untracked.txt"]);
+  writeFileSync(join(root, "existing.txt"), "do not overwrite");
+  expect((await action({ action: "move", path: "dest/src/run.py", destination: "existing.txt" })).status).toBe(409);
+  expect(readFileSync(join(root, "existing.txt"), "utf8")).toBe("do not overwrite");
+  expect((await action({ action: "move", path: "dest/src/run.py", destination: "dest/src/renamed.py" })).status).toBe(200);
+  expect(readFileSync(join(root, "dest/src/renamed.py"), "utf8")).toBe("local edits");
+});
+
+test("ignore appends literal root-relative rules without changing existing content or tracked files", async () => {
+  const { root, git, action, get } = fixture();
+  writeFileSync(join(root, ".gitignore"), "# keep this\r\nexisting");
+  const path = "report [draft]*?.txt";
+  writeFileSync(join(root, path), "private");
+  writeFileSync(join(root, "report d0.txt"), "visible");
+  mkdirSync(join(root, "data")); writeFileSync(join(root, "data/file.csv"), "tracked"); git("add", "data/file.csv");
+  writeFileSync(join(root, ".git/info/exclude"), "/data/\n");
+  expect((await action({ action: "ignore", path })).status).toBe(200);
+  expect((await action({ action: "ignore", path: "data" })).status).toBe(200);
+  expect((await action({ action: "ignore", path: "data" })).status).toBe(200);
+  const ignore = readFileSync(join(root, ".gitignore"), "utf8");
+  expect(ignore.startsWith("# keep this\r\nexisting\r\n")).toBe(true);
+  expect(ignore).toContain("/report\\ \\[draft\\]\\*\\?.txt\r\n");
+  expect(ignore.match(/^\/data\/$/gm)?.length).toBe(1);
+  expect((await (await get("files")).json() as GitFileList).files).toEqual([".gitignore", "data/file.csv", "report d0.txt"]);
+  expect(Bun.spawnSync(["git", "-C", root, "show", ":data/file.csv"]).stdout.toString()).toBe("tracked");
+});
+
+test("file actions reject unsafe paths, nested repositories, foreign origins and symlinked ignore files", async () => {
+  const { root, action, app } = fixture();
+  const outside = fixture().root;
+  writeFileSync(join(root, "file.txt"), "keep");
+  writeFileSync(join(outside, "private"), "private");
+  mkdirSync(join(root, "folder")); mkdirSync(join(root, "folder/nested"));
+  Bun.spawnSync(["git", "-C", join(root, "folder/nested"), "init", "-q"]);
+  symlinkSync(outside, join(root, "link"));
+  for (const path of ["../file.txt", ".git/config", ".GIT/config", "folder/../file.txt", "./file.txt", "link/private", "folder/nested"]) {
+    expect((await action({ action: "ignore", path })).status).toBe(400);
+  }
+  for (const destination of ["../escape", ".git/config", "link/escape", "folder/nested/file.txt"]) {
+    expect((await action({ action: "move", path: "file.txt", destination })).status).toBe(400);
+  }
+  expect((await action({ action: "move", path: "folder", destination: "moved" })).status).toBe(400);
+  expect((await action({ action: "move", path: "folder", destination: "folder/inside" })).status).toBe(400);
+  expect((await action({ action: "ignore", path: "file.txt" }, { Origin: "https://evil.invalid" })).status).toBe(403);
+  expect((await action({ action: "ignore", path: "file.txt" }, { "Sec-Fetch-Site": "cross-site" })).status).toBe(403);
+  expect((await action({ action: "ignore", path: "file.txt" }, { "Content-Type": "text/plain" })).status).toBe(400);
+  for (const body of ["null", "{", "42", "[]"]) expect((await app.request("/api/git/file-action", { method: "POST", headers: { "Content-Type": "application/json" }, body })).status).toBe(400);
+  symlinkSync(join(outside, "private"), join(root, ".gitignore"));
+  expect((await action({ action: "ignore", path: "file.txt" })).ok).toBe(false);
+  expect(readFileSync(join(outside, "private"), "utf8")).toBe("private");
+  expect(readFileSync(join(root, "file.txt"), "utf8")).toBe("keep");
 });

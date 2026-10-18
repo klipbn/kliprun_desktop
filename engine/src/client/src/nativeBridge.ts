@@ -7,6 +7,7 @@ type NativeBridgeHost = {
     desktopAction?: { postMessage: (action: string) => void };
     exportStatistics?: { postMessage: (request: { filename: string; content: string }) => void };
     gitRepository?: { postMessage: (directory: string) => void };
+    repositoryFile?: { postMessage: (request: { action: "reveal" | "open" | "copy"; path: string }) => void };
   } };
 };
 
@@ -87,6 +88,13 @@ export function hasDesktopBridge(host: NativeBridgeHost = window as unknown as N
 
 export function notifyNativeAction(action: DesktopAction, host: NativeBridgeHost = window as unknown as NativeBridgeHost): void {
   host.webkit?.messageHandlers?.desktopAction?.postMessage(action);
+}
+
+export function notifyNativeFileAction(action: "reveal" | "open" | "copy", path: string, host: NativeBridgeHost = window as unknown as NativeBridgeHost): boolean {
+  const handler = host.webkit?.messageHandlers?.repositoryFile;
+  if (!handler || !path || path.length > 4096 || path.includes("\0") || action !== "copy" && !validRepositoryDirectory(path)) return false;
+  handler.postMessage({ action, path });
+  return true;
 }
 
 export function exportStatisticsCSV(filename: string, content: string, host: NativeBridgeHost = window as unknown as NativeBridgeHost): boolean {

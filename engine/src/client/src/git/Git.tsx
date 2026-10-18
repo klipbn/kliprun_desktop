@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowDown, ArrowUp, Check, FileDiff, FileText, FolderOpen, GitBranch, GitCommitHorizontal, History, Loader2, Minus, RefreshCw, X } from "lucide-react";
-import type { GitAction, GitCommit, GitCommitDetail, GitCommitFile, GitDiff, GitDiffMode, GitFileList, GitHistory, GitStatus } from "@shared/git";
+import { ArrowDown, ArrowUp, Check, ChevronsDownUp, FileDiff, FileText, FolderOpen, GitBranch, GitCommitHorizontal, History, Loader2, Minus, RefreshCw, X } from "lucide-react";
+import type { GitAction, GitCommit, GitCommitDetail, GitCommitFile, GitDiff, GitDiffMode, GitFileAction, GitFileList, GitHistory, GitStatus } from "@shared/git";
 import { gitRepository, saveGitRepository, hasDesktopBridge, notifyNativeAction, observeNativeRepository } from "../nativeBridge";
 import { Counts, FileTree } from "./FileTree";
 import { isFileDirty } from "./fileTabs";
@@ -66,6 +66,10 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const dirty = documents.tabs.some(isFileDirty);
   const savingFiles = documents.tabs.some(document => document.saving);
   const discardDialog = useRef<HTMLDialogElement>(null);
+  const renameDialog = useRef<HTMLDialogElement>(null);
+  const renameInput = useRef<HTMLInputElement>(null);
+  const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
+  useEffect(() => { if (renaming) { renameDialog.current?.showModal(); renameInput.current?.select(); } }, [renaming?.path]);
   const pendingNavigation = useRef<{ action: () => void; ids: number[] } | null>(null);
   const [pendingClose, setPendingClose] = useState(false);
   const [pendingDocuments, setPendingDocuments] = useState<string[]>([]);
@@ -225,6 +229,29 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
       if (mounted.current) { setBusy(null); setRefresh(value => value + 1); }
     }
   }
+  function requestFileAction(action: GitFileAction) {
+    const affected = documents.tabs.filter(document => document.path === action.path || document.path.startsWith(`${action.path}/`) || action.action === "ignore" && document.path === ".gitignore");
+    navigate(() => void executeFileAction(action, affected.map(document => document.id)), affected.map(document => document.id));
+  }
+  async function executeFileAction(action: GitFileAction, affectedIds: number[]) {
+    if (busyRef.current) return;
+    const target = directory, activePath = activeDocument?.path;
+    busyRef.current = true; setBusy(action.action === "move" ? "Moving" : "Updating .gitignore"); setOperationError(null); setNotice(null);
+    try {
+      await gitRequest("/api/git/file-action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ directory: target, ...action }) });
+      if (!mounted.current || currentDirectory.current !== target) return;
+      affectedIds.forEach(id => documents.close(id));
+      if (action.action === "move" && activePath && (activePath === action.path || activePath.startsWith(`${action.path}/`))) {
+        void documents.open(action.destination + activePath.slice(action.path.length), true);
+      }
+      setNotice({ message: action.action === "move" ? "Moved successfully." : "Added to .gitignore. Already tracked files remain tracked." });
+    } catch (error) {
+      if (mounted.current && currentDirectory.current === target) setOperationError(error instanceof Error ? error.message : "File operation failed.");
+    } finally {
+      busyRef.current = false;
+      if (mounted.current) { setBusy(null); setRefresh(value => value + 1); }
+    }
+  }
   const noRepository = statusRequest.error === "This directory is not a Git working tree.";
   const error = operationError ?? (noRepository ? null : statusRequest.error) ?? repositories.error;
   const selectedFiles = detailRequest.data?.files ?? [];
@@ -321,6 +348,8 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
         {tab === "changes" && <div className="git-changes-summary">
           <span className="git-changes-count">{status?.files.length ?? 0} files</span><Counts {...totals} />
           <div className="git-changes-tools"><ChangeViewSettings preferences={changeView} onChange={setChangeView} />
+            <button type="button" className="git-button git-view-settings-trigger" aria-label="Collapse all folders" title="Collapse all folders" disabled={!status?.files.length}
+              onClick={() => sidebar.current?.querySelectorAll("details").forEach(folder => { folder.open = false; })}><ChevronsDownUp size={14} /></button>
             <button type="button" className="git-button" disabled={workspaceBusy || !stagePaths.length} onClick={() => void execute({ action: "stage", paths: stagePaths }, "Stage all")}>Stage all</button>
             <button type="button" className="git-button git-view-settings-trigger" aria-label="Unstage all" title="Unstage all" disabled={workspaceBusy || !groups[0].files.length}
               onClick={() => void execute({ action: "unstage", paths: groups[0].files.map(file => file.path) }, "Unstage all")}><Minus size={14} /></button>
@@ -330,7 +359,9 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
           {tab === "files" ? <>
             {filesRequest.error && <p className="git-notice" role="alert">{filesRequest.error}</p>}
             {filesRequest.pending && !filesRequest.data ? <p className="git-history-loading"><Loader2 size={14} className="animate-spin" />Loading files…</p>
-              : filesRequest.data ? <RepositoryTree key={directory} root={nameOf(directory)} files={filesRequest.data.files} statuses={fileStatuses} selected={filePath} onSelect={openFile} disabled={workspaceBusy} />
+              : filesRequest.data ? <RepositoryTree key={directory} root={directory} files={filesRequest.data.files} statuses={fileStatuses} selected={filePath} onSelect={openFile} disabled={workspaceBusy}
+                onMove={(path, destination) => requestFileAction({ action: "move", path, destination })} onRename={path => setRenaming({ path, name: nameOf(path) })}
+                onIgnore={path => requestFileAction({ action: "ignore", path })} onError={setOperationError} />
               : <div className="git-empty git-sidebar-empty"><FolderOpen size={26} /><strong>No files to display</strong><span>Choose a repository to browse its files.</span></div>}
             {filesRequest.data?.truncated && <p className="git-notice">File list truncated. Only the first files are shown.</p>}
           </> : tab === "changes" ? <>
@@ -377,6 +408,20 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
       </aside>
     </div>
 
+    <dialog ref={renameDialog} className="git-discard-dialog" aria-labelledby="git-rename-title" onClose={() => setRenaming(null)}>
+      <form onSubmit={event => {
+        event.preventDefault();
+        if (!renaming || !renaming.name || /[\/\0]/.test(renaming.name) || [".", ".."].includes(renaming.name)) return;
+        const parent = renaming.path.split("/").slice(0, -1).join("/");
+        renameDialog.current?.close();
+        requestFileAction({ action: "move", path: renaming.path, destination: `${parent ? `${parent}/` : ""}${renaming.name}` });
+      }}>
+        <h2 id="git-rename-title">Rename file or folder</h2>
+        <label htmlFor="git-rename-name">New name</label>
+        <input ref={renameInput} id="git-rename-name" className="git-rename-input" value={renaming?.name ?? ""} required maxLength={255} onChange={event => setRenaming(value => value ? { ...value, name: event.target.value } : null)} />
+        <div><button type="button" className="git-button" onClick={() => renameDialog.current?.close()}>Cancel</button><button type="submit" className="git-button git-primary" disabled={!renaming?.name || renaming.name === nameOf(renaming.path) || /[\/\0]/.test(renaming.name) || [".", ".."].includes(renaming.name)}>Rename</button></div>
+      </form>
+    </dialog>
     <dialog ref={discardDialog} className="git-discard-dialog" aria-labelledby="git-discard-title" onCancel={event => { if (savingFiles) event.preventDefault(); else pendingNavigation.current = null; }}>
       <h2 id="git-discard-title">Save unsaved changes?</h2><p>{pendingDocuments.length === 1 ? `Your edits to ${pendingDocuments[0]} have not been saved.` : `${pendingDocuments.length} files have unsaved edits.`}</p>
       {pendingDocuments.length > 1 && <ul>{pendingDocuments.map(path => <li key={path}>{path}</li>)}</ul>}
