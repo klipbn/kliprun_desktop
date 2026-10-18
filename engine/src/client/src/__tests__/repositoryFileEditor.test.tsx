@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { RepositoryFileEditor } from "../git/RepositoryFileEditor";
-import { createRepositoryEditorState } from "../git/repositoryCodeEditor";
+import { createRepositoryEditorState, repositoryFileLanguage } from "../git/repositoryCodeEditor";
 import { EditorState, type StateCommand } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { insertNewlineAndIndent, indentMore, indentLess, undo, redo } from "@codemirror/commands";
@@ -77,6 +77,20 @@ test("Markdown files offer their preview toggle and save errors remain visible",
   expect(markdown).toContain('aria-label="Preview Markdown"');
   expect(markdown).toContain('role="alert">File changed on disk');
   expect(renderToStaticMarkup(<RepositoryFileEditor {...defaults} />)).not.toContain('aria-label="Preview Markdown"');
+});
+
+test("HTML files offer an explicit preview while opening as highlighted source without executing it", () => {
+  for (const path of ["report.html", "index.HTM"]) {
+    const source = '<!doctype html><html><body><h1>Report</h1><script>window.untrusted = true</script></body></html>';
+    const markup = renderToStaticMarkup(<RepositoryFileEditor {...defaults} path={path} content={source} savedContent={source} />);
+    expect(repositoryFileLanguage(path)).toBe("HTML");
+    expect(markup).toContain('aria-label="Preview HTML"');
+    expect(markup).not.toContain("<iframe");
+    expect(markup).not.toContain("<script");
+    const state = createRepositoryEditorState(path, source);
+    expect(syntaxTree(state).toString()).toContain("Script");
+    expect(state.sliceDoc()).toBe(source);
+  }
 });
 
 test("editor shows file breadcrumbs and current language, encoding, indentation and cursor position", () => {
