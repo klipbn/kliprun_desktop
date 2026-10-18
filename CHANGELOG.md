@@ -4,6 +4,17 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.24] - 2026-10-18
+
+### Added
+
+- Add a Files context menu for opening, renaming, copying paths, revealing in Finder, opening in the default app, and adding literal file or folder rules to `.gitignore`. Support dragging files and folders within the repository, with unsaved-edit checks and no replacement of existing destination names.
+- Add Collapse all folders to Changes, including its groups and nested folders.
+
+### Fixed
+
+- Prevent large notebook HTML outputs and embedded Plotly bundles from freezing the file preview. Show a notice with the text fallback, bound long text previews, preserve the saved JSON, and create the JSON editor only when opened.
+
 ## [0.0.23] - 2026-10-18
 
 ### Changed
@@ -395,4 +406,5 @@ First public macOS release.
 [0.0.16]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.16
 [0.0.17]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.17
 [0.0.18]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.18
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.18...main
+[0.0.24]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.24
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.24...main
