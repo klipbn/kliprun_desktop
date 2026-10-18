@@ -5,7 +5,7 @@ async (page) => {
   await page.locator('.usage-provider[data-provider="kimi"] .usage-balance').waitFor();
   await page.getByText('Checking providers…', { exact: true }).waitFor({ state: 'hidden' });
   const labels = await page.locator('.usage-provider h2').allTextContents();
-  if (labels.join('|') !== 'OpenAI · OpenCode|OpenAI · Codex|Z.ai|Kimi') throw new Error(`Unexpected cards: ${labels}`);
+  if (labels.join('|') !== 'OpenAI · OpenCode|OpenAI · Codex|Claude Code|Z.ai|Kimi') throw new Error(`Unexpected cards: ${labels}`);
   await page.screenshot({ path: 'docs/screenshots/usage.png' });
   return { labels, viewport: page.viewportSize() };
 }
