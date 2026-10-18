@@ -14,6 +14,7 @@ final class DesktopStore: ObservableObject {
     var selectedTerminalID: Int? { terminalDock.visibleID }
     @Published var terminalExpanded = false
     @Published private(set) var preferences: AppPreferences
+    @Published private(set) var agentSettings: [String: AgentSettings]
     var interfaceZoom: InterfaceZoom { InterfaceZoom(percent: preferences.interfaceZoomPercent) }
     @Published var showingSettings = false
     @Published var terminals: [TerminalSession] = []
@@ -43,6 +44,7 @@ final class DesktopStore: ObservableObject {
         self.defaults = defaults
         self.updater = updater
         preferences = AppPreferences(defaults: defaults)
+        agentSettings = Dictionary(uniqueKeysWithValues: AgentSettings.sources.map { ($0, AgentSettings(source: $0, defaults: defaults)) })
         notifications = PopupNotifications(defaults: defaults)
         updateSubscription = updater.$availableVersion.sink { [weak self] version in
             self?.webView?.evaluateJavaScript(AppUpdater.webScript(version: version))
@@ -59,6 +61,14 @@ final class DesktopStore: ObservableObject {
         terminals.forEach { $0.applyPreferences(updated) }
         webView?.pageZoom = CGFloat(interfaceZoom.factor)
         webView?.evaluateJavaScript(updated.webScript)
+    }
+
+    func updateAgentSettings(source: String, _ change: (inout AgentSettings) -> Void) {
+        guard var settings = agentSettings[source] else { return }
+        change(&settings)
+        guard settings != agentSettings[source] else { return }
+        agentSettings[source] = settings
+        settings.save(source: source, to: defaults)
     }
 
     func start() {
@@ -264,7 +274,17 @@ final class DesktopStore: ObservableObject {
     }
 
     private func startTerminal(source: String, directory: String, resumeSessionID: String? = nil) {
+        let settings = agentSettings[source] ?? AgentSettings()
+        if let message = settings.validationMessage {
+            let alert = NSAlert()
+            alert.messageText = "Check agent settings"
+            alert.informativeText = message
+            alert.runModal()
+            showingSettings = true
+            return
+        }
         guard let terminal = TerminalSession(id: nextTerminalID, source: source, directory: directory, resumeSessionID: resumeSessionID,
+                                              agentSettings: settings,
                                               onExit: { [weak self] id in self?.closeTerminal(id) }) else { return }
         terminal.applyPreferences(preferences)
         nextTerminalID += 1

@@ -22,9 +22,9 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
     var reportedCodexObservation: String?
     var pid: Int32 { view.process?.shellPid ?? 0 }
 
-    init?(id: Int, source: String, directory: String, resumeSessionID: String? = nil, onExit: @escaping (Int) -> Void = { _ in }) {
+    init?(id: Int, source: String, directory: String, resumeSessionID: String? = nil, agentSettings: AgentSettings = AgentSettings(), onExit: @escaping (Int) -> Void = { _ in }) {
         guard let launch = AgentLaunch.make(source: source, home: FileManager.default.homeDirectoryForCurrentUser.path,
-                                            inherited: ProcessInfo.processInfo.environment, sessionID: resumeSessionID) else { return nil }
+                                            inherited: ProcessInfo.processInfo.environment, sessionID: resumeSessionID, settings: agentSettings) else { return nil }
         self.id = id; self.source = source; self.directory = directory
         self.resumeSessionID = resumeSessionID
         self.explicitSessionID = resumeSessionID
