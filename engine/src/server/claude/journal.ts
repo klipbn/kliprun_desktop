@@ -91,7 +91,7 @@ export function readClaudeJournal(path: string, now: number, maxBytes = MAX_READ
   if (truncated) {
     for (const entry of entries(path, 64 * 1024, false)) {
       if (entry.isSidechain === true || entry.sessionId && entry.sessionId !== id) continue;
-      if (typeof entry.cwd === "string") state.session.directory = scrub(entry.cwd);
+      if (!state.session.directory && typeof entry.cwd === "string") state.session.directory = scrub(entry.cwd);
       if (typeof entry.timestamp === "string" && !state.session.created_at) {
         const at = Date.parse(entry.timestamp); if (Number.isFinite(at) && at >= 0) state.session.created_at = at;
       }
@@ -106,7 +106,8 @@ export function readClaudeJournal(path: string, now: number, maxBytes = MAX_READ
   }
   for (const entry of entries(path, maxBytes)) {
     if (entry.sessionId && entry.sessionId !== id || entry.isSidechain === true) continue;
-    if (typeof entry.cwd === "string") state.session.directory = scrub(entry.cwd);
+    // Later cwd values follow Claude's shell, not the session's original project.
+    if (!state.session.directory && typeof entry.cwd === "string") state.session.directory = scrub(entry.cwd);
     if (entry.type === "custom-title" && typeof entry.customTitle === "string") { state.session.title = scrub(entry.customTitle).slice(0, 90); customTitle = true; }
     const at = typeof entry.timestamp === "string" ? Date.parse(entry.timestamp) : NaN;
     if (!Number.isFinite(at) || at < 0) continue;
