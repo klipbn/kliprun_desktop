@@ -279,7 +279,7 @@ export default function App() {
 
       {page === "sessions" && <main className="flex-1 min-h-0 flex">
         <Suspense fallback={<div className="p-4 text-text-secondary">Loading sessions…</div>}>
-          <Sessions menuRequest={sessionMenuRequest} onMenuRequestHandled={() => setSessionMenuRequest(null)} sessions={catalogSessions} cards={catalogCards} pending={recent.pending} error={recent.error} now={now} selectedId={selectedId}
+          <Sessions menuRequest={sessionMenuRequest} onMenuRequestHandled={() => setSessionMenuRequest(null)} sessions={catalogSessions} cards={catalogCards} pending={recent.pending} error={recent.error} selectedId={selectedId}
             onRetry={() => setCatalogRefresh(value => value + 1)}
             onSelect={(id, directory) => { setRecentSelection({ id, directory }); select(id); }}
             onResume={desktop ? (id, directory) => { setRecentSelection({ id, directory }); notifyNativeResume(id); } : undefined} />

@@ -14,7 +14,6 @@ interface Props {
   cards: Map<string, CardPayload>;
   pending: boolean;
   error: string | null;
-  now: number;
   selectedId: string | null;
   onRetry: () => void;
   onSelect: (id: string, directory: string) => void;
@@ -25,13 +24,13 @@ type Dialog = { kind: "project" } | { kind: "group"; projectId: string } | { kin
 interface Section { id: string; name: string; rows: CatalogSession[]; projectId?: string | null; groupId?: string | null }
 const PAGE_SIZE = 100;
 const duration = (value: number | null) => value === null ? "—" : formatDuration(value);
-function updated(at: number, now: number) {
-  const minutes = Math.max(0, Math.floor((now - at) / 60000));
-  return minutes < 1 ? "Now" : minutes < 60 ? `${minutes}m ago` : minutes < 1440 ? `${Math.floor(minutes / 60)}h ago`
-    : new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+function updated(at: number) {
+  const date = new Date(at);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, cards, pending, error, now, selectedId, onRetry, onSelect, onResume }: Props) {
+export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, cards, pending, error, selectedId, onRetry, onSelect, onResume }: Props) {
   const [state, setState] = useState(loadWorkspace);
   const [view, setView] = useState<View>({ kind: "all" });
   const [search, setSearch] = useState("");
@@ -129,7 +128,7 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
       {(error || failure) && <div className="sw-error" role="alert">{failure ?? "Unable to refresh sessions. Your saved organization is unchanged."}<button onClick={() => { setFailure(null); onRetry(); }}>Retry</button></div>}
       {notice && <div className="sw-notice" role="status">{notice}{undo && <button onClick={() => { if (change({ ...state, assignments: undo })) { setUndo(null); setNotice("Move undone"); } }}>Undo</button>}<button className="sw-icon" aria-label="Dismiss notice" onClick={() => { setNotice(""); setUndo(null); }}><X /></button></div>}
       {!!selected.length && <div className="sw-batch"><strong>{selected.length} selected</strong><button onClick={() => setDialog({ kind: "move", ids: selected })}><Folder /> Move to…</button><button onClick={() => { if (change({ ...state, favorites: [...new Set([...state.favorites, ...selected])] })) setSelected([]); }}><Star /> Favorite</button><button className="sw-icon" aria-label="Clear selection" onClick={() => setSelected([])}><X /></button></div>}
-      <div className="sw-column-labels" aria-hidden="true"><span>Session</span><div><span>Worked</span><span>Context</span><span>Top model</span></div><span>Updated</span><i /></div>
+      <div className="sw-column-labels" aria-hidden="true"><span>Session</span><div><span>Worked</span></div><span>Updated</span><i /></div>
       <div className="sw-list" aria-busy={pending && !sessions.length}>
         {visibleSections.map(section => <section className="sw-section" key={section.id}>
           <button className="sw-section-heading" aria-expanded={!state.collapsed.includes(section.id)} aria-controls={`sw-section-${section.id}`} onClick={() => collapse(section.id)}
@@ -139,18 +138,17 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
           <div id={`sw-section-${section.id}`} hidden={state.collapsed.includes(section.id)}>
             {!section.count && <p className="sw-group-empty">Move sessions here</p>}
             {section.rows.map(session => {
-              const card = cards.get(session.id), context = card?.context, favorite = state.favorites.includes(session.id);
+              const card = cards.get(session.id), favorite = state.favorites.includes(session.id);
               const status = card ? card.column === "running" ? "Running" : card.column === "attention" ? "Needs attention" : "Idle" : "Not on board";
-              const contextTitle = context ? `${context.used.toLocaleString("en-US")} / ${context.limit.toLocaleString("en-US")} tokens in the latest context window` : "Context unavailable";
               return <div className={`sw-row ${selected.includes(session.id) || selectedId === session.id ? "is-selected" : ""}`} key={session.id} draggable
                 onDragStart={event => { dragIds.current = selected.includes(session.id) ? selected : [session.id]; event.dataTransfer.setData("text/plain", JSON.stringify(dragIds.current)); event.dataTransfer.effectAllowed = "move"; }}
                 onDragEnd={() => { dragIds.current = []; document.querySelectorAll(".is-drop-target").forEach(e => e.classList.remove("is-drop-target")); }}>
                 <input type="checkbox" aria-label={`Select ${session.title}`} checked={selected.includes(session.id)} onChange={e => setSelected(ids => e.target.checked ? [...ids, session.id] : ids.filter(id => id !== session.id))} />
                 <button className="sw-open" aria-label={`Open session: ${session.title}`} onClick={() => onSelect(session.id, session.directory)} title={`${session.title}\n${session.directory}`}>
                   <HarnessIcon source={session.source} className="sw-agent" /><span className="sw-row-text"><span className="sw-session-title"><i className={`sw-status ${card?.column ?? ""}`} title={status} /><span>{session.title || "Untitled session"}</span></span>
-                  <span className="sw-metrics"><span title="Observed running time; excludes idle time and subagents"><Clock3 />{duration(session.running_ms)}</span><span title={contextTitle}><i className="sw-context-track"><i style={{ width: `${Math.max(0, Math.min(100, context?.percent ?? 0))}%` }} /></i>{context ? `${Math.round(context.percent)}%` : "—"}</span><span className="sw-model" title={session.top_model ? `${session.top_model} · ${duration(session.top_model_ms)} observed running time` : "No model timing data"}>{session.top_model ?? "—"}</span></span></span>
+                  <span className="sw-metrics"><span title="Observed running time; excludes idle time and subagents"><Clock3 />{duration(session.running_ms)}</span></span></span>
                 </button>
-                <time className="sw-updated" title={new Date(session.updated_at).toLocaleString("en-US")}>{updated(session.updated_at, now)}</time>
+                <time className="sw-updated" title={new Date(session.updated_at).toLocaleString("en-US")}>{updated(session.updated_at)}</time>
                 <button className="sw-icon sw-move" aria-label={`Move ${session.title}`} title="Move to project or group" onClick={() => setDialog({ kind: "move", ids: [session.id] })}><Folder /></button>
                 <button className={`sw-icon sw-star ${favorite ? "is-favorite" : ""}`} aria-label={`Favorite ${session.title}`} aria-pressed={favorite} title={favorite ? "Remove favorite" : "Add favorite"} onClick={() => change({ ...state, favorites: favorite ? state.favorites.filter(id => id !== session.id) : [...state.favorites, session.id] })}><Star /></button>
                 {onResume && <button className="sw-icon sw-resume" aria-label={`Resume ${session.title}`} title={`Resume in ${session.source === "codex" ? "Codex" : "OpenCode"}`} onClick={() => onResume(session.id, session.directory)}><SquareTerminal /></button>}
