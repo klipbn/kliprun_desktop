@@ -7,31 +7,30 @@
   <style>
     :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
     * { box-sizing: border-box; }
-    html, body { width: 1440px; height: 900px; margin: 0; overflow: hidden; background: #0d1117; }
-    .board { height: 570px; background: url("kanban-details.png") top left / 1440px 900px no-repeat; }
-    .resize-handle { height: 10px; display: grid; place-items: center; background: #0d1117; }
-    .resize-handle span { width: 34px; height: 2px; border-radius: 2px; background: #30363d; }
-    .terminal { height: 320px; background: #0d1117; color: #e6edf3; }
-    .toolbar { height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: #161b22; font-size: 11px; }
-    .terminal-icon { color: #58a6ff; font-size: 15px; }
-    .tab { height: 25px; display: flex; align-items: center; gap: 6px; padding: 0 9px; border-radius: 5px; color: #ffffff; background: #30363d; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #282c33; }
+    main { display: flex; height: 100%; }
+    .board { flex: 1; min-width: 0; height: 100%; border: 0; }
+    .resize-handle { width: 10px; flex-shrink: 0; display: grid; place-items: center; background: #282c33; }
+    .resize-handle span { width: 2px; height: 34px; border-radius: 2px; background: #464b57; }
+    .terminal { width: 460px; max-width: 40%; flex-shrink: 0; background: #282c34; color: #abb2bf; }
+    .toolbar { height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: #2f343e; font-size: 11px; white-space: nowrap; }
+    .terminal-icon { color: #74ade8; font-size: 15px; }
+    .tab { height: 25px; display: flex; align-items: center; gap: 6px; padding: 0 9px; border-radius: 5px; color: #ffffff; background: rgb(255 255 255 / 10%); }
     .tab:not(.selected) { color: #ffffff; background: rgb(255 255 255 / 3%); }
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: #3fb950; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #98c379; }
     .spacer { flex: 1; }
-    .button { color: #8b949e; font-size: 14px; padding: 0 5px; }
-    .divider { height: 1px; background: #30363d; }
-    .screen { padding: 15px 18px; font: 13px/1.65 SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre; }
-    .command { color: #e6edf3; }
-    .path { color: #79c0ff; }
-    .muted { color: #8b949e; }
-    .agent { color: #3fb950; }
-    .prompt { color: #58a6ff; }
+    .button { color: #a9afbc; font-size: 14px; padding: 0 2px; }
+    .divider { height: 1px; background: #464b57; }
+    .screen { padding: 15px 18px; font: 13px/1.65 SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .command { color: #dce0e5; }
+    .path { color: #61afef; }
+    .muted { color: #a9afbc; }
+    .agent { color: #98c379; }
+    .prompt { color: #74ade8; }
   </style>
 </head>
 <body>
   <main aria-label="KlipRun desktop demo">
-    <section class="board" aria-label="Fictional Kanban board"></section>
-    <div class="resize-handle" aria-hidden="true"><span></span></div>
     <section class="terminal" aria-label="Synthetic OpenCode terminal">
       <header class="toolbar">
         <span class="terminal-icon" aria-hidden="true">▣</span>
@@ -39,8 +38,9 @@
         <div class="tab"><span class="dot"></span>Codex · aurora</div>
         <span class="spacer"></span>
         <span class="button" aria-hidden="true">＋</span>
+        <span class="button" aria-hidden="true">▤</span>
         <span class="button" aria-hidden="true">⤢</span>
-        <span class="button" aria-hidden="true">⌄</span>
+        <span class="button" aria-hidden="true">‹</span>
       </header>
       <div class="divider"></div>
       <div class="screen"><span class="command">$ pwd</span>
@@ -52,6 +52,8 @@
 <span class="agent">•</span> Read <span class="path">src/routes/search.ts</span>
 <span class="agent">•</span> Found a missing empty-query check; reviewing the response shape.</div>
     </section>
+    <div class="resize-handle" aria-hidden="true"><span></span></div>
+    <iframe class="board" src="/" title="Fictional Kanban board and session details"></iframe>
   </main>
 </body>
 </html>

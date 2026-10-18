@@ -59,9 +59,11 @@ async (page, directory = "docs/screenshots", base = "http://127.0.0.1:18796") =>
     await page.getByRole("button", { name: "Keyboard shortcuts", exact: true }).click();
     await page.locator("dialog[open]").waitFor();
     await save("shortcuts");
-    await visit("/__demo/terminal-demo.html", 1440, 900);
+    await visit("/__demo/terminal-demo.html", 1920, 1080);
     await page.locator(".terminal .screen").waitFor();
-    await page.evaluate(async () => { const image = new Image(); image.src = "kanban-details.png"; await image.decode(); });
+    const board = page.frameLocator(".board");
+    await board.getByRole("button", { name: "Implement search API", exact: true }).click();
+    await board.locator(".agent-markdown").first().waitFor();
     await save("desktop-terminal");
     if (external.length) throw new Error(`Non-fixture requests: ${external.join(", ")}`);
     return { captures, externalRequests: external.length };
