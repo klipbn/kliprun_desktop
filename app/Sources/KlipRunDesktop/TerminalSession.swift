@@ -30,7 +30,7 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
         self.explicitSessionID = resumeSessionID
         self.sessionID = resumeSessionID
         self.onExit = onExit
-        let initialTitle = "\(source == "codex" ? "Codex" : source == "opencode" ? "OpenCode" : "Terminal") · \((directory as NSString).lastPathComponent)"
+        let initialTitle = "\(source == "codex" ? "Codex" : source == "opencode" ? "OpenCode" : source == "claude" ? "Claude Code" : "Terminal") · \((directory as NSString).lastPathComponent)"
         title = initialTitle
         titleState = TerminalTitle(automatic: initialTitle)
         super.init()

@@ -1,6 +1,15 @@
 import { expect, test } from "bun:test";
 import { emptyWorkspace, createProject, createGroup, moveSessions, projectFor, groupFor, validateWorkspace, loadWorkspace, saveWorkspace, sortSessions } from "../sessions/model";
 
+test("workspace restores sidebar width without changing projects and rejects unusable widths", () => {
+  const state = { ...createProject(emptyWorkspace(), "project", "Research"), sidebarWidth: 280 };
+  const values = new Map<string, string>();
+  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
+  saveWorkspace(state, storage, {});
+  expect(loadWorkspace(storage, {})).toEqual(state);
+  for (const width of [0, 117, 481, Infinity, "280"]) expect(validateWorkspace({ ...state, sidebarWidth: width })).toBeNull();
+});
+
 test("workspace moves keep group membership scoped to the destination project", () => {
   let state = createProject(emptyWorkspace(), "p1", "Research");
   state = createProject(state, "p2", "Work");

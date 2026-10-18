@@ -3497,6 +3497,17 @@
       "updated_at": 1791979200000,
       "message": null
     },
+    "claude": {
+      "provider": "claude",
+      "status": "ready",
+      "plan": "Claude Pro",
+      "limits": [
+        { "kind": "fiveHour", "label": "5-hour", "remaining_percent": 72.5, "reset_at": 1791986400000, "used": null, "total": null },
+        { "kind": "weekly", "label": "Weekly", "remaining_percent": 46, "reset_at": 1792411200000, "used": null, "total": null }
+      ],
+      "updated_at": 1791979200000,
+      "message": null
+    },
     "zai": {
       "provider": "zai",
       "status": "ready",
@@ -4120,6 +4131,7 @@
   },
   "git": {
     "text_files": {
+      "report.html": "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Aurora project report</title>\n<style>\nbody { margin: 0; padding: 32px; font: 15px system-ui, sans-serif; color: #243047; background: #f6f8fc; }\nmain { max-width: 760px; margin: auto; } h1 { margin: 8px 0; font-size: 30px; }\n.eyebrow { color: #3566cb; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }\n.metrics { display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0; }\narticle { padding: 18px; background: white; border: 1px solid #dce2ed; border-radius: 10px; flex: 1; min-width: 100px; }\narticle strong { display: block; font-size: 28px; } article span { color: #59657c; font-size: 12px; }\nbutton { border: 0; border-radius: 6px; padding: 10px 14px; color: white; background: #3566cb; cursor: pointer; }\n#notes { margin-top: 18px; padding: 16px; border-left: 3px solid #3566cb; background: white; }\n</style></head><body><main><div class=\"eyebrow\">Project overview</div><h1>Aurora project report</h1>\n<p>Saved HTML with inline styles and an interactive control.</p>\n<div class=\"metrics\"><article><strong>5</strong><span>Sessions</span></article><article><strong>2</strong><span>Projects</span></article><article><strong>42m</strong><span>Observed work</span></article></div>\n<button id=\"toggle\" type=\"button\">Show notes</button><section id=\"notes\" hidden>Search API checks passed. The cache follow-up is ready for review.</section>\n<script>document.getElementById('toggle').addEventListener('click', function () { const notes = document.getElementById('notes'); notes.hidden = !notes.hidden; this.textContent = notes.hidden ? 'Show notes' : 'Hide notes'; });</script>\n</main></body></html>\n",
       "notebooks/activity.ipynb": "{\n \"cells\": [\n  {\n   \"cell_type\": \"markdown\",\n   \"metadata\": {},\n   \"source\": [\n    \"# Atlas project activity\\n\",\n    \"A fictional notebook with **saved results**.\\n\\n\",\n    \"| Project | Sessions |\\n| --- | ---: |\\n| Atlas | 24 |\\n| Aurora | 16 |\\n\"\n   ]\n  },\n  {\n   \"cell_type\": \"code\",\n   \"execution_count\": 1,\n   \"metadata\": {},\n   \"source\": [\n    \"projects = {\\\"Atlas\\\": 24, \\\"Aurora\\\": 16}\\n\",\n    \"sum(projects.values())\"\n   ],\n   \"outputs\": [\n    {\n     \"output_type\": \"execute_result\",\n     \"execution_count\": 1,\n     \"metadata\": {},\n     \"data\": {\n      \"text/plain\": [\n       \"40\"\n      ],\n      \"text/html\": [\n       \"<table><thead><tr><th>Project</th><th>Sessions</th></tr></thead><tbody><tr><td>Atlas</td><td>24</td></tr><tr><td>Aurora</td><td>16</td></tr></tbody></table>\"\n      ]\n     }\n    }\n   ]\n  },\n  {\n   \"cell_type\": \"code\",\n   \"execution_count\": 2,\n   \"metadata\": {},\n   \"source\": \"print(\\\"Saved output only\\\")\",\n   \"outputs\": [\n    {\n     \"output_type\": \"stream\",\n     \"name\": \"stdout\",\n     \"text\": [\n      \"Saved output only\\n\"\n     ]\n    },\n    {\n     \"output_type\": \"display_data\",\n     \"metadata\": {},\n     \"data\": {\n      \"image/png\": \"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=\"\n     }\n    }\n   ]\n  },\n  {\n   \"cell_type\": \"raw\",\n   \"metadata\": {},\n   \"source\": \"This notebook is fictional and no cells are executed.\"\n  }\n ],\n \"metadata\": {\n  \"kernelspec\": {\n   \"display_name\": \"Python 3\",\n   \"language\": \"python\",\n   \"name\": \"python3\"\n  },\n  \"language_info\": {\n   \"name\": \"python\"\n  }\n },\n \"nbformat\": 4,\n \"nbformat_minor\": 5\n}\n",
       "README.md": "# Atlas search\n\nA fictional project for KlipRun previews.\n\n- Search projects\n- Review results\n\n```python\nprint(\"demo only\")\n```\n",
       "src/search.py": "from pathlib import Path\n\ndef find_projects(query: str):\n    # Search the demo project names.\n    projects = [\"Atlas\", \"Aurora\"]\n    return [name for name in projects if query.lower() in name.lower()]\n",

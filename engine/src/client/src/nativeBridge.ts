@@ -11,7 +11,7 @@ type NativeBridgeHost = {
   } };
 };
 
-export type DesktopAction = "new-opencode" | "new-codex" | "show-terminal" | "open-iterm" | "settings" | "check-updates" | "open-repository";
+export type DesktopAction = "new-opencode" | "new-codex" | "new-claude" | "show-terminal" | "open-iterm" | "settings" | "check-updates" | "open-repository";
 
 type GitRepositoryHost = NativeBridgeHost & { kliprunGitRepository?: unknown; localStorage?: { getItem(key: string): string | null; setItem(key: string, value: string): void } };
 function validRepositoryDirectory(value: unknown): value is string {

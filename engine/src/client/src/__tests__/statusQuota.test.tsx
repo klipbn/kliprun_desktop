@@ -51,3 +51,11 @@ test("footer provides a Usage entry when no balances are connected", () => {
   expect(html).toContain(">Usage</button>");
   expect(html).not.toContain('role="meter"');
 });
+
+test("footer shows Claude after Codex and opens Usage with its own limits", () => {
+  const html = renderToStaticMarkup(<StatusQuota quotas={{ codex: quota, claude: { ...quota, provider: "claude" } }} errors={{}} pending={[]} now={now} onOpen={() => {}} />);
+  expect(html).toContain('aria-label="Claude Code 5-hour: 72.4% remaining"');
+  expect(html).toContain('aria-label="Claude Code Weekly: 0% remaining"');
+  expect(html).toContain('aria-label="Claude Code. Open Usage"');
+  expect(html.indexOf('Codex</span>')).toBeLessThan(html.indexOf('Claude</span>'));
+});

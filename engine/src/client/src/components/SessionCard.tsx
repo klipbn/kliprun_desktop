@@ -14,6 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { CardPayload } from "@shared/types";
+import { SESSION_SOURCE_NAMES } from "@shared/types";
 import type { TrackedCard } from "@shared/readTracker";
 import { formatDuration, formatRelativeTimeVerbose, formatTokens } from "@shared/format";
 import type { CardPriorities, CardPriority } from "../cardPriorities";
@@ -26,7 +27,7 @@ const PRIORITY_STYLES: Record<CardPriority, string> = {
 };
 
 function StatusIcon({ card, read }: { card: CardPayload; read: boolean }) {
-  if (card.source === "codex" && card.stage === "Status unknown") {
+  if (card.stage === "Status unknown") {
     return <CircleHelp className="w-4 h-4 text-text-secondary shrink-0" aria-label="Status unknown" />;
   }
   if (card.column === "attention") {
@@ -44,7 +45,7 @@ function StatusIcon({ card, read }: { card: CardPayload; read: boolean }) {
 }
 
 function borderClass(card: CardPayload): string {
-  if (card.source === "codex" && card.column === "idle" && !card.finished_at && !card.error) return "border-l-border";
+  if (card.source !== "opencode" && card.column === "idle" && !card.finished_at && !card.error) return "border-l-border";
   switch (card.column) {
     case "attention":
       return "border-l-warning animate-attention";
@@ -144,7 +145,7 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
       <div className="flex flex-wrap items-center gap-2 pl-6 w-full min-w-0 text-xs">
         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border border-border text-text-secondary shrink-0" data-testid="card-source">
           <HarnessIcon source={card.source} />
-          {card.source === "codex" ? "Codex CLI" : "OpenCode"}
+          {SESSION_SOURCE_NAMES[card.source]}
         </span>
         <span
           className={`truncate flex-1 min-w-0 ${
@@ -155,7 +156,7 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
         >
           {actionLine}
         </span>
-        {card.agent && card.source !== "codex" && (
+        {card.agent && card.source === "opencode" && (
           <span className="max-w-full truncate px-1.5 py-0.5 rounded text-[10px] bg-surface border border-border text-text-secondary shrink-0">
             {card.agent.name}
           </span>

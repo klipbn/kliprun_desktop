@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All nineteen current screenshots were captured from **KlipRun Desktop 0.0.24** on **2026-10-18**, using Graphite, the new default. The original palette is now named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All nineteen current screenshots were captured from **KlipRun Desktop 0.0.25** on **2026-10-18**, using Graphite, the new default. The original palette is now named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -58,6 +58,8 @@ Klopik skin thumbnails in `engine/src/client/public/klopik-skins/` are generated
 
 [`../../scripts/git-review-layout.test.js`](../../scripts/git-review-layout.test.js) checks the compact repository toolbar, staging controls before filenames, loaded-commit search, keyboard navigation, automatic first-file diffs, persistent close, and small layouts using fixture data without Git writes.
 
-[`capture-files.js`](capture-files.js) takes `(page, outputDirectory, fixture, base)` and captures Files, its context menu, Markdown, and Jupyter Notebook from `git.text_files` in `mock-api.json`, with all file reads intercepted and no writes. All nineteen current images were refreshed for 0.0.24.
+[`capture-files.js`](capture-files.js) takes `(page, outputDirectory, fixture, base)` and captures Files, its context menu, Markdown, and Jupyter Notebook from `git.text_files` in `mock-api.json`, with all file reads intercepted and no writes. All nineteen current images were refreshed for 0.0.25.
 
 The shortcut image includes the native File/Edit/View/Navigate/Terminal commands. `scripts/native-menus.test.js` verifies the real web command bridge using fixture files and in-memory saves, including CodeMirror history, native-menu capability updates, unsaved-state reporting, close/cancel and draft-preserving refresh. Native focus/routing and standard menu shortcuts are checked separately with Swift tests and a disposable menu probe.
+
+The 0.0.25 refresh preserves the README and gallery ordering. It includes the monochrome Claude launch icon and Claude quota row, larger Sessions indicators and a sidebar divider, wrapped Git source/diffs, commit/history height dividers, and synthetic compact pinned terminal tabs. HTML preview and status-popup checks use only fixture data through `scripts/html-preview.test.js` and `scripts/workspace-controls.test.js`; commit/history resizing is covered by `scripts/git-height-resize.test.js`.

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { ArrowUpRight, Bot, Clock3, Loader2, X } from "lucide-react";
 import type { StatsFilters, StatsSessionPayload, StatsSessionRow } from "@shared/usage";
 import { serializeFilters } from "./filters";
-import { cacheShare, count, dateLabel, duration, readable, sourceName, tokens, TOKEN_PARTS } from "./format";
+import { cacheShare, count, dateLabel, duration, readable, sourceColor, sourceName, tokens, TOKEN_PARTS } from "./format";
 import { useStatsRequest } from "./useStatsRequest";
 
 function Timeline({ detail, timezone }: { detail: StatsSessionPayload; timezone: string }) {
@@ -12,7 +12,7 @@ function Timeline({ detail, timezone }: { detail: StatsSessionPayload; timezone:
   const ids = [...new Set(detail.intervals.map((i) => i.session_id))];
   return <div className="stats-timeline">
     <div className="stats-timeline-axis"><span>{dateLabel(from, timezone, true)}</span><span>{dateLabel(to, timezone, true)}</span></div>
-    {ids.map((id) => <div className="stats-timeline-row" key={id}><span className="stats-timeline-name" title={participantMap.get(id)?.title ?? id}>{participantMap.get(id)?.title ?? id}</span><div className="stats-timeline-track">{detail.intervals.filter((i) => i.session_id === id).map((interval, index) => <span key={index} className="stats-timeline-segment" tabIndex={0} aria-label={`${dateLabel(interval.start, timezone, true)} – ${dateLabel(interval.end, timezone, true)}, ${duration(interval.end - interval.start)}, ${readable(interval.agent ?? "")}, ${readable(interval.model ?? "")}`} title={`${dateLabel(interval.start, timezone, true)} – ${dateLabel(interval.end, timezone, true)} · ${duration(interval.end - interval.start)} · ${readable(interval.model ?? "")}`} style={{ left: `${(interval.start - from) / span * 100}%`, width: `${Math.max(0.15, (interval.end - interval.start) / span * 100)}%`, background: participantMap.get(id)?.source === "codex" ? "#bc8cff" : "#58a6ff" }} />)}</div></div>)}
+    {ids.map((id) => <div className="stats-timeline-row" key={id}><span className="stats-timeline-name" title={participantMap.get(id)?.title ?? id}>{participantMap.get(id)?.title ?? id}</span><div className="stats-timeline-track">{detail.intervals.filter((i) => i.session_id === id).map((interval, index) => <span key={index} className="stats-timeline-segment" tabIndex={0} aria-label={`${dateLabel(interval.start, timezone, true)} – ${dateLabel(interval.end, timezone, true)}, ${duration(interval.end - interval.start)}, ${readable(interval.agent ?? "")}, ${readable(interval.model ?? "")}`} title={`${dateLabel(interval.start, timezone, true)} – ${dateLabel(interval.end, timezone, true)} · ${duration(interval.end - interval.start)} · ${readable(interval.model ?? "")}`} style={{ left: `${(interval.start - from) / span * 100}%`, width: `${Math.max(0.15, (interval.end - interval.start) / span * 100)}%`, background: sourceColor(participantMap.get(id)?.source ?? "") }} />)}</div></div>)}
     <p className="stats-note">Gaps indicate time without observed Running. Attention and IDLE are excluded.</p>
   </div>;
 }

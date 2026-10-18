@@ -15,6 +15,7 @@ for (const { name, root, binary } of variants) test(`${name} desktop server requ
     cwd: root,
     env: { ...process.env, KLIPRUN_DESKTOP_TOKEN: "testtoken", KLIPRUN_BUN_HOME: home,
       KLIPRUN_BUN_DB: join(home, "missing.db"), KLIPRUN_BUN_CODEX_HOME: join(home, "missing-codex"),
+      KLIPRUN_BUN_CLAUDE_HOME: join(home, "missing-claude"),
       CODEX_HERMES_BASE_DIR: join(home, "missing-hermes") },
     stdout: "pipe", stderr: "pipe",
   });

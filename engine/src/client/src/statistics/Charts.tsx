@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { StatsBucket, StatsFilters, StatsHeatCell, StatsSessionRow } from "@shared/usage";
-import { count, dateLabel, duration, tokens, TOKEN_PARTS } from "./format";
+import { count, dateLabel, duration, tokens, sourceColor, TOKEN_PARTS } from "./format";
 
 export function EmptyChart({ text = "No data for this period" }: { text?: string }) {
   return <div className="stats-empty"><span className="stats-empty-line" /><p>{text}</p></div>;
@@ -67,9 +67,9 @@ export function Scatter({ rows, onSelect }: { rows: StatsSessionRow[]; onSelect:
     <div className="stats-chart-readout" aria-live="polite">{focused ? `${focused.title} · ${duration(focused.running_ms)} · ${tokens(focused.tokens.total)} tokens · ${focused.turns} turns` : `Showing ${available.length} tasks · point size = turns`}</div>
     <svg viewBox={`0 0 ${width} ${height}`} className="stats-chart" role="group" aria-label="Tasks: token usage and Running time">
       {[0, .25, .5, .75, 1].map((f) => <g key={f}><line x1={left} x2={width - right} y1={y(maxY * f)} y2={y(maxY * f)} className="stats-grid-line" /><text x={left - 8} y={y(maxY * f) + 4} textAnchor="end" className="stats-axis-text">{tokens(maxY * f)}</text><text x={x(maxX * f)} y={height - 15} textAnchor="middle" className="stats-axis-text">{duration(maxX * f)}</text></g>)}
-      {available.map((row) => <circle key={row.id} cx={x(row.running_ms ?? 0)} cy={y(row.tokens.total)} r={4 + Math.sqrt(row.turns / maxTurns) * 9} fill={row.source === "codex" ? "#bc8cff" : "#58a6ff"} fillOpacity={focused?.id === row.id ? .95 : .5} stroke={focused?.id === row.id ? "#e6edf3" : row.source === "codex" ? "#bc8cff" : "#58a6ff"} strokeWidth="1" tabIndex={0} role="button" className="stats-svg-button" aria-label={`${row.title}. Running ${duration(row.running_ms)}, ${count(row.tokens.total)} tokens, ${row.turns} turns. Open task statistics.`} onFocus={() => setFocused(row)} onBlur={() => setFocused(null)} onMouseEnter={() => setFocused(row)} onMouseLeave={() => setFocused(null)} onClick={() => onSelect(row.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(row.id); } }}><title>{row.title} · {duration(row.running_ms)} · {count(row.tokens.total)} tokens</title></circle>)}
+      {available.map((row) => <circle key={row.id} cx={x(row.running_ms ?? 0)} cy={y(row.tokens.total)} r={4 + Math.sqrt(row.turns / maxTurns) * 9} fill={sourceColor(row.source)} fillOpacity={focused?.id === row.id ? .95 : .5} stroke={focused?.id === row.id ? "#e6edf3" : sourceColor(row.source)} strokeWidth="1" tabIndex={0} role="button" className="stats-svg-button" aria-label={`${row.title}. Running ${duration(row.running_ms)}, ${count(row.tokens.total)} tokens, ${row.turns} turns. Open task statistics.`} onFocus={() => setFocused(row)} onBlur={() => setFocused(null)} onMouseEnter={() => setFocused(row)} onMouseLeave={() => setFocused(null)} onClick={() => onSelect(row.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(row.id); } }}><title>{row.title} · {duration(row.running_ms)} · {count(row.tokens.total)} tokens</title></circle>)}
       <text x={width / 2} y={height - 1} textAnchor="middle" className="stats-axis-text">Summed Running time</text>
     </svg>
-    <div className="stats-legend"><span><i style={{ background: "#58a6ff" }} />OpenCode</span><span><i style={{ background: "#bc8cff" }} />Codex CLI</span></div>
+    <div className="stats-legend"><span><i style={{ background: "#58a6ff" }} />OpenCode</span><span><i style={{ background: "#bc8cff" }} />Codex CLI</span><span><i style={{ background: "#d97757" }} />Claude Code</span></div>
   </div>;
 }

@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { scrub } from "../security";
 import { TUI_ORIGIN_SQL } from "../codex/storage";
 import { nonnegative, normalizeCodexTokens, normalizeOpenCodeTokens, record } from "./normalize";
+import { claudeHome, claudeJournals, readClaudeJournal } from "../claude/journal";
+import type { SessionSource } from "@shared/types";
 
 const PAGE = 250;
 const BLOCK = 4 * 1024 * 1024;
@@ -47,6 +49,7 @@ export interface UsageImportSink {
 export interface UsageImporterOptions {
   opencodePath: string;
   codexHome: string;
+  claudeHome?: string;
   onProgress?: (status: UsageImportStatus[]) => void;
 }
 
@@ -95,7 +98,7 @@ async function advanceHash(fd: number, hash: Hash, start: number, end: number, c
 
 /** Source-only importer. Its sink exclusively owns KlipRun's normalized index and checkpoints. */
 export class UsageImporter {
-  private states: UsageImportStatus[] = ["opencode", "codex"].map(source => ({ source: source as "opencode" | "codex", state: "loading", indexed: 0, total: 0, updated_at: null, skipped: 0, message: null }));
+  private states: UsageImportStatus[] = (["opencode", "codex", "claude"] as const).map(source => ({ source, state: "loading", indexed: 0, total: 0, updated_at: null, skipped: 0, message: null }));
   private inFlight: Promise<UsageImportStatus[]> | null = null;
   private stopping = false;
   constructor(private options: UsageImporterOptions, private sink: UsageImportSink) {}
@@ -109,18 +112,18 @@ export class UsageImporter {
     this.inFlight = this.run().finally(() => { this.inFlight = null; });
     return this.inFlight;
   }
-  private update(source: "opencode" | "codex", patch: Partial<UsageImportStatus>): void {
-    const index = source === "opencode" ? 0 : 1;
+  private update(source: SessionSource, patch: Partial<UsageImportStatus>): void {
+    const index = this.states.findIndex(state => state.source === source);
     this.states[index] = { ...this.states[index]!, ...patch };
     this.options.onProgress?.(this.status);
   }
   private async run(): Promise<UsageImportStatus[]> {
-    for (const source of ["opencode", "codex"] as const) {
+    for (const source of ["opencode", "codex", "claude"] as const) {
       if (this.stopping) return this.status;
       this.update(source, { state: "loading", indexed: 0, total: 0, skipped: 0, message: null });
       try {
         this.checkStopped();
-        if (source === "opencode") await this.importOpenCode(); else await this.importCodex();
+        if (source === "opencode") await this.importOpenCode(); else if (source === "codex") await this.importCodex(); else await this.importClaude();
         this.checkStopped();
         this.update(source, { state: "ready", updated_at: Date.now() });
       } catch (error) {
@@ -129,6 +132,30 @@ export class UsageImporter {
       }
     }
     return this.status;
+  }
+
+  private async importClaude(): Promise<void> {
+    const paths = claudeJournals(this.options.claudeHome ?? claudeHome());
+    this.update("claude", { total: paths.length });
+    let indexed = 0, skipped = 0;
+    for (const path of paths) {
+      this.checkStopped();
+      try {
+        const stat = statSync(path), key = `claude:journal:${path}`, revision = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}`;
+        if (this.sink.getCheckpoint(key) !== revision) {
+          const journal = readClaudeJournal(path, Date.now(), Infinity);
+          this.checkStopped();
+          if (journal.session.directory) {
+            this.sink.upsertSession(journal.session);
+            this.sink.replaceEvents(journal.session.id, journal.events);
+            this.sink.setCheckpoint(key, revision);
+          } else skipped++;
+        }
+        indexed++;
+      } catch (error) { if (error instanceof ImportCancelled) throw error; skipped++; }
+      this.update("claude", { indexed, skipped });
+      await pause();
+    }
   }
 
   private async importOpenCode(): Promise<void> {

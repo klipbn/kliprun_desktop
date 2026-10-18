@@ -15,6 +15,7 @@ struct DesktopCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("New OpenCode Session…") { store.launch(source: "opencode") }.keyboardShortcut("o", modifiers: [.command, .shift]).disabled(menu.blocked)
             Button("New Codex Session…") { store.launch(source: "codex") }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(menu.blocked)
+            Button("New Claude Code Session…") { store.launch(source: "claude") }.keyboardShortcut("a", modifiers: [.command, .shift]).disabled(menu.blocked)
             Button("New Terminal…") { store.chooseNewTerminal() }.keyboardShortcut("t", modifiers: .command).disabled(menu.blocked)
             Divider()
             Button("New Project…") { menu.run(.newProject) }.keyboardShortcut("n", modifiers: [.command, .shift]).disabled(!menu.canRun(.newProject))

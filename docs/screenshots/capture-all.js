@@ -6,10 +6,11 @@ async (page, directory = "docs/screenshots", base = "http://127.0.0.1:18796") =>
   page.on("request", watch);
   async function visit(path, width, height) {
     await page.setViewportSize({ width, height });
+    await page.mouse.move(0, 0);
     await page.goto(`${base}${path}`);
     if (!path.startsWith("/__demo/")) {
       await page.locator('[data-testid="version"]').waitFor();
-      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.24") throw new Error("Build the 0.0.24 client before capturing.");
+      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.25") throw new Error("Build the 0.0.25 client before capturing.");
     }
   }
   async function save(name) {
@@ -52,7 +53,7 @@ async (page, directory = "docs/screenshots", base = "http://127.0.0.1:18796") =>
     await page.locator('.usage-provider[data-provider="kimi"] .usage-balance').waitFor();
     await page.getByText("Checking providers…", { exact: true }).waitFor({ state: "hidden" });
     const providers = await page.locator(".usage-provider h2").allTextContents();
-    if (providers.join("|") !== "OpenAI · OpenCode|OpenAI · Codex|Z.ai|Kimi") throw new Error(`Unexpected providers: ${providers}`);
+    if (providers.join("|") !== "OpenAI · OpenCode|OpenAI · Codex|Claude Code|Z.ai|Kimi") throw new Error(`Unexpected providers: ${providers}`);
     await save("usage");
     await visit("/", 1600, 1000);
     await page.locator('[data-testid="card-ses_demo_search"]').waitFor();

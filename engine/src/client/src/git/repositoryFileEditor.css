@@ -8,6 +8,7 @@
 .repository-editor-toolbar .git-icon-button:hover:not(:disabled),.repository-editor-toolbar .git-icon-button[aria-pressed=true]{color:var(--theme-text);background:var(--theme-surface)}
 .repository-editor-toolbar .repository-editor-save:not(:disabled){color:var(--theme-accent)}
 .repository-code-editor{flex:1;min-height:0;min-width:0;overflow:hidden}.repository-code-editor[hidden]{display:none}
+.repository-html-preview{display:block;flex:1;width:100%;min-height:0;min-width:0;border:0;background:#fff;color-scheme:normal}
 .repository-code-editor .cm-indent-guides{position:relative}.repository-code-editor .cm-indent-guides:before{content:"";position:absolute;top:0;bottom:0;left:6px;width:var(--indent-columns);background:linear-gradient(to right,color-mix(in srgb,var(--theme-muted) 15%,transparent) 1px,transparent 1px) 0 0/var(--indent-step) 100% repeat-x;pointer-events:none}
 .repository-code-editor .cm-foldGutter .cm-gutterElement{opacity:.65;padding:0 3px;cursor:pointer}.repository-code-editor .cm-foldGutter .cm-gutterElement:hover{opacity:1;color:var(--theme-text)}
 .repository-code-editor .cm-search{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 10px!important;font-size:11px}.repository-code-editor .cm-search input[type=text]{padding:4px 7px}.repository-code-editor .cm-search label{display:inline-flex;align-items:center;gap:4px}.repository-code-editor .cm-search input[type=checkbox]{accent-color:var(--theme-accent)}

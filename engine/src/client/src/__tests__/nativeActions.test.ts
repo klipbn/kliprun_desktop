@@ -7,7 +7,8 @@ test("desktop controls send only a named action to the native shell", () => {
   expect(hasDesktopBridge(host)).toBe(true);
   notifyNativeAction("new-opencode", host);
   notifyNativeAction("new-codex", host);
+  notifyNativeAction("new-claude", host);
   notifyNativeAction("settings", host);
   notifyNativeAction("check-updates", host);
-  expect(received).toEqual(["new-opencode", "new-codex", "settings", "check-updates"]);
+  expect(received).toEqual(["new-opencode", "new-codex", "new-claude", "settings", "check-updates"]);
 });

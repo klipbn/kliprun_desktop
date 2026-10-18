@@ -9,6 +9,7 @@ import { RepositoryTree } from "./RepositoryTree";
 import { RepositoryFileEditor } from "./RepositoryFileEditor";
 import { DiffView } from "./DiffView";
 import { HistoryList } from "./HistoryList";
+import { PanelHeightResizer } from "./PanelHeightResizer";
 import { BranchPicker } from "./BranchPicker";
 import { ChangeViewSettings } from "./ChangeViewSettings";
 import { CHANGE_VIEW_KEY, groupChangeFiles, readChangeView } from "./changeView";
@@ -43,6 +44,9 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const [resizing, setResizing] = useState(false);
   const resizeDrag = useRef<{ x: number; width: number } | null>(null);
   const sidebar = useRef<HTMLElement>(null);
+  const sidebarContent = useRef<HTMLDivElement>(null);
+  const commitMessage = useRef<HTMLTextAreaElement>(null);
+  const commitFiles = useRef<HTMLElement>(null);
   const visibleWidth = resizedDetailsWidth(panelWidth ?? 320, 0, 0, viewportWidth);
   useEffect(() => {
     const resize = () => setViewportWidth(window.innerWidth);
@@ -258,7 +262,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const emptyState = statusRequest.error
     ? { title: "Repository unavailable", detail: "Choose another folder or refresh to try again." }
     : tab === "files" && status
-    ? { title: "Select a file to open", detail: "Browse files in this repository. Edit text and save locally without running code." }
+    ? { title: "Select a file to open", detail: "Browse files in this repository. Edit text, preview documents, and save locally." }
     : tab === "history" && status
     ? { title: commitHash ? "Select a file to review its diff" : "Select a commit to review its diff", detail: "Choose a commit in History, then one of its files." }
     : status && status.files.length
@@ -306,7 +310,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
         </div>}
         {documents.tabs.map(document => <div key={document.id} id={`git-document-panel-${document.id}`} role="tabpanel" aria-labelledby={`git-document-tab-${document.id}`} className="git-document-view" hidden={tab !== "files" || document.id !== documents.activeId}>
           {document.loading ? <div className="git-empty"><Loader2 className="animate-spin" /><span>Loading file…</span></div>
-            : document.file ? <RepositoryFileEditor path={document.path} content={document.file.draft} savedContent={document.file.content} saving={document.saving || !!busy} error={document.error} savedAt={document.savedAt} onChange={content => documents.edit(document.id, content)} onSave={() => void documents.save(document.id)} />
+            : document.file ? <RepositoryFileEditor path={document.path} active={tab === "files" && document.id === documents.activeId} content={document.file.draft} savedContent={document.file.content} saving={document.saving || !!busy} error={document.error} savedAt={document.savedAt} onChange={content => documents.edit(document.id, content)} onSave={() => void documents.save(document.id)} />
             : <div className="git-empty" role="alert"><strong>Unable to open file</strong><span>{document.error}</span></div>}
         </div>)}
         {tab === "history" && commitHash && <div className="git-commit-detail" title="Changes compared with the first parent; initial commits show all added files."><GitCommitHorizontal size={14} /><div><strong>{chosenCommit?.subject ?? commitHash.slice(0, 7)}</strong><p><code title={commitHash}>{commitHash.slice(0, 7)}</code>{chosenCommit ? ` · ${chosenCommit.author} · ${new Date(chosenCommit.date).toLocaleString()}` : ""}</p>{commitBody && <details><summary>Commit message</summary><pre>{commitBody}</pre></details>}</div></div>}
@@ -355,7 +359,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
               onClick={() => void execute({ action: "unstage", paths: groups[0].files.map(file => file.path) }, "Unstage all")}><Minus size={14} /></button>
           </div>
         </div>}
-        <div id="git-sidebar-panel" className="git-sidebar-content" role="tabpanel" aria-labelledby={`git-${tab}-tab`}>
+        <div ref={sidebarContent} id="git-sidebar-panel" className="git-sidebar-content" role="tabpanel" aria-labelledby={`git-${tab}-tab`}>
           {tab === "files" ? <>
             {filesRequest.error && <p className="git-notice" role="alert">{filesRequest.error}</p>}
             {filesRequest.pending && !filesRequest.data ? <p className="git-history-loading"><Loader2 size={14} className="animate-spin" />Loading files…</p>
@@ -388,10 +392,12 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
             {historyRequest.data?.hasMore && <button type="button" className="git-button git-load-more" disabled={historyRequest.pending} onClick={() => setHistoryPage(value => value + 1)}>Load older commits</button>}
           </>}
         </div>
-        {tab === "history" && commitHash && <section className="git-commit-files"><h3 title={`Files in ${commitHash}`}>Changed files<small>{selectedFiles.length}</small></h3>
+        {tab === "history" && commitHash && <>
+          <PanelHeightResizer label="Resize changed files" storageKey="kliprun.git.changed-files-height" minimum={64} target={commitFiles} remaining={sidebarContent} container={sidebar} />
+          <section ref={commitFiles} className="git-commit-files"><h3 title={`Files in ${commitHash}`}>Changed files<small>{selectedFiles.length}</small></h3>
           {detailRequest.error && <p className="git-notice" role="alert">{detailRequest.error}</p>}
           <FileTree files={selectedFiles} selected={selection?.path ?? null} disabled={workspaceBusy} view="list" onSelect={path => { setDiffClosed(false); setSelection({ path, mode: "commit", revision: commitHash }); }} />
-        </section>}
+        </section></>}
 
         <div className="git-remote-controls">
           <BranchPicker key={directory} status={status} disabled={workspaceBusy}
@@ -401,10 +407,12 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
           <button type="button" className="git-button" disabled={workspaceBusy || !status?.upstream || !status?.branch} onClick={() => navigate(() => { documents.clear(); void execute({ action: "pull" }, "Pull"); })}><ArrowDown size={13} />Pull</button>
           <button type="button" className="git-button" disabled={workspaceBusy || !status?.remotes.length || !status.branch || status.unborn} onClick={() => void execute({ action: "push", remote: activeRemote }, status?.upstream ? "Push" : "Publish branch")}><ArrowUp size={13} />{status?.upstream ? "Push" : "Publish"}</button>
         </div>
-        {tab === "changes" && <form className="git-commit-form" onSubmit={event => { event.preventDefault(); if (status && groups[0].files.length && message.trim()) void execute({ action: "commit", message }, "Commit"); }}>
-          <textarea aria-label="Commit message" placeholder="Commit message" value={message} disabled={workspaceBusy || !status} onChange={event => setMessage(event.target.value)} rows={3} maxLength={20_000} />
+        {tab === "changes" && <>
+          <PanelHeightResizer label="Resize commit message" storageKey="kliprun.git.commit-height" minimum={48} target={commitMessage} remaining={sidebarContent} container={sidebar} />
+          <form className="git-commit-form" onSubmit={event => { event.preventDefault(); if (status && groups[0].files.length && message.trim()) void execute({ action: "commit", message }, "Commit"); }}>
+          <textarea ref={commitMessage} aria-label="Commit message" placeholder="Commit message" value={message} disabled={workspaceBusy || !status} onChange={event => setMessage(event.target.value)} rows={3} maxLength={20_000} />
           <div><span>{groups[0].files.length} staged</span><button className="git-button git-primary" disabled={workspaceBusy || !groups[0].files.length || !message.trim()}><GitCommitHorizontal size={14} />Commit staged</button></div>
-        </form>}
+        </form></>}
       </aside>
     </div>
 

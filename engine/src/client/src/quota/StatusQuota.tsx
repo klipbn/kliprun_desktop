@@ -10,7 +10,7 @@ type Props = {
   onOpen: () => void;
 };
 
-const labels = { openai: "OpenAI OC", codex: "Codex", zai: "Z.ai", kimi: "Kimi" };
+const labels = { openai: "OpenAI OC", codex: "Codex", claude: "Claude", zai: "Z.ai", kimi: "Kimi" };
 const order = { fiveHour: 0, weekly: 1, monthly: 2, period: 3 };
 const windows = { fiveHour: "5h", weekly: "7d", monthly: "Month", period: "Period" };
 

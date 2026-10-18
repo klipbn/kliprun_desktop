@@ -14,6 +14,7 @@ public struct SessionWorkspace {
         let favorites: [String]
         let collapsed: [String]
         let sidebarCollapsed: Bool
+        let sidebarWidth: Double?
     }
     private static let empty = "{\"version\":1,\"projects\":[],\"assignments\":{},\"favorites\":[],\"collapsed\":[],\"sidebarCollapsed\":false}"
 
@@ -26,6 +27,7 @@ public struct SessionWorkspace {
               strings(value.favorites, 100000), strings(value.collapsed, 10000),
               Set(value.projects.map(\.id)).count == value.projects.count,
               Set(value.projects.map { $0.name.lowercased() }).count == value.projects.count else { return false }
+        if let width = value.sidebarWidth, !width.isFinite || !(118...480).contains(width) { return false }
         for project in value.projects {
             guard text(project.id, 200), text(project.name, 60), project.groups.count <= 200,
                   Set(project.groups.map(\.id)).count == project.groups.count,

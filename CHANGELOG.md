@@ -4,6 +4,22 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.25] - 2026-10-18
+
+### Added
+
+- Support Claude Code in Kanban, Office, Sessions, session details, and Statistics, with read-only local journal discovery, model/token/context data, tool activity, and confirmed terminal matching. Add its launch button directly to the right of Codex, native menu commands, **⌘⇧A**, and resume in the original project folder.
+- Show Claude Code's remaining 5-hour and weekly subscription limits and reset times in Usage and the bottom status bar, using its existing OAuth sign-in from macOS Keychain or the credentials file. Match the other agent buttons with a monochrome Claude icon.
+- Add highlighted HTML/HTM source and an eye-button preview in Git → Files. Render the current draft with inline CSS, images, and JavaScript in an isolated frame; unload the preview outside the active file. Keep the 512 KiB file limit, block network access and native bridge commands from preview frames, and preserve saving and undo history.
+- Resize and persist the Sessions sidebar using its divider or arrow keys. Open session lists from running/unread counters and agent badges in the status bar, with direct navigation and unread tracking.
+- Add Rename, Pin/Unpin, and Close to terminal tab context menus. Collapse pinned tabs to 28×28 squares with process indicators and full-title tooltips, keep them together on the left without restarting processes, and highlight the active tab with a thin top line.
+- Add height dividers for the Git commit message and History's Changed files pane, including keyboard resizing and bounds that keep the main lists visible.
+
+### Fixed
+
+- Wrap long lines in Git Changes and History diffs and in the Files source editor without changing file contents. Increase Sessions status dots for clearer visibility.
+- Allow the native WebView's initial load and authentication redirect to the app's loopback origin when WebKit supplies no source frame. Prevent a blank startup window while retaining HTML preview isolation.
+
 ## [0.0.24] - 2026-10-18
 
 ### Added

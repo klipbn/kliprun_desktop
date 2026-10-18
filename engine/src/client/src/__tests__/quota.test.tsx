@@ -39,3 +39,11 @@ test("an elapsed reset does not claim fresh capacity or keep a past countdown", 
   expect(html).toContain("Reset pending");
   expect(html).not.toContain("Resets in -");
 });
+
+test("Usage includes Claude Code with its independent subscription windows", () => {
+  const html = render({ claude: { ...quota, provider: "claude", plan: "Claude Pro" } });
+  expect(html).toContain('data-provider="claude"');
+  expect(html).toContain('aria-label="Claude Code: 0% remaining"');
+  expect(html).toContain("Via Claude Code");
+  expect(html).toContain('aria-label="5-hour: 90% remaining"');
+});

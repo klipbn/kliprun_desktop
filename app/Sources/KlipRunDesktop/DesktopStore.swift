@@ -17,6 +17,7 @@ final class DesktopStore: ObservableObject {
     var interfaceZoom: InterfaceZoom { InterfaceZoom(percent: preferences.interfaceZoomPercent) }
     @Published var showingSettings = false
     @Published var terminals: [TerminalSession] = []
+    @Published private(set) var pinnedTerminalIDs: Set<Int> = []
     @Published var error: String?
     let runtime = EngineRuntime()
     lazy var menu = DesktopMenuController(store: self)
@@ -216,7 +217,7 @@ final class DesktopStore: ObservableObject {
     }
 
     func launch(source: String) {
-        guard projectPanel == nil, source == "opencode" || source == "codex" else { return }
+        guard projectPanel == nil, source == "opencode" || source == "codex" || source == "claude" else { return }
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true; panel.canChooseFiles = false
         panel.prompt = "Open Project"
@@ -249,13 +250,15 @@ final class DesktopStore: ObservableObject {
         alert.informativeText = "Choose what to open."
         alert.addButton(withTitle: "OpenCode")
         alert.addButton(withTitle: "Codex")
+        alert.addButton(withTitle: "Claude Code")
         alert.addButton(withTitle: "Terminal")
         alert.addButton(withTitle: "Cancel")
         NSApp.activate(ignoringOtherApps: true)
         switch alert.runModal() {
         case .alertFirstButtonReturn: launch(source: "opencode")
         case .alertSecondButtonReturn: launch(source: "codex")
-        case .alertThirdButtonReturn: newTerminal()
+        case .alertThirdButtonReturn: launch(source: "claude")
+        case NSApplication.ModalResponse(rawValue: 1003): newTerminal()
         default: break
         }
     }
@@ -273,7 +276,7 @@ final class DesktopStore: ObservableObject {
     }
 
     func resumeSession(_ id: String) {
-        let source = id.hasPrefix("codex:") ? "codex" : "opencode"
+        let source = id.hasPrefix("codex:") ? "codex" : id.hasPrefix("claude:") ? "claude" : "opencode"
         guard AgentLaunch.make(source: source, home: "", inherited: [:], sessionID: id) != nil else { return }
         if let terminal = terminals.first(where: { $0.isRunning && ($0.sessionID == id || ($0.sessionID == nil && $0.resumeSessionID == id)) }) {
             selectTerminalTab(terminal.id)
@@ -311,17 +314,29 @@ final class DesktopStore: ObservableObject {
             terminal.terminate()
         }
         terminals.removeAll { $0.id == id }
+        pinnedTerminalIDs.remove(id)
         var dock = terminalDock
         dock.remove(id, availableIDs: terminals.map(\.id))
         terminalDock = dock
         if terminals.isEmpty { terminalExpanded = false }
     }
 
-    func moveTerminal(_ id: Int, to targetID: Int) {
+    @discardableResult func moveTerminal(_ id: Int, to targetID: Int) -> Bool {
         guard id != targetID, let from = terminals.firstIndex(where: { $0.id == id }),
-              let to = terminals.firstIndex(where: { $0.id == targetID }) else { return }
+              let to = terminals.firstIndex(where: { $0.id == targetID }),
+              pinnedTerminalIDs.contains(id) == pinnedTerminalIDs.contains(targetID) else { return false }
         let terminal = terminals.remove(at: from)
         terminals.insert(terminal, at: to)
+        return true
+    }
+
+    func toggleTerminalPin(_ id: Int) {
+        guard let index = terminals.firstIndex(where: { $0.id == id }) else { return }
+        let terminal = terminals.remove(at: index)
+        if pinnedTerminalIDs.contains(id) { pinnedTerminalIDs.remove(id) }
+        else { pinnedTerminalIDs.insert(id) }
+        let position = terminals.prefix { pinnedTerminalIDs.contains($0.id) }.count
+        terminals.insert(terminal, at: position)
     }
 
     func linkTerminalToSelectedSession(_ id: Int) {
@@ -351,7 +366,12 @@ final class DesktopStore: ObservableObject {
     }
 
     func renameSelectedTerminal() {
-        guard let terminal = terminal(for: selectedTerminalID) else { return }
+        guard let id = selectedTerminalID else { return }
+        renameTerminal(id)
+    }
+
+    func renameTerminal(_ id: Int) {
+        guard let terminal = terminal(for: id) else { return }
         let alert = NSAlert()
         alert.messageText = "Rename Terminal Tab"
         alert.informativeText = "Leave the name empty to use the agent's title."

@@ -8,6 +8,7 @@ export interface SessionWorkspace {
   favorites: string[];
   collapsed: string[];
   sidebarCollapsed: boolean;
+  sidebarWidth?: number;
 }
 export const emptyWorkspace = (): SessionWorkspace => ({ version: 1, projects: [], assignments: {}, favorites: [], collapsed: [], sidebarCollapsed: false });
 const KEY = "kliprun.sessionWorkspace";
@@ -18,6 +19,7 @@ const strings = (value: unknown, max: number): value is string[] => Array.isArra
 export function validateWorkspace(value: unknown): SessionWorkspace | null {
   if (!object(value) || value.version !== 1 || !Array.isArray(value.projects) || value.projects.length > 200 || !object(value.assignments)
     || Object.keys(value.assignments).length > 100000 || !strings(value.favorites, 100000) || !strings(value.collapsed, 10000) || typeof value.sidebarCollapsed !== "boolean") return null;
+  if (value.sidebarWidth !== undefined && (typeof value.sidebarWidth !== "number" || !Number.isFinite(value.sidebarWidth) || value.sidebarWidth < 118 || value.sidebarWidth > 480)) return null;
   const projects: SessionProject[] = [];
   for (const p of value.projects) {
     if (!object(p) || !text(p.id, 200) || !text(p.name, 60) || !Array.isArray(p.groups) || p.groups.length > 200
@@ -37,7 +39,8 @@ export function validateWorkspace(value: unknown): SessionWorkspace | null {
     if (!project || (a.groupId !== null && !project.groups.some(g => g.id === a.groupId))) return null;
     assignments.push([id, { projectId: project.id, groupId: a.groupId as string | null }]);
   }
-  return { version: 1, projects, assignments: Object.fromEntries(assignments), favorites: [...value.favorites], collapsed: [...value.collapsed], sidebarCollapsed: value.sidebarCollapsed };
+  return { version: 1, projects, assignments: Object.fromEntries(assignments), favorites: [...value.favorites], collapsed: [...value.collapsed], sidebarCollapsed: value.sidebarCollapsed,
+    ...(value.sidebarWidth === undefined ? {} : { sidebarWidth: value.sidebarWidth as number }) };
 }
 
 export function projectFor(state: SessionWorkspace, id: string) { return state.projects.find(p => p.id === state.assignments[id]?.projectId); }

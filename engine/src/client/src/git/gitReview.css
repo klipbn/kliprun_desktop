@@ -22,9 +22,10 @@
 .git-workspace .git-review-tree details>summary{min-height:27px;padding:3px 8px;line-height:20px;font-size:11px;gap:5px}
 .git-workspace .git-review-tree summary>svg{color:var(--theme-muted);width:13px;height:13px}
 .git-workspace .git-review-tree .git-review-tree{margin-left:12px;border-left-color:color-mix(in srgb,var(--theme-border) 55%,transparent)}
-.git-workspace .git-review-diff .git-diff{font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:var(--theme-text)}
-.git-workspace .git-review-diff .git-line-number{min-width:42px;padding:0 8px;color:var(--theme-muted);border-right:0;font-size:11px;background:color-mix(in srgb,var(--theme-surface) 30%,transparent)}
-.git-workspace .git-review-diff .git-line-code{padding:0 12px 0 8px;color:var(--theme-text)}
+.git-workspace .git-review-diff .git-diff{table-layout:fixed;font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:var(--theme-text)}
+.git-workspace .git-review-diff .git-line-number{width:42px;min-width:42px;padding:0 8px;color:var(--theme-muted);border-right:0;font-size:11px;background:color-mix(in srgb,var(--theme-surface) 30%,transparent)}
+.git-workspace .git-review-diff .git-line-code{min-width:0;padding:0 12px 0 8px;color:var(--theme-text)}
+.git-workspace .git-review-diff .git-line-code pre{white-space:pre-wrap;overflow-wrap:anywhere}
 .git-workspace .git-review-diff .git-line-add{background:color-mix(in srgb,var(--theme-success) 11%,var(--theme-background))}
 .git-workspace .git-review-diff .git-line-delete{background:color-mix(in srgb,var(--theme-error) 11%,var(--theme-background))}
 .git-workspace .git-review-diff .git-line-add .git-line-number:first-child{box-shadow:inset 2px 0 var(--theme-success)}
@@ -34,4 +35,4 @@
 .git-workspace .git-review-diff .git-line-meta{background:var(--theme-background)}
 .git-workspace .git-review-diff .git-line-meta .git-line-code{color:var(--theme-muted);font-size:11px}
 .git-workspace .git-review-diff:focus-visible{outline:1px solid color-mix(in srgb,var(--theme-accent) 50%,transparent);outline-offset:-1px}
-@media(max-width:600px){.git-workspace .git-review-diff .git-diff{font-size:12px}.git-workspace .git-review-diff .git-line-number{min-width:32px;padding:0 5px;font-size:10px}.git-workspace .git-review-tree .git-file-select{padding-right:8px}}
+@media(max-width:600px){.git-workspace .git-review-diff .git-diff{font-size:12px}.git-workspace .git-review-diff .git-line-number{width:32px;min-width:32px;padding:0 5px;font-size:10px}.git-workspace .git-review-tree .git-file-select{padding-right:8px}}

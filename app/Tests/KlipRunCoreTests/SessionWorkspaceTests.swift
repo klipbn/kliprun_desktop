@@ -20,3 +20,17 @@ import Testing
     message["assignments"] = ["ses_a": ["projectId": "p", "groupId": "missing"]]
     #expect(!store.set(message))
 }
+
+@Test func sessionSidebarWidthSurvivesNativeStorageAndRejectsInvalidSizes() throws {
+    let suite = "KlipRun-workspace-size-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let store = SessionWorkspace(defaults: defaults)
+    var message: [String: Any] = ["version": 1, "projects": [], "assignments": [:], "favorites": [], "collapsed": [], "sidebarCollapsed": false, "sidebarWidth": 280]
+    #expect(store.set(message))
+    let saved = store.json
+    #expect(saved.contains("\"sidebarWidth\":280"))
+    message["sidebarWidth"] = 30
+    #expect(!store.set(message))
+    #expect(store.json == saved)
+}

@@ -101,7 +101,7 @@ export class UsageStore {
       for (const interval of intervals) {
         insert.run(interval.id, JSON.stringify({ ...interval, directory: scrub(interval.directory) }));
         const session = this.db.query<{ data: string }, [string]>("SELECT data FROM usage_sessions WHERE id=? LIMIT 1").get(interval.session_id);
-        if (!session) this.upsertSession({ id: interval.session_id, source: interval.session_id.startsWith("codex:") ? "codex" : "opencode", parent_id: null, title: "Session unavailable", directory: interval.directory, created_at: interval.entered_at, updated_at: interval.exited_at ?? observedAt });
+        if (!session) this.upsertSession({ id: interval.session_id, source: interval.session_id.startsWith("codex:") ? "codex" : interval.session_id.startsWith("claude:") ? "claude" : "opencode", parent_id: null, title: "Session unavailable", directory: interval.directory, created_at: interval.entered_at, updated_at: interval.exited_at ?? observedAt });
       }
       const old = Number(this.getCheckpoint("observed_at") ?? 0);
       this.setCheckpoint("observed_at", Math.max(old, observedAt));
@@ -139,7 +139,7 @@ export class UsageStore {
       FROM usage_events WHERE session_id=? AND json_extract(data,'$.kind')='usage'`);
     return { rows: sessionIds.map(session_id => {
       const row = query.get(session_id)!;
-      const source = session_id.startsWith("codex:") ? "codex" : "opencode";
+      const source = session_id.startsWith("codex:") ? "codex" : session_id.startsWith("claude:") ? "claude" : "opencode";
       const status = sources.find(s => s.source === source);
       return { session_id, tokens: row.tokens, incomplete: row.tokens === null || !!row.incomplete || !status || status.state !== "ready" || status.skipped > 0 || status.message !== null };
     }) };

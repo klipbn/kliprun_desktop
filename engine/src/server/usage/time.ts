@@ -93,6 +93,6 @@ export function parseStatsFilters(url: URL, now = Date.now()): StatsFilters {
   if (!["all", "roots", "children"].includes(role) || !["day", "week", "month"].includes(granularity)) throw new Error("invalid statistics filter");
   const list = (key: string) => [...new Set(q.getAll(key))].filter(Boolean);
   const sources = list("source");
-  if (sources.some(source => !["opencode", "codex"].includes(source))) throw new Error("invalid statistics source");
+  if (sources.some(source => !["opencode", "codex", "claude"].includes(source))) throw new Error("invalid statistics source");
   return { from, to, timezone, sources, agents: list("agent"), models: list("model"), projects: list("project"), role: role as StatsFilters["role"], granularity: granularity as StatsFilters["granularity"], ...(period ? { period: period as StatsFilters["period"] } : {}) };
 }

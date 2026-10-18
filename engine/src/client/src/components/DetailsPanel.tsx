@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import type { ColumnKey, DetailMessage, SessionDetailPayload } from "@shared/types";
-import { COLUMNS } from "@shared/types";
+import { COLUMNS, SESSION_SOURCE_NAMES } from "@shared/types";
 import { hasDesktopBridge, type DesktopPreferences } from "../nativeBridge";
 import { resizedDetailsWidth } from "./detailsSizing";
 import { HarnessIcon } from "./HarnessIcon";
@@ -321,7 +321,7 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
           {detail?.title ?? sessionId}
         </h2>
         {detail && <span className="inline-flex items-center gap-1 text-[10px] text-text-secondary shrink-0">
-          <HarnessIcon source={detail.source} />{detail.source === "codex" ? "Codex CLI" : "OpenCode"}
+          <HarnessIcon source={detail.source} />{SESSION_SOURCE_NAMES[detail.source]}
         </span>}
         <button
           type="button"

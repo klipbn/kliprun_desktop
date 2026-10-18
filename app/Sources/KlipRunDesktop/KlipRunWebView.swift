@@ -78,6 +78,10 @@ struct KlipRunWebView: NSViewRepresentable {
         init(store: DesktopStore) { self.store = store }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard message.frameInfo.isMainFrame,
+                  message.frameInfo.securityOrigin.protocol == loadedBaseURL?.scheme,
+                  message.frameInfo.securityOrigin.host == "127.0.0.1",
+                  message.frameInfo.securityOrigin.port == loadedBaseURL?.port else { return }
             if message.name == "menuState",
                message.frameInfo.isMainFrame,
                message.frameInfo.securityOrigin.host == "127.0.0.1",
@@ -174,6 +178,7 @@ struct KlipRunWebView: NSViewRepresentable {
                 switch action {
                 case "new-opencode": store.launch(source: "opencode")
                 case "new-codex": store.launch(source: "codex")
+                case "new-claude": store.launch(source: "claude")
                 case "show-terminal": store.toggleTerminal()
                 case "open-iterm": store.openSelectedInITerm()
                 case "settings": store.showSettings()
@@ -205,11 +210,21 @@ struct KlipRunWebView: NSViewRepresentable {
             store.webDidFinishLoading()
         }
 
+        func permitsEngineNavigation(to url: URL, targetIsMainFrame: Bool?) -> Bool {
+            targetIsMainFrame != false && url.scheme == loadedBaseURL?.scheme &&
+                url.host == "127.0.0.1" && url.port == loadedBaseURL?.port
+        }
+
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
             guard let url = navigationAction.request.url else { return .cancel }
-            if url.host == "127.0.0.1", url.port == loadedBaseURL?.port {
-                return .allow
-            } else if ["https", "http"].contains(url.scheme) {
+            // Native initial loads have no source frame; trust only the main engine origin.
+            if permitsEngineNavigation(to: url, targetIsMainFrame: navigationAction.targetFrame?.isMainFrame) { return .allow }
+            if navigationAction.targetFrame?.isMainFrame == false {
+                let document = url.absoluteString.split(separator: "#", maxSplits: 1).first
+                return document == "about:srcdoc" || document == "about:blank" ? .allow : .cancel
+            }
+            guard navigationAction.sourceFrame.isMainFrame else { return .cancel }
+            if ["https", "http"].contains(url.scheme) {
                 NSWorkspace.shared.open(url)
                 return .cancel
             } else { return .cancel }
@@ -217,6 +232,7 @@ struct KlipRunWebView: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                      for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+            guard navigationAction.sourceFrame.isMainFrame else { return nil }
             if let url = navigationAction.request.url, ["https", "http"].contains(url.scheme), url.host != "127.0.0.1" {
                 NSWorkspace.shared.open(url)
             }

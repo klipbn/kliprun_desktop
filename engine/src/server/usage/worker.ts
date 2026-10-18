@@ -41,7 +41,7 @@ scope.onmessage = event => {
       const options = data as StatsOptions;
       store = new UsageStore(options.path);
       await importHistory(options.historyPath);
-      importer = new UsageImporter({ opencodePath: options.opencodePath, codexHome: options.codexHome, onProgress: status => store?.setCheckpoint("sources", status) }, store);
+      importer = new UsageImporter({ opencodePath: options.opencodePath, codexHome: options.codexHome, claudeHome: options.claudeHome, onProgress: status => store?.setCheckpoint("sources", status) }, store);
       store.setCheckpoint("sources", importer.status);
       refresh(); reply(true); return;
     }

@@ -8,6 +8,7 @@ import { sql } from "@codemirror/lang-sql";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
+import { html } from "@codemirror/lang-html";
 import { tags } from "@lezer/highlight";
 
 export function repositoryFileLanguage(path: string): string {
@@ -15,6 +16,7 @@ export function repositoryFileLanguage(path: string): string {
   if (extension === "py" || extension === "pyw") return "Python";
   if (extension === "sql") return "SQL";
   if (["md", "markdown", "mdown"].includes(extension ?? "")) return "Markdown";
+  if (extension === "html" || extension === "htm") return "HTML";
   if (["ts", "tsx", "mts", "cts"].includes(extension ?? "")) return "TypeScript";
   if (["js", "jsx", "mjs", "cjs"].includes(extension ?? "")) return "JavaScript";
   if (extension === "json") return "JSON";
@@ -30,6 +32,7 @@ function languageExtension(path: string): Extension {
     case "JavaScript": return javascript({ jsx: /\.jsx$/i.test(path) });
     case "JSON": case "Jupyter Notebook": return json();
     case "Markdown": return markdown();
+    case "HTML": return html();
     default: return [];
   }
 }
@@ -98,7 +101,7 @@ const theme = EditorView.theme({
 export function createRepositoryEditorState(path: string, content: string, extensions: Extension = []) {
   return EditorState.create({
     doc: content,
-    extensions: [extensions, keymap.of([indentWithTab]), basicSetup, languageExtension(path),
+    extensions: [extensions, keymap.of([indentWithTab]), basicSetup, languageExtension(path), EditorView.lineWrapping,
       indentUnit.of(repositoryIndentUnit(path, content)), EditorState.tabSize.of(4),
       EditorState.lineSeparator.of(content.includes("\r\n") ? "\r\n" : "\n"),
       EditorView.clipboardInputFilter.of((text, state) => text.replace(/\r\n?|\n/g, state.lineBreak)),
