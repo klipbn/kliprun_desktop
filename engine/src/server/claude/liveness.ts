@@ -36,11 +36,11 @@ export function parseClaudeFiles(output: string, pids: string[], home: string): 
   return processes.filter(p => p.cwd).map(p => ({ ...p, ...(sessions.get(p.pid)?.size === 1 ? { sessionId: [...sessions.get(p.pid)!][0] } : {}) }));
 }
 
-/** A PID file is evidence only for the same live process generation and project. */
+/** A PID file is evidence only for the same live process generation and project. /clear and /resume start a new session later in the same process. */
 export function claudeSessionRecord(process: ClaudeProcess, startedAt: string, value: unknown): ClaudeProcess | null {
   const data = record(value), birth = Date.parse(startedAt);
   if (data.pid !== Number(process.pid) || typeof data.startedAt !== "number" || !Number.isFinite(data.startedAt) || !Number.isFinite(birth) ||
-    data.startedAt < birth - 1000 || data.startedAt >= birth + 60_000 || typeof data.cwd !== "string" || canonicalPath(data.cwd) !== process.cwd ||
+    data.startedAt < birth - 1000 || typeof data.cwd !== "string" || canonicalPath(data.cwd) !== process.cwd ||
     typeof data.sessionId !== "string" || !CLAUDE_ID.test(data.sessionId)) return null;
   return { ...process, startedAt, sessionId: data.sessionId, status: typeof data.status === "string" ? data.status : undefined,
     statusUpdatedAt: typeof data.statusUpdatedAt === "number" ? data.statusUpdatedAt : undefined, name: typeof data.name === "string" ? data.name : undefined };

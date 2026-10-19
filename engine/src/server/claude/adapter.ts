@@ -50,7 +50,7 @@ export class ClaudeAdapter {
       const column = nativeStatus ? nativeStatus === "waiting" ? "attention" : nativeStatus === "busy" ? "running" : "idle" : confirmed ? state.column : "idle";
       const stage = nativeStatus ? column === "attention" ? "Waiting for input" : column === "running" ? "Working" : "Finished" : confirmed ? state.stage : "Status unknown";
       const card: CardPayload = { source: "claude", session_id: confirmed ? state.session.id : `claude-terminal:${process.pid}`,
-        directory: scrub(process.cwd), directory_name: scrub(basename(process.cwd)), title: confirmed ? scrub(process.name || state.session.title) : `Claude Code · ${scrub(basename(process.cwd))}`,
+        directory: scrub(process.cwd), directory_name: scrub(basename(process.cwd)), title: confirmed ? state.named ? state.session.title : scrub(process.name || state.session.title) : `Claude Code · ${scrub(basename(process.cwd))}`,
         prompt_snippet: confirmed ? state.prompt : null, parent_id: null, agent: { name: "Claude Code" },
         column, stage, stage_since: nativeStatus ? statusAt! : confirmed ? state.since : 0,
         running_since: confirmed && column === "running" ? state.startedAt ?? statusAt ?? null : null, last_event_at: nativeStatus ? statusAt! : confirmed ? state.lastEventAt : 0,
