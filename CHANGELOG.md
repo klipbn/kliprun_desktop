@@ -4,6 +4,13 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.30] - 2026-10-19
+
+### Fixed
+
+- Link Claude Code terminals to their session after `/clear` or `/resume` instead of leaving the card on "Connecting session…".
+- Ignore Claude Code slash-command and `!` shell echoes as prompts, finish interrupted turns as Interrupted, and title cards with Claude's `/rename` or AI title before the derived terminal name.
+
 ## [0.0.29] - 2026-10-19
 
 ### Added
@@ -481,4 +488,7 @@ First public macOS release.
 [0.0.25]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.25
 [0.0.26]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.26
 [0.0.27]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.27
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.27...main
+[0.0.28]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.28
+[0.0.29]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.29
+[0.0.30]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.30
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.30...main

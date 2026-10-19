@@ -35,7 +35,7 @@ use **Kanban** in this toolbar to return to the board.
 
 Requires **Apple Silicon and macOS 13+**.
 
-1. Download `KlipRun-0.0.29-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.30-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip and move `KlipRun.app` to **Applications**. Quit KlipRun before replacing an older version.
 3. Open the app. If macOS blocks it, use **System Settings → Privacy & Security → Open Anyway**. The build is locally signed and not notarized.
 
