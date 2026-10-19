@@ -10,6 +10,13 @@ import { classHighlighter, highlightTree } from "@lezer/highlight";
 
 const defaults = { path: "example.py", content: "", savedContent: "", saving: false, onChange: () => {}, onSave: () => {} };
 
+test("repository files expose Git change review without staging or reverting edits", () => {
+  const html = renderToStaticMarkup(<RepositoryFileEditor {...defaults} directory="/demo" />);
+  expect(html).toContain('aria-label="Show changes"');
+  expect(html).not.toContain('aria-label="Reject change"');
+  expect(html).not.toContain('aria-label="Stage change"');
+});
+
 test("file extension selects Python and SQL parsers for safe lexical highlighting", () => {
   for (const [path, source, keyword, comment] of [
     ["example.py", 'def greet():\n    return "<script>" # note\n', "def", "# note"],

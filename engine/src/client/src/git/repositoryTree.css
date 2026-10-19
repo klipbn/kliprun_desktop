@@ -23,6 +23,8 @@
 .repository-file-icon.is-python{color:var(--repository-yellow)}.repository-file-icon.is-sql{color:var(--repository-cyan)}.repository-file-icon.is-markdown{color:var(--repository-blue)}.repository-file-icon.is-javascript{color:var(--repository-yellow)}.repository-file-icon.is-typescript{color:var(--repository-blue)}.repository-file-icon.is-json{color:var(--repository-purple)}
 .repository-browser-row[data-git-status=modified] .repository-browser-name{color:var(--repository-yellow)}.repository-browser-row[data-git-status=added] .repository-browser-name{color:var(--repository-green)}.repository-browser-row[data-git-status=deleted] .repository-browser-name,.repository-browser-row[data-git-status=conflict] .repository-browser-name{color:var(--repository-red)}
 .repository-browser-empty{margin:8px 12px;color:var(--theme-muted);font-size:11px}
+.repository-browser-row[data-git-ignored=true]:not([data-git-status]) .repository-browser-name{color:var(--theme-muted)}
+.repository-browser-row[data-git-ignored=true] .repository-file-icon,.repository-browser-row[data-git-ignored=true] .repository-folder-icon{color:var(--theme-muted);opacity:.65}
 
 .repository-browser-guides{position:absolute;left:14px;top:0;bottom:0;pointer-events:none;opacity:.45;background:repeating-linear-gradient(to right,var(--theme-border) 0 1px,transparent 1px 20px)}
 :root:is([data-theme="daybreak"],[data-theme="paper"]) .repository-browser{--repository-yellow:#866000;--repository-cyan:#086d7a;--repository-blue:#2266a3;--repository-purple:#8447a0;--repository-green:#35732a;--repository-red:#b23e49}

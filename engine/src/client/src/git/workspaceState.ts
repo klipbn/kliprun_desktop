@@ -9,6 +9,7 @@ export interface RepositoryWorkspace {
   changesDefaultOpen: boolean;
   expandedFiles: string[] | null;
   fileFilter: string;
+  showIgnoredFiles: boolean;
   files: Array<{ path: string; pinned: boolean }>;
   activeFile: string | null;
 }
@@ -22,7 +23,7 @@ export const GIT_WORKSPACE_KEY = "kliprun.git.workspace";
 const host = (): Host => typeof window === "undefined" ? {} : window;
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 const path = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= 4096 && !value.startsWith("/") && !value.includes("\0") && !value.split("/").includes("..");
-export const emptyRepositoryWorkspace = (): RepositoryWorkspace => ({ tab: "changes", selection: null, diffClosed: false, changeFolders: {}, changesDefaultOpen: true, expandedFiles: null, fileFilter: "", files: [], activeFile: null });
+export const emptyRepositoryWorkspace = (): RepositoryWorkspace => ({ tab: "changes", selection: null, diffClosed: false, changeFolders: {}, changesDefaultOpen: true, expandedFiles: null, fileFilter: "", showIgnoredFiles: true, files: [], activeFile: null });
 
 function readRepository(value: unknown): RepositoryWorkspace {
   const saved = object(value) ? value : {}, selection = object(saved.selection) ? saved.selection : {};
@@ -34,6 +35,7 @@ function readRepository(value: unknown): RepositoryWorkspace {
     changesDefaultOpen: saved.changesDefaultOpen !== false,
     expandedFiles: Array.isArray(saved.expandedFiles) ? saved.expandedFiles.filter(path).slice(0, 10000) : null,
     fileFilter: typeof saved.fileFilter === "string" ? saved.fileFilter.slice(0, 2000) : "",
+    showIgnoredFiles: saved.showIgnoredFiles !== false,
     files: Array.isArray(saved.files) ? saved.files.filter(object).filter(file => path(file.path)).slice(0, 200).map(file => ({ path: file.path as string, pinned: file.pinned === true })) : [],
     activeFile: path(saved.activeFile) ? saved.activeFile : null,
   };

@@ -10,6 +10,11 @@ async (page, base = "http://127.0.0.1:18796") => {
     const body = route.request().postDataJSON(); saved.push(body);
     return route.fulfill({ json: { root: body.directory, path: body.path, content: body.content, revision: "html-fixture-save" } });
   };
+  const onRead = route => {
+    const parameter = name => decodeURIComponent((route.request().url().match(new RegExp(`[?&]${name}=([^&]*)`))?.[1] ?? "").replace(/\+/g, " "));
+    const body = saved.findLast(body => body.directory === parameter("directory") && body.path === parameter("path"));
+    return body ? route.fulfill({ json: { root: body.directory, path: body.path, content: body.content, revision: "html-fixture-save" } }) : route.continue();
+  };
   const report = () => page.frameLocator('iframe[title="HTML preview"]');
   const source = () => page.getByRole("textbox", { name: "Edit report.html", exact: true });
   const text = async () => (await source().locator(".cm-line").allTextContents()).join("\n");
@@ -18,6 +23,7 @@ async (page, base = "http://127.0.0.1:18796") => {
   page.on("dialog", onDialog);
   await page.route("**/api/html-preview-probe*", onForbidden);
   await page.route("**/api/git/file", onSave);
+  await page.route("**/api/git/file?*", onRead);
   try {
     await page.setViewportSize({ width: 1440, height: 900 }); await page.goto(`${base}/git`);
     await page.getByRole("button", { name: "Repository", exact: true }).click();
@@ -92,5 +98,6 @@ async (page, base = "http://127.0.0.1:18796") => {
     page.off("pageerror", onError);
     page.off("dialog", onDialog);
     await page.unroute("**/api/html-preview-probe*", onForbidden); await page.unroute("**/api/git/file", onSave);
+    await page.unroute("**/api/git/file?*", onRead);
   }
 }

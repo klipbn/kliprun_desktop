@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, s
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Hono } from "hono";
-import type { GitFileContent, GitFileList } from "@shared/git";
+import type { GitFileBase, GitFileContent, GitFileList } from "@shared/git";
 import { registerGitRoutes } from "../routes/git";
 
 const homes: string[] = [];
@@ -22,7 +22,7 @@ function fixture() {
   return { root, app, git, get, save, action };
 }
 
-test("file browser lists tracked and untracked files only from the selected repository", async () => {
+test("file browser includes ignored roots without scanning their contents", async () => {
   const { root, git, get } = fixture();
   writeFileSync(join(root, ".gitignore"), "ignored/\n");
   mkdirSync(join(root, "src")); mkdirSync(join(root, "ignored"));
@@ -32,7 +32,7 @@ test("file browser lists tracked and untracked files only from the selected repo
   git("add", "src/query.sql");
   const result = await get("files");
   expect(result.status).toBe(200);
-  expect(await result.json()).toEqual({ root, files: [".gitignore", "read me.md", "src/query.sql"], truncated: false });
+  expect(await result.json()).toEqual({ root, files: [".gitignore", "read me.md", "src/query.sql"], directories: ["ignored"], ignored: ["ignored"], truncated: false });
 });
 
 test("reading and saving UTF-8 text preserves content, returns a new revision and leaves staging alone", async () => {
@@ -73,18 +73,95 @@ test("notebooks with saved outputs above the text limit open and save, with a bo
   expect((await save({ path, content: "x".repeat(10 * 1024 * 1024 + 1), revision: file.revision })).status).toBe(413);
 });
 
-test("file reads and saves cannot access ignored files or a nested repository", async () => {
+test("ignored text files can be opened and saved while nested repositories stay isolated", async () => {
   const { root, get, save } = fixture();
   writeFileSync(join(root, ".gitignore"), "private.txt\n"); writeFileSync(join(root, "private.txt"), "private");
   const nested = join(root, "nested"); mkdirSync(nested);
   Bun.spawnSync(["git", "-C", nested, "init", "-q"]);
   writeFileSync(join(nested, "other.py"), "other repository");
-  for (const path of ["private.txt", "nested/other.py"]) {
+  const file = await (await get("file", "private.txt")).json() as GitFileContent;
+  expect(file.content).toBe("private");
+  expect((await save({ path: "private.txt", content: "edited ignored file", revision: file.revision })).status).toBe(200);
+  expect(readFileSync(join(root, "private.txt"), "utf8")).toBe("edited ignored file");
+  for (const path of ["nested/other.py"]) {
     expect((await get("file", path)).status).toBe(400);
     expect((await save({ path, content: "replacement", revision: "0".repeat(64) })).status).toBe(400);
   }
-  expect((await (await get("files")).json() as GitFileList).files).toEqual([".gitignore"]);
+  expect(await (await get("files")).json()).toMatchObject({ files: [".gitignore", "private.txt"], ignored: ["private.txt"] });
   expect(readFileSync(join(nested, "other.py"), "utf8")).toBe("other repository");
+});
+
+test("ignored folders load one level at a time, including empty directories and literal names", async () => {
+  const { root, get, git } = fixture();
+  writeFileSync(join(root, ".gitignore"), "cache dir/\nempty/\n");
+  mkdirSync(join(root, "cache dir/deep"), { recursive: true }); mkdirSync(join(root, "empty"));
+  writeFileSync(join(root, "cache dir/[name].txt"), "ignored text");
+  writeFileSync(join(root, "cache dir/tracked.txt"), "tracked exception"); git("add", "-f", "cache dir/tracked.txt");
+  writeFileSync(join(root, "cache dir/deep/child.txt"), "lazy grandchild");
+  const top = await (await get("files")).json() as GitFileList;
+  expect(top.files).toContain("cache dir/tracked.txt");
+  expect(top.files).not.toContain("cache dir/[name].txt");
+  expect(top).toMatchObject({ directories: ["cache dir", "empty"], ignored: ["cache dir", "empty"] });
+  const children = await (await get("files", "cache dir")).json();
+  expect(children).toEqual({ root, files: ["cache dir/[name].txt", "cache dir/tracked.txt"], directories: ["cache dir/deep"], ignored: ["cache dir/[name].txt", "cache dir/deep"], truncated: false });
+  expect((await (await get("files", "cache dir/deep")).json() as GitFileList).files).toEqual(["cache dir/deep/child.txt"]);
+  expect((await (await get("files", "empty")).json() as GitFileList).files).toEqual([]);
+});
+
+test("file change baselines use HEAD rather than staged or working-tree text and follow renames", async () => {
+  const { root, git, get } = fixture();
+  git("config", "user.name", "Demo"); git("config", "user.email", "demo@example.invalid"); git("config", "commit.gpgsign", "false");
+  writeFileSync(join(root, "file [demo].py"), "first\noriginal\nlast\n");
+  git("add", "."); git("commit", "-qm", "Base");
+  writeFileSync(join(root, "file [demo].py"), "first\nstaged\nlast\n"); git("add", ".");
+  writeFileSync(join(root, "file [demo].py"), "first\nstaged\nlast\nworking\n");
+  const response = await get("file-base", "file [demo].py");
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ content: "first\noriginal\nlast\n" });
+  git("mv", "file [demo].py", "renamed.py");
+  expect(await (await get("file-base", "renamed.py")).json()).toEqual({ content: "first\noriginal\nlast\n" });
+  expect(readFileSync(join(root, "renamed.py"), "utf8")).toBe("first\nstaged\nlast\nworking\n");
+});
+
+test("new and unborn files have an empty baseline while ignored files have no Git baseline", async () => {
+  const { root, get } = fixture();
+  writeFileSync(join(root, ".gitignore"), "ignored.txt\n");
+  writeFileSync(join(root, "new.py"), "new file\n"); writeFileSync(join(root, "ignored.txt"), "ignored\n");
+  expect(await (await get("file-base", "new.py")).json()).toEqual({ content: "" });
+  expect(await (await get("file-base", "ignored.txt")).json()).toEqual({ content: null, notice: "Ignored by Git" });
+});
+
+test("unavailable binary and oversized Git baselines do not prevent opening the current text", async () => {
+  const { root, git, get } = fixture();
+  git("config", "user.name", "Demo"); git("config", "user.email", "demo@example.invalid"); git("config", "commit.gpgsign", "false");
+  writeFileSync(join(root, "large.txt"), "x".repeat(512 * 1024 + 1)); writeFileSync(join(root, "binary.txt"), Buffer.from([0, 1, 2]));
+  git("add", "."); git("commit", "-qm", "Base");
+  for (const path of ["large.txt", "binary.txt"]) {
+    writeFileSync(join(root, path), "current text\n");
+    const baseline = await (await get("file-base", path)).json() as GitFileBase;
+    expect(baseline).toMatchObject({ content: null });
+    expect(baseline.notice).toBeTruthy();
+    expect((await get("file", path)).status).toBe(200);
+  }
+});
+
+test("Git baseline reads retain the file browser's metadata, symlink and repository boundaries", async () => {
+  const { root, get } = fixture(), outside = fixture().root;
+  writeFileSync(join(outside, "private.py"), "outside"); symlinkSync(join(outside, "private.py"), join(root, "link.py"));
+  mkdirSync(join(root, "nested")); Bun.spawnSync(["git", "-C", join(root, "nested"), "init", "-q"]);
+  writeFileSync(join(root, "nested/other.py"), "nested");
+  for (const path of ["../private.py", ".git/config", "link.py", "nested/other.py"]) expect((await get("file-base", path)).status).toBe(400);
+});
+
+test("lazy folder listing rejects metadata, links, traversal and nested repositories", async () => {
+  const { root, get } = fixture(), outside = fixture().root;
+  writeFileSync(join(root, ".gitignore"), "cache/\n"); mkdirSync(join(root, "cache/nested"), { recursive: true });
+  Bun.spawnSync(["git", "-C", join(root, "cache/nested"), "init", "-q"]);
+  writeFileSync(join(root, "cache/nested/private.txt"), "nested");
+  symlinkSync(outside, join(root, "cache/link"));
+  writeFileSync(join(root, "cache/plain.txt"), "visible");
+  for (const path of ["../", ".git", ".GIT", "cache/link", "cache/nested", "cache/plain.txt"]) expect((await get("files", path)).status).toBe(400);
+  expect(await (await get("files", "cache")).json()).toMatchObject({ files: ["cache/plain.txt"], directories: [], ignored: ["cache/plain.txt"] });
 });
 
 test("browser excludes tracked paths that now live in a nested repository", async () => {
@@ -180,7 +257,7 @@ test("ignore appends literal root-relative rules without changing existing conte
   expect(ignore.startsWith("# keep this\r\nexisting\r\n")).toBe(true);
   expect(ignore).toContain("/report\\ \\[draft\\]\\*\\?.txt\r\n");
   expect(ignore.match(/^\/data\/$/gm)?.length).toBe(1);
-  expect((await (await get("files")).json() as GitFileList).files).toEqual([".gitignore", "data/file.csv", "report d0.txt"]);
+  expect((await (await get("files")).json() as GitFileList).files).toEqual([".gitignore", "data/file.csv", "report [draft]*?.txt", "report d0.txt"]);
   expect(Bun.spawnSync(["git", "-C", root, "show", ":data/file.csv"]).stdout.toString()).toBe("tracked");
 });
 
