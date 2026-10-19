@@ -2,6 +2,21 @@ import Foundation
 import Testing
 @testable import KlipRunCore
 
+@Test func toolbarLabelsDefaultToCompactAndSurviveNativeStorage() {
+    let suite = "local.kliprun.toolbar.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    #expect(AppPreferences(defaults: defaults).webScript.contains("toolbarExpanded: false"))
+    for expanded in [true, false] {
+        defaults.set(expanded, forKey: "appearance.toolbarExpanded")
+        let preferences = AppPreferences(defaults: defaults)
+        defaults.removeObject(forKey: "appearance.toolbarExpanded")
+        preferences.save(to: defaults)
+        #expect(defaults.bool(forKey: "appearance.toolbarExpanded") == expanded)
+        #expect(AppPreferences(defaults: defaults).webScript.contains("toolbarExpanded: \(expanded)"))
+    }
+}
+
 @Test func freshAppearanceUsesGraphiteAndLeftWhileExplicitChoicesSurvive() {
     let suite = "local.kliprun.appearance-defaults.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suite)!

@@ -44,18 +44,6 @@ function StatusIcon({ card, read }: { card: CardPayload; read: boolean }) {
   return <Mail className="w-4 h-4 text-warning shrink-0" data-testid="card-icon-unread" aria-label="Idle" />;
 }
 
-function borderClass(card: CardPayload): string {
-  if (card.source !== "opencode" && card.column === "idle" && !card.finished_at && !card.error) return "border-l-border";
-  switch (card.column) {
-    case "attention":
-      return "border-l-warning animate-attention";
-    case "running":
-      return "border-l-accent";
-    default:
-      return card.error ? "border-l-error" : "border-l-success";
-  }
-}
-
 function barColor(percent: number): string {
   if (percent >= 90) return "bg-error";
   if (percent >= 70) return "bg-warning";
@@ -103,7 +91,7 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
     <article
       data-testid={`card-${card.session_id}`}
       onClick={(event) => { event.stopPropagation(); if (!unresolved) onSelect(card.session_id); }}
-      className={`w-full text-left rounded-md border border-border border-l-2 ${borderClass(card)} ${
+      className={`w-full text-left rounded-md border border-border ${
         activeTerminal ? "bg-accent/10 ring-2 ring-accent shadow-[0_0_18px_rgba(88,166,255,0.28)]" :
         selected ? "bg-background ring-2 ring-accent/70" : "bg-surface hover:bg-background"
       } transition-colors p-2.5 flex flex-col gap-1 animate-fade-in cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-accent ${

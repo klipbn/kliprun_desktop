@@ -30,9 +30,10 @@ export function ShortcutHelp() {
   const dialog = useRef<HTMLDialogElement>(null);
   return <>
     <button type="button" onClick={() => dialog.current?.showModal()} aria-label="Keyboard shortcuts" title="Keyboard shortcuts"
-      className="flex items-center justify-center w-8 h-8 rounded-md border border-border text-white hover:text-white hover:border-accent/40 hover:bg-white/10 transition-colors"
+      className="toolbar-button flex shrink-0 items-center justify-center w-8 h-8 rounded-md border border-border text-text-primary hover:border-accent/40 hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       data-testid="keyboard-shortcuts-button">
       <CircleHelp className="w-4 h-4" />
+      <span className="toolbar-label" aria-hidden="true">Shortcuts</span>
     </button>
     <dialog ref={dialog} aria-labelledby="keyboard-shortcuts-title"
       className="w-full max-w-lg max-h-[85vh] rounded-xl border border-border bg-surface p-0 text-text-primary shadow-2xl backdrop:bg-black/70">

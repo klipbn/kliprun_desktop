@@ -11,7 +11,7 @@ type NativeBridgeHost = {
   } };
 };
 
-export type DesktopAction = "new-opencode" | "new-codex" | "new-claude" | "show-terminal" | "open-iterm" | "settings" | "check-updates" | "open-repository";
+export type DesktopAction = "new-opencode" | "new-codex" | "new-claude" | "show-terminal" | "open-iterm" | "settings" | "check-updates" | "open-repository" | "toggle-toolbar-labels";
 
 type GitRepositoryHost = NativeBridgeHost & { kliprunGitRepository?: unknown; localStorage?: { getItem(key: string): string | null; setItem(key: string, value: string): void } };
 function validRepositoryDirectory(value: unknown): value is string {
@@ -44,9 +44,10 @@ export interface DesktopPreferences {
   theme: "default" | "ember" | "dusk" | "graphite" | "daybreak" | "paper";
   reduceMotion: boolean;
   klopikSkin: KlopikSkin;
+  toolbarExpanded: boolean;
 }
 
-type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; theme?: unknown; reduceMotion?: unknown; klopikSkin?: unknown } };
+type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; theme?: unknown; reduceMotion?: unknown; klopikSkin?: unknown; toolbarExpanded?: unknown } };
 
 export function desktopPreferences(host: PreferencesHost = typeof window === "undefined" ? {} : window as PreferencesHost): DesktopPreferences {
   const value = host.kliprunPreferences;
@@ -56,6 +57,7 @@ export function desktopPreferences(host: PreferencesHost = typeof window === "un
     theme: value?.theme === "default" || value?.theme === "ember" || value?.theme === "dusk" || value?.theme === "graphite" || value?.theme === "daybreak" || value?.theme === "paper" ? value.theme : "graphite",
     reduceMotion: value?.reduceMotion === true,
     klopikSkin: validateKlopikSkin(value?.klopikSkin),
+    toolbarExpanded: value?.toolbarExpanded === true,
   };
 }
 

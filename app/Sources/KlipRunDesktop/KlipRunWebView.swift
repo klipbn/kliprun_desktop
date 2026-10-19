@@ -189,6 +189,7 @@ struct KlipRunWebView: NSViewRepresentable {
                 case "new-codex": store.launch(source: "codex")
                 case "new-claude": store.launch(source: "claude")
                 case "show-terminal": store.toggleTerminal()
+                case "toggle-toolbar-labels": store.updatePreferences { $0.toolbarExpanded.toggle() }
                 case "open-iterm": store.openSelectedInITerm()
                 case "settings": store.showSettings()
                 case "check-updates": store.checkForUpdates()

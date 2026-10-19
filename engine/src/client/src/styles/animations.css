@@ -1,18 +1,3 @@
-/* Attention pulse for waiting cards */
-@keyframes attention-glow {
-  0%,
-  100% {
-    box-shadow: inset 2px 0 0 rgba(210, 153, 34, 0.6);
-  }
-  50% {
-    box-shadow: inset 3px 0 0 rgba(210, 153, 34, 1);
-  }
-}
-
-.animate-attention {
-  animation: attention-glow 2s ease-in-out infinite;
-}
-
 /* Waiting icon attention pulse - scale + opacity */
 @keyframes waiting-user-icon-pulse {
   0%,
@@ -61,7 +46,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-attention,
   .animate-waiting-user-icon,
   .animate-fade-in,
   .animate-session-update {

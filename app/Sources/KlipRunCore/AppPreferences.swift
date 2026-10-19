@@ -11,6 +11,7 @@ public struct AppPreferences: Equatable {
     public var theme: String
     public var klopikSkin: String
     public var reduceMotion: Bool
+    public var toolbarExpanded: Bool
 
     public init(defaults: UserDefaults = .standard) {
         wheelSensitivity = defaults.object(forKey: "terminal.wheelSensitivity") as? Double ?? 5
@@ -23,6 +24,7 @@ public struct AppPreferences: Equatable {
         theme = defaults.string(forKey: "appearance.theme") ?? "graphite"
         klopikSkin = defaults.string(forKey: "appearance.klopikSkin") ?? "default"
         reduceMotion = defaults.bool(forKey: "appearance.reduceMotion")
+        toolbarExpanded = defaults.bool(forKey: "appearance.toolbarExpanded")
         self = validated()
     }
 
@@ -55,11 +57,12 @@ public struct AppPreferences: Equatable {
         defaults.set(value.theme, forKey: "appearance.theme")
         defaults.set(value.klopikSkin, forKey: "appearance.klopikSkin")
         defaults.set(value.reduceMotion, forKey: "appearance.reduceMotion")
+        defaults.set(value.toolbarExpanded, forKey: "appearance.toolbarExpanded")
     }
 
     public var webScript: String {
         // Only validated enum values and booleans cross into the web view.
         let value = validated()
-        return "window.kliprunPreferences = {detailTab: '\(value.detailTab)', theme: '\(value.theme)', klopikSkin: '\(value.klopikSkin)', reduceMotion: \(value.reduceMotion)}; window.dispatchEvent(new Event('kliprun:preferences'));"
+        return "window.kliprunPreferences = {detailTab: '\(value.detailTab)', theme: '\(value.theme)', klopikSkin: '\(value.klopikSkin)', reduceMotion: \(value.reduceMotion), toolbarExpanded: \(value.toolbarExpanded)}; window.dispatchEvent(new Event('kliprun:preferences'));"
     }
 }
