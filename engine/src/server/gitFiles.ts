@@ -2,7 +2,7 @@ import { lstat, open, readdir, realpath, rename, unlink } from "node:fs/promises
 import { constants } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
-import type { GitFileAction, GitFileContent, GitFileList } from "@shared/git";
+import type { GitFileAction, GitFileBase, GitFileContent, GitFileList } from "@shared/git";
 import { gitPath, gitRoot } from "./git";
 import { GitError, runGit } from "./gitProcess";
 
@@ -14,6 +14,14 @@ function checkFileSize(path: string, size: number) {
 const saves = new Set<string>();
 const fileActions = new Set<string>();
 const revision = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+
+async function ignoredPaths(root: string, paths: string[], includeTracked = false) {
+  if (!paths.length) return new Set<string>();
+  // check-ignore reads literal stdin names, but rejects Git's literal pathspec mode.
+  const result = await runGit(root, ["--no-literal-pathspecs", "check-ignore", ...(includeTracked ? ["--no-index"] : []), "-z", "--stdin"], { allowFailure: true, input: paths.join("\0") + "\0" });
+  if (result.code > 1) throw new GitError("Unable to read Git ignore rules.");
+  return new Set(result.out.split("\0").filter(Boolean));
+}
 
 async function moveWithoutReplacing(source: string, destination: string) {
   // Checking existence before fs.rename is insufficient when an agent creates the destination concurrently.
@@ -34,7 +42,7 @@ async function filePath(root: string, path: string) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new GitError("File no longer exists. Refresh the file list.", 404);
     throw error;
   }
-  const listed = await runGit(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", path]);
+  const listed = await runGit(root, ["ls-files", "--cached", "--others", "-z", "--", path]);
   if (!listed.out.split("\0").includes(path) || await gitRoot(dirname(absolute)) !== root) throw new GitError("File does not belong to the selected repository's file list.", 400);
   return absolute;
 }
@@ -56,6 +64,35 @@ export async function gitFile(root: string, path: string): Promise<GitFileConten
     } catch { throw new GitError("Only UTF-8 text files can be opened in the editor.", 400); }
     return { root, path, content, revision: revision(bytes) };
   } finally { await handle.close(); }
+}
+
+export async function gitFileBase(root: string, path: string): Promise<GitFileBase> {
+  await filePath(root, path);
+  if ((await ignoredPaths(root, [path])).has(path)) return { content: null, notice: "Ignored by Git" };
+  try {
+    const head = await runGit(root, ["rev-parse", "--verify", "HEAD"], { allowFailure: true });
+    if (head.code) return { content: "" };
+    const revision = head.out.trim();
+    let original = await runGit(root, ["show", `${revision}:${path}`], { allowFailure: true });
+    if (original.code) {
+      const changes = await runGit(root, ["diff", "--no-ext-diff", "--no-textconv", "--cached", "--find-renames", "--name-status", "-z", revision]);
+      const parts = changes.out.split("\0");
+      let renamedFrom: string | undefined;
+      for (let i = 0; i < parts.length;) {
+        const status = parts[i++], before = parts[i++];
+        if (/^[RC]/.test(status ?? "")) { const after = parts[i++]; if (after === path) renamedFrom = before; }
+      }
+      if (!renamedFrom) return { content: "" };
+      original = await runGit(root, ["show", `${revision}:${gitPath(renamedFrom)}`], { allowFailure: true });
+    }
+    if (original.code) return { content: null, notice: "Unable to read the committed file" };
+    if (Buffer.byteLength(original.out, "utf8") > FILE_LIMIT) return { content: null, notice: "Git baseline exceeds the 512 KB diff limit" };
+    if (/[\0\ufffd]/.test(original.out)) return { content: null, notice: "Git baseline is not UTF-8 text" };
+    return { content: original.out };
+  } catch (error) {
+    if (error instanceof GitError) return { content: null, notice: error.status === 413 ? "Git baseline is too large to display" : "Git baseline is unavailable" };
+    throw error;
+  }
 }
 
 export async function saveGitFile(root: string, path: string, content: unknown, expected: unknown): Promise<GitFileContent> {
@@ -81,10 +118,35 @@ export async function saveGitFile(root: string, path: string, content: unknown, 
   } finally { saves.delete(absolute); await unlink(temporary).catch(() => {}); }
 }
 
-export async function gitFiles(root: string): Promise<GitFileList> {
-  const result = await runGit(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]);
-  const candidates = [...new Set(result.out.split("\0").filter(Boolean))].sort();
+export async function gitFiles(root: string, path?: string): Promise<GitFileList> {
+  let candidates: string[], ignored = new Set<string>();
+  if (path !== undefined) {
+    const parent = await repositoryEntry(root, path);
+    if (!parent.info.isDirectory()) throw new GitError("Choose a repository folder.", 400);
+    candidates = (await readdir(parent.absolute)).map(name => `${path}/${name}`).sort();
+    ignored = await ignoredPaths(root, candidates.slice(0, 10_000));
+  } else {
+    const [visible, hidden] = await Promise.all([
+      runGit(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]),
+      runGit(root, ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"]),
+    ]);
+    const hiddenPaths = hidden.out.split("\0").filter(Boolean).map(path => path.replace(/\/$/, ""));
+    const parents = new Set<string>();
+    for (const path of hiddenPaths.slice(0, 10_000)) {
+      const parts = path.split("/");
+      for (let i = 1; i < parts.length && parents.size < 10_000; i++) parents.add(parts.slice(0, i).join("/"));
+    }
+    const ignoredParents = await ignoredPaths(root, [...parents], true);
+    ignored = new Set(hiddenPaths.map(path => {
+      const parts = path.split("/");
+      for (let i = 1; i < parts.length; i++) if (ignoredParents.has(parts.slice(0, i).join("/"))) return parts.slice(0, i).join("/");
+      return path;
+    }));
+    candidates = [...new Set([...visible.out.split("\0").filter(Boolean), ...ignored])].sort();
+  }
   const files: string[] = [];
+  const folders: string[] = [];
+  const visibleIgnored: string[] = [];
   const directories = new Map<string, Promise<boolean>>();
   function belongsToRepository(directory: string): Promise<boolean> {
     if (directory === root) return Promise.resolve(true);
@@ -103,11 +165,15 @@ export async function gitFiles(root: string): Promise<GitFileList> {
       try {
         const absolute = resolve(root, gitPath(path));
         const info = await lstat(absolute);
-        if (info.isFile() && await realpath(absolute) === absolute && await belongsToRepository(dirname(absolute))) files.push(path);
+        if (await realpath(absolute) !== absolute || !await belongsToRepository(info.isDirectory() ? absolute : dirname(absolute))) return;
+        if (info.isFile()) files.push(path);
+        else if (info.isDirectory()) folders.push(path);
+        else return;
+        if (ignored.has(path)) visibleIgnored.push(path);
       } catch { /* Deleted files and links are not editable. */ }
     }));
   }
-  return { root, files: files.sort(), truncated: candidates.length > 10_000 };
+  return { root, files: files.sort(), ...(path !== undefined || visibleIgnored.length ? { directories: folders.sort(), ignored: visibleIgnored.sort() } : {}), truncated: candidates.length > 10_000 };
 }
 
 function actionPath(value: unknown): string {

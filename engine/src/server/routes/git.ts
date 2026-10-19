@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import { GitError, gitAction, gitCommit, gitDiff, gitHistory, gitPath, gitRoot, gitStatus, parseGitAction } from "../git";
-import { gitFile, gitFileAction, gitFiles, saveGitFile } from "../gitFiles";
+import { gitFile, gitFileAction, gitFileBase, gitFiles, saveGitFile } from "../gitFiles";
 
 export function registerGitRoutes(parent: Hono) {
   const app = new Hono();
@@ -20,8 +20,9 @@ export function registerGitRoutes(parent: Hono) {
     return c.json({ repositories: [...roots].sort() });
   });
   app.get("/status", async c => c.json(await gitStatus(await root(c))));
-  app.get("/files", async c => c.json(await gitFiles(await root(c))));
+  app.get("/files", async c => c.json(await gitFiles(await root(c), c.req.query("path"))));
   app.get("/file", async c => c.json(await gitFile(await root(c), gitPath(c.req.query("path")))));
+  app.get("/file-base", async c => c.json(await gitFileBase(await root(c), gitPath(c.req.query("path")))));
   app.post("/file-action", async c => {
     const origin = c.req.header("Origin"), site = c.req.header("Sec-Fetch-Site");
     if ((origin && origin !== new URL(c.req.url).origin) || site === "cross-site") return c.json({ error: "Cross-origin file operations are not allowed." }, 403);

@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>KlipRun · Три варианта верхней панели</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m3 5 7 7-7 7h6l7-7-7-7' fill='%2374ade8'/%3E%3Cpath d='m11 5 7 7-7 7h6l7-7-7-7' fill='%2314d9a0'/%3E%3C/svg%3E">
+  <style>
+    /* Graphite tokens from the app. This review deliberately uses its dark theme. */
+    :root {
+      color-scheme: dark;
+      --bg: #282c33; --surface: #2f343e; --border: #464b57;
+      --text: #dce0e5; --text-dim: #a9afbc; --accent: #74ade8;
+      --raised: #3b414d; --success: #a1c181; --warning: #dec184;
+      --page: #1e2127;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--text); font-size: 13px; }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    [hidden] { display: none !important; }
+    svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .review { max-width: 1560px; margin: 0 auto; padding: 28px 32px 24px; }
+    .review-top { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 23px; }
+    .review-brand { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
+    .review-brand svg { width: 22px; height: 22px; }
+    .prototype-tag { border: 1px solid var(--border); border-radius: 5px; padding: 4px 8px; color: var(--text-dim); font-size: 11px; font-weight: 400; }
+    .review-note { color: var(--text-dim); font-size: 12px; }
+    h1 { font-size: 28px; font-weight: 600; letter-spacing: -.7px; margin: 0 0 8px; text-wrap: balance; }
+    .intro { color: var(--text-dim); font-size: 14px; line-height: 1.6; margin: 0; }
+    .choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0 20px; }
+    .choice { text-align: left; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 15px 17px; min-width: 0; transition: border-color 140ms, background 140ms; }
+    .choice:hover { border-color: var(--text-dim); }
+    .choice[aria-pressed="true"] { border-color: var(--accent); background: #74ade80c; }
+    .choice-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; font-weight: 600; font-size: 14px; }
+    .choice-letter { color: var(--text-dim); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .choice[aria-pressed="true"] .choice-letter { color: var(--accent); }
+    .recommended { font-size: 10px; font-weight: 500; padding: 3px 6px; color: var(--accent); border-radius: 4px; background: #74ade816; }
+    .choice-description { display: block; color: var(--text-dim); font-size: 12px; line-height: 1.55; margin-top: 8px; }
+    .mini { display: flex; align-items: center; gap: 5px; margin-bottom: 13px; height: 28px; color: var(--text-dim); pointer-events: none; }
+    .mini-item { display: inline-flex; align-items: center; gap: 5px; height: 25px; padding: 0 7px; border: 1px solid var(--border); border-radius: 4px; font-size: 9px; }
+    .mini-item svg { width: 11px; height: 11px; }
+    .mini.stacked .mini-item { flex-direction: column; gap: 2px; height: 33px; width: 43px; padding: 4px; font-size: 7px; }
+    .mini.two-rows { flex-wrap: wrap; max-width: 150px; gap: 3px; }
+    .mini.two-rows .mini-item { height: 12px; font-size: 7px; padding: 0 4px; gap: 3px; }
+    .mini.two-rows svg { width: 8px; height: 8px; }
+    .mini-break { flex-basis: 100%; height: 0; }
+    .preview-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+    .preview-controls p { margin: 0; color: var(--text-dim); font-size: 12px; }
+    .preview-controls strong { color: var(--text); font-weight: 500; }
+    .size-picker { display: flex; border: 1px solid var(--border); border-radius: 6px; padding: 3px; gap: 3px; }
+    .size-picker button { border: 0; background: transparent; border-radius: 3px; padding: 5px 9px; color: var(--text-dim); font-size: 11px; }
+    .size-picker button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
+    .preview-stage { display: flex; justify-content: center; min-width: 0; }
+    .app { width: 100%; min-width: 0; height: 505px; display: flex; flex-direction: column; border: 1px solid #565d6b; border-radius: 10px; background: var(--bg); box-shadow: 0 12px 36px #0002; overflow: hidden; container-type: inline-size; }
+    .preview-stage[data-width="small"] .app { max-width: 980px; }
+    .titlebar { height: 29px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #464b5744; background: var(--surface); position: relative; font-size: 11px; color: var(--text-dim); }
+    .lights { position: absolute; left: 13px; display: flex; gap: 7px; }
+    .lights i { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; }
+    .lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; position: relative; }
+    .brand { display: flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 600; margin-right: auto; white-space: nowrap; }
+    .brand svg { width: 21px; height: 21px; }
+    .group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+    .agents { margin-left: auto; margin-right: auto; }
+    .utilities { padding-left: 12px; border-left: 1px solid var(--border); }
+    .tool { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 6px; width: 32px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: transparent; font-size: 11px; white-space: nowrap; transition: background 140ms, border-color 140ms; }
+    .tool:hover { background: #ffffff0b; border-color: #74ade880; }
+    .tool[aria-pressed="true"] { background: #74ade817; border-color: #74ade866; color: #c5dfff; }
+    .tool img { width: 16px; height: 16px; object-fit: contain; }
+    .tool-label { display: none; }
+    .toggle { margin-left: 0; border-color: #74ade86b; color: var(--accent); background: #74ade80a; }
+    .toggle::after { content: ""; position: absolute; right: 23px; bottom: -3px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+    .toolbar[data-expanded="true"] .tool:not(.toggle) { width: auto; padding: 0 9px; }
+    .toolbar[data-expanded="true"] .tool-label { display: inline; }
+    .toolbar[data-variant="below"][data-expanded="true"] { gap: 12px; }
+    .toolbar[data-variant="below"][data-expanded="true"] .tool:not(.toggle) { flex-direction: column; width: 65px; height: 56px; padding: 7px 4px 6px; gap: 6px; font-size: 10px; background: transparent; border-color: transparent; }
+    .toolbar[data-variant="below"][data-expanded="true"] .tool:not(.toggle):hover { background: #ffffff08; border-color: var(--border); }
+    .toolbar[data-variant="below"][data-expanded="true"] .tool[aria-pressed="true"] { background: #74ade812; border-color: #74ade84d; }
+    .toolbar[data-variant="below"][data-expanded="true"] .tool svg, .toolbar[data-variant="below"][data-expanded="true"] .tool img { width: 19px; height: 19px; }
+    .toolbar[data-variant="below"][data-expanded="true"] .toggle svg { width: 16px; height: 16px; }
+    .toolbar[data-variant="rows"][data-expanded="true"] { column-gap: 12px; row-gap: 9px; padding-bottom: 0; }
+    .toolbar[data-variant="rows"][data-expanded="true"] .views { order: 5; flex-basis: calc(100% + 24px); margin: 0 -12px; padding: 9px 12px; border-top: 1px solid var(--border); background: #282c333d; }
+    .toolbar[data-variant="rows"][data-expanded="true"] .views::before { content: "Workspace"; color: var(--text-dim); font-size: 10px; margin-right: 10px; }
+    .toolbar[data-variant="rows"][data-expanded="true"] .views .tool { border-color: transparent; padding: 0 12px; }
+    .toolbar[data-variant="rows"][data-expanded="true"] .views .tool[aria-pressed="true"] { border-color: #74ade866; }
+    .toolbar[data-variant="rows"][data-expanded="true"] .toggle::after { bottom: auto; top: 42px; }
+    .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 12px; flex: 1; min-height: 0; overflow: auto; }
+    .column { min-width: 0; border: 1px solid var(--border); border-radius: 7px; background: #2f343e77; overflow: hidden; }
+    .column[data-column="attention"] { border-color: #dec18466; }
+    .column-head { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 9px 10px; border-bottom: 1px solid var(--border); font-weight: 500; }
+    .column[data-column="attention"] .column-head { color: var(--warning); }
+    .column[data-column="running"] .column-head { color: var(--accent); }
+    .column[data-column="idle"] .column-head { color: var(--success); }
+    .column-head svg { width: 14px; height: 14px; }
+    .column-count { margin-left: auto; border: 1px solid currentColor; border-radius: 20px; min-width: 21px; text-align: center; line-height: 20px; opacity: .8; font-size: 10px; }
+    .cards { padding: 7px; display: grid; gap: 7px; }
+    .session-card { border: 1px solid var(--border); border-left: 2px solid var(--accent); border-radius: 5px; padding: 10px; background: var(--surface); min-width: 0; }
+    .column[data-column="attention"] .session-card { border-left-color: var(--warning); }
+    .column[data-column="idle"] .session-card { border-left-color: var(--success); }
+    .card-title { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; line-height: 1.45; }
+    .card-title svg { width: 14px; height: 14px; margin-top: 2px; color: var(--accent); }
+    .column[data-column="attention"] .card-title svg { color: var(--warning); }
+    .column[data-column="idle"] .card-title svg { color: var(--warning); }
+    .card-title span { overflow-wrap: anywhere; }
+    .card-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 7px 0 5px 21px; color: var(--text-dim); font-size: 10px; }
+    .source { display: inline-flex; align-items: center; gap: 4px; padding: 2px 5px; border: 1px solid var(--border); border-radius: 3px; font-size: 9px; }
+    .source img { width: 11px; height: 11px; }
+    .card-project { color: var(--text-dim); font-size: 9px; margin-left: 21px; display: flex; gap: 4px; align-items: center; }
+    .card-project svg { width: 11px; height: 11px; }
+    .context-track { height: 4px; border-radius: 2px; background: var(--border); margin: 7px 0 5px 21px; overflow: hidden; }
+    .context-track span { display: block; height: 100%; background: var(--accent); }
+    .context-note { font-size: 9px; color: var(--text-dim); margin-left: 21px; }
+    .statusbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; background: var(--surface); border-top: 1px solid var(--border); padding: 8px 12px; font-size: 10px; color: var(--text-dim); flex-shrink: 0; }
+    .statusbar span { display: inline-flex; align-items: center; gap: 5px; }
+    .statusbar svg { width: 12px; height: 12px; color: var(--accent); }
+    .status-spacer { margin-left: auto; }
+    .connected { display: inline-block; height: 5px; width: 5px; border-radius: 50%; background: var(--success); }
+    .annotation { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 16px 0; font-size: 12px; line-height: 1.6; }
+    .annotation p { margin: 0; color: var(--text-dim); max-width: 75ch; }
+    .annotation strong { color: var(--text); font-weight: 500; }
+    .state { display: flex; align-items: center; gap: 7px; white-space: nowrap; color: var(--text-dim); font-size: 11px; padding-top: 2px; }
+    .state-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .review-footer { padding-top: 9px; border-top: 1px solid #464b5766; color: var(--text-dim); font-size: 11px; line-height: 1.6; }
+    .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; background: var(--raised); color: var(--text); box-shadow: 0 6px 30px #0005; font-size: 12px; z-index: 5; }
+    @container (max-width: 1200px) {
+      .toolbar[data-variant="inline"][data-expanded="true"] .brand { flex-basis: calc(100% - 50px); }
+      .toolbar[data-variant="inline"][data-expanded="true"] .toggle { position: absolute; right: 12px; top: 7px; }
+      .toolbar[data-variant="inline"][data-expanded="true"] .toggle::after { right: 13px; }
+      .toolbar[data-variant="inline"][data-expanded="true"] .agents { margin-left: 0; margin-right: auto; }
+      .toolbar[data-variant="inline"][data-expanded="true"] .utilities { padding-left: 0; border-left: 0; }
+      .toolbar[data-variant="below"][data-expanded="true"] { gap: 9px; }
+      .toolbar[data-variant="below"][data-expanded="true"] .brand { font-size: 14px; }
+      .toolbar[data-variant="below"][data-expanded="true"] .tool:not(.toggle) { width: 58px; font-size: 9px; }
+      .toolbar[data-variant="below"][data-expanded="true"] .group { gap: 3px; }
+      .toolbar[data-variant="below"][data-expanded="true"] .utilities { padding-left: 9px; }
+    }
+    @container (max-width: 870px) {
+      .toolbar[data-expanded="true"] .brand { flex-basis: calc(100% - 50px); }
+      .toolbar[data-expanded="true"] .toggle { position: absolute; right: 12px; top: 7px; }
+      .toolbar[data-expanded="true"] .toggle::after { right: 13px; }
+      .toolbar[data-expanded="true"] .agents { margin-left: 0; margin-right: auto; }
+      .toolbar[data-variant="rows"][data-expanded="true"] .toggle::after { top: auto; bottom: -3px; }
+      .toolbar[data-expanded="true"] .utilities { border-left: 0; padding-left: 0; }
+    }
+    @container (max-width: 620px) {
+      .toolbar { gap: 9px; }
+      .toolbar[data-expanded="false"] .brand { flex-basis: calc(100% - 50px); }
+      .toolbar[data-expanded="false"] .toggle { position: absolute; right: 12px; top: 7px; }
+      .toolbar[data-expanded="false"] .toggle::after { right: 13px; }
+      .toolbar[data-expanded="false"] .agents { margin-left: 0; }
+      .toolbar .utilities { border-left: 0; padding-left: 0; }
+      .toolbar[data-variant="rows"][data-expanded="true"] .views::before { display: none; }
+      .toolbar[data-variant="rows"][data-expanded="true"] .views .tool { padding: 0 8px; }
+      .board { grid-template-columns: 1fr; }
+      .status-spacer { margin-left: 0; }
+      .column { min-height: 135px; }
+      .app { height: 580px; }
+    }
+    @media (max-width: 760px) {
+      .review { padding: 20px 16px; }
+      .review-top { margin-bottom: 20px; }
+      .review-note { display: none; }
+      h1 { font-size: 24px; }
+      .choices { gap: 8px; }
+      .choice { padding: 12px; }
+      .choice-heading { font-size: 12px; gap: 5px; }
+      .choice-description { font-size: 11px; }
+      .mini { display: none; }
+      .recommended { font-size: 9px; }
+      .annotation { flex-direction: column; gap: 8px; }
+    }
+    @media (max-width: 480px) {
+      .choices { grid-template-columns: 1fr; }
+      .choice { padding: 11px 13px; }
+      .choice-description { margin-top: 4px; }
+      .review-top { gap: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+  </style>
+</head>
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <defs>
+      <symbol id="i-brand" viewBox="0 0 24 24"><path d="m2 5 7 7-7 7h6l7-7-7-7Z" fill="#3173ad" stroke="none"/><path d="m10 5 7 7-7 7h6l7-7-7-7Z" fill="#14d9a0" stroke="none"/></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9H3Z"/></symbol>
+      <symbol id="i-kanban" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18m6-18v18"/></symbol>
+      <symbol id="i-office" viewBox="0 0 24 24"><path d="M8 21V3h8v18M3 21V9h5m8-2h5v14M1 21h22M11 7h2m-2 4h2m-2 4h2m-2 4h2M5 12v2m14-4v2m0 4v2"/></symbol>
+      <symbol id="i-git" viewBox="0 0 24 24"><circle cx="6" cy="4" r="2"/><circle cx="6" cy="20" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 6v12m0-5c8 0 12-1 12-5"/></symbol>
+      <symbol id="i-usage" viewBox="0 0 24 24"><path d="M4 18a9 9 0 1 1 16 0M12 4v2M5 8l2 2m12-2-2 2m-5 5 4-4"/><circle cx="12" cy="15" r="2"/></symbol>
+      <symbol id="i-stats" viewBox="0 0 24 24"><path d="M4 3v17h17M9 15V9m5 6V5m5 10v-4"/></symbol>
+      <symbol id="i-updates" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></symbol>
+      <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.2 2.4c-.7.3-.7 1-.7 1.6m0 3h.01"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="M3 6h4m6 0h8M3 12h10m6 0h2M3 18h4m6 0h8"/><circle cx="10" cy="6" r="3"/><circle cx="16" cy="12" r="3"/><circle cx="10" cy="18" r="3"/></symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18m-12 4 3 3 3-3"/></symbol>
+      <symbol id="i-collapse" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18m-12 7 3-3 3 3"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4h.01"/></symbol>
+      <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></symbol>
+      <symbol id="i-working" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-8-8m3 1 3 1 1 3"/></symbol>
+    </defs>
+  </svg>
+  <main class="review">
+    <div class="review-top">
+      <div class="review-brand"><svg aria-hidden="true"><use href="#i-brand"/></svg>KlipRun <span class="prototype-tag">HTML-прототип</span></div>
+      <span class="review-note">Верхняя панель · 3 варианта</span>
+    </div>
+    <h1>Иконки, которые можно раскрыть</h1>
+    <p class="intro">Выберите вариант и нажмите <strong>синюю кнопку справа в панели</strong>, чтобы показать или скрыть подписи.</p>
+    <div class="choices" role="group" aria-label="Варианты панели">
+      <button type="button" class="choice" data-choose="inline" aria-pressed="true">
+        <span class="mini" aria-hidden="true"><span class="mini-item"><svg><use href="#i-kanban"/></svg>Kanban</span><span class="mini-item"><svg><use href="#i-office"/></svg>Office</span><span class="mini-item"><svg><use href="#i-git"/></svg>Git</span></span>
+        <span class="choice-heading"><span class="choice-letter">A</span>Подписи справа</span>
+        <span class="choice-description">Привычные кнопки становятся шире. Самая низкая панель в широком окне.</span>
+      </button>
+      <button type="button" class="choice" data-choose="below" aria-pressed="false">
+        <span class="mini stacked" aria-hidden="true"><span class="mini-item"><svg><use href="#i-kanban"/></svg>Kanban</span><span class="mini-item"><svg><use href="#i-office"/></svg>Office</span><span class="mini-item"><svg><use href="#i-git"/></svg>Git</span></span>
+        <span class="choice-heading"><span class="choice-letter">B</span>Подписи снизу</span>
+        <span class="choice-description">Иконки остаются над подписями. Больше высоты, меньше ширины.</span>
+      </button>
+      <button type="button" class="choice" data-choose="rows" aria-pressed="false">
+        <span class="mini two-rows" aria-hidden="true"><span class="mini-item"><svg><use href="#i-terminal"/></svg>OpenCode</span><span class="mini-item"><svg><use href="#i-settings"/></svg>Settings</span><span class="mini-break"></span><span class="mini-item"><svg><use href="#i-kanban"/></svg>Kanban</span><span class="mini-item"><svg><use href="#i-office"/></svg>Office</span><span class="mini-item"><svg><use href="#i-git"/></svg>Git</span></span>
+        <span class="choice-heading"><span class="choice-letter">C</span>Две строки <span class="recommended">Рекомендую</span></span>
+        <span class="choice-description">Агенты и настройки сверху, разделы ниже. Удобно и в небольшом окне.</span>
+      </button>
+    </div>
+    <div class="preview-controls">
+      <p><strong id="variant-caption">A · Подписи справа</strong> <span aria-hidden="true">/</span> <span id="width-caption">Ширина окна</span></p>
+      <div class="size-picker" role="group" aria-label="Размер предпросмотра">
+        <button type="button" data-size="full" aria-pressed="true">По ширине окна</button>
+        <button type="button" data-size="small" aria-pressed="false">Узкое · 980 px</button>
+      </div>
+    </div>
+    <div class="preview-stage" id="stage" data-width="full">
+      <section class="app" aria-label="KlipRun toolbar preview" lang="en">
+        <div class="titlebar"><span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>KlipRun</div>
+        <header class="toolbar" id="toolbar" data-variant="inline" data-expanded="true">
+          <div class="brand"><svg aria-hidden="true"><use href="#i-brand"/></svg>KlipRun</div>
+          <div class="group agents" id="agents" role="group" aria-label="Agent terminals"></div>
+          <nav class="group views" id="views" aria-label="Views"></nav>
+          <div class="group utilities" id="utilities" role="group" aria-label="Utilities"></div>
+          <button type="button" id="toggle-labels" class="tool toggle" aria-label="Hide labels" aria-expanded="true" aria-controls="agents views utilities" title="Hide labels"><svg aria-hidden="true"><use href="#i-collapse"/></svg></button>
+        </header>
+        <div class="board" id="board"></div>
+        <footer class="statusbar">
+          <span><svg aria-hidden="true"><use href="#i-terminal"/></svg>5 sessions</span>
+          <span><svg aria-hidden="true"><use href="#i-folder"/></svg>2 projects</span>
+          <span><svg aria-hidden="true"><use href="#i-working"/></svg>2 agents · 1 subagent</span>
+          <span class="status-spacer"><i class="connected" aria-hidden="true"></i>Connected</span>
+          <span>Demo data</span>
+        </footer>
+      </section>
+    </div>
+    <div class="annotation">
+      <p id="variant-note"><strong>Подписи справа.</strong> Все названия появляются рядом с иконками. При уменьшении ширины группы переносятся целиком; кнопка сворачивания всегда остаётся доступной.</p>
+      <div class="state" aria-live="polite"><span class="state-dot" aria-hidden="true"></span><span id="state-caption">Панель раскрыта</span> <span aria-hidden="true">·</span> <span id="height-caption"></span></div>
+    </div>
+    <div class="review-footer">Во всех вариантах свёрнутое состояние одинаковое: только иконки. Названия кнопок — на английском, как в приложении. Остальные кнопки показывают пояснение к действию; данные вымышленные.</div>
+  </main>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script type="application/json" id="fixture">{"attention":{"title":"Needs attention","cards":[{"source":"opencode","title":"Review database migration","stage":"Waiting for approval","branch":"feature/demo-ui","directory_name":"aurora","context":{"model":"gpt-6.1-sol","percent":18,"used":18000,"limit":100000}}]},"running":{"title":"Running","cards":[{"source":"opencode","title":"Implement search API","stage":"Generating response","branch":"feature/demo-api","directory_name":"atlas","context":{"model":"glm-5.3","percent":42,"used":42000,"limit":100000}},{"source":"codex","title":"Refine onboarding UI","stage":"Working","branch":"feature/demo-ui","directory_name":"aurora","context":{"model":"gpt-6.1-sol","percent":42,"used":42000,"limit":100000}}]},"idle":{"title":"IDLE","cards":[{"source":"opencode","title":"Draft release notes","stage":"Finished","branch":"feature/demo-ui","directory_name":"aurora","context":{"model":"glm-5.3","percent":18,"used":18000,"limit":100000}},{"source":"codex","title":"Fix cache keys","stage":"Finished","branch":"feature/demo-api","directory_name":"atlas","context":{"model":"gpt-6.1-sol","percent":18,"used":18000,"limit":100000}}]}}</script>
+  <script>
+    const harness = {"opencode":"data:image/svg+xml;base64,PCEtLSBPcGVuQ29kZSBtYXJrIChNSVQpOiBodHRwczovL2dpdGh1Yi5jb20vYW5vbWFseWNvL29wZW5jb2RlL2Jsb2IvZGV2L3BhY2thZ2VzL3VpL3NyYy9jb21wb25lbnRzL2xvZ28udHN4IC0tPgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDE2IDIwIiBmaWxsPSJub25lIj48cGF0aCBkPSJNMTIgMTZINFY4SDEyVjE2WiIgZmlsbD0iIzZlNzY4MSIvPjxwYXRoIGQ9Ik0xMiA0SDRWMTZIMTJWNFpNMTYgMjBIMFYwSDE2VjIwWiIgZmlsbD0iI2U2ZWRmMyIvPjwvc3ZnPgo=","codex":"data:image/svg+xml;base64,PCEtLSBPcGVuQUkgbWFyayBmcm9tIFNpbXBsZSBJY29ucyB2MTQuMC4wIChDQzApOiBodHRwczovL2dpdGh1Yi5jb20vc2ltcGxlLWljb25zL3NpbXBsZS1pY29ucy9ibG9iLzE0LjAuMC9pY29ucy9vcGVuYWkuc3ZnIC0tPgo8c3ZnIGZpbGw9IiNlNmVkZjMiIHJvbGU9ImltZyIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjx0aXRsZT5PcGVuQUk8L3RpdGxlPjxwYXRoIGQ9Ik0yMi4yODE5IDkuODIxMWE1Ljk4NDcgNS45ODQ3IDAgMCAwLS41MTU3LTQuOTEwOCA2LjA0NjIgNi4wNDYyIDAgMCAwLTYuNTA5OC0yLjlBNi4wNjUxIDYuMDY1MSAwIDAgMCA0Ljk4MDcgNC4xODE4YTUuOTg0NyA1Ljk4NDcgMCAwIDAtMy45OTc3IDIuOSA2LjA0NjIgNi4wNDYyIDAgMCAwIC43NDI3IDcuMDk2NiA1Ljk4IDUuOTggMCAwIDAgLjUxMSA0LjkxMDcgNi4wNTEgNi4wNTEgMCAwIDAgNi41MTQ2IDIuOTAwMUE1Ljk4NDcgNS45ODQ3IDAgMCAwIDEzLjI1OTkgMjRhNi4wNTU3IDYuMDU1NyAwIDAgMCA1Ljc3MTgtNC4yMDU4IDUuOTg5NCA1Ljk4OTQgMCAwIDAgMy45OTc3LTIuOTAwMSA2LjA1NTcgNi4wNTU3IDAgMCAwLS43NDc1LTcuMDcyOXptLTkuMDIyIDEyLjYwODFhNC40NzU1IDQuNDc1NSAwIDAgMS0yLjg3NjQtMS4wNDA4bC4xNDE5LS4wODA0IDQuNzc4My0yLjc1ODJhLjc5NDguNzk0OCAwIDAgMCAuMzkyNy0uNjgxM3YtNi43MzY5bDIuMDIgMS4xNjg2YS4wNzEuMDcxIDAgMCAxIC4wMzguMDUydjUuNTgyNmE0LjUwNCA0LjUwNCAwIDAgMS00LjQ5NDUgNC40OTQ0em0tOS42NjA3LTQuMTI1NGE0LjQ3MDggNC40NzA4IDAgMCAxLS41MzQ2LTMuMDEzN2wuMTQyLjA4NTIgNC43ODMgMi43NTgyYS43NzEyLjc3MTIgMCAwIDAgLjc4MDYgMGw1Ljg0MjgtMy4zNjg1djIuMzMyNGEuMDgwNC4wODA0IDAgMCAxLS4wMzMyLjA2MTVMOS43NCAxOS45NTAyYTQuNDk5MiA0LjQ5OTIgMCAwIDEtNi4xNDA4LTEuNjQ2NHpNMi4zNDA4IDcuODk1NmE0LjQ4NSA0LjQ4NSAwIDAgMSAyLjM2NTUtMS45NzI4VjExLjZhLjc2NjQuNzY2NCAwIDAgMCAuMzg3OS42NzY1bDUuODE0NCAzLjM1NDMtMi4wMjAxIDEuMTY4NWEuMDc1Ny4wNzU3IDAgMCAxLS4wNzEgMGwtNC44MzAzLTIuNzg2NUE0LjUwNCA0LjUwNCAwIDAgMSAyLjM0MDggNy44NzJ6bTE2LjU5NjMgMy44NTU4TDEzLjEwMzggOC4zNjQgMTUuMTE5MiA3LjJhLjA3NTcuMDc1NyAwIDAgMSAuMDcxIDBsNC44MzAzIDIuNzkxM2E0LjQ5NDQgNC40OTQ0IDAgMCAxLS42NzY1IDguMTA0MnYtNS42NzcyYS43OS43OSAwIDAgMC0uNDA3LS42Njd6bTIuMDEwNy0zLjAyMzFsLS4xNDItLjA4NTItNC43NzM1LTIuNzgxOGEuNzc1OS43NzU5IDAgMCAwLS43ODU0IDBMOS40MDkgOS4yMjk3VjYuODk3NGEuMDY2Mi4wNjYyIDAgMCAxIC4wMjg0LS4wNjE1bDQuODMwMy0yLjc4NjZhNC40OTkyIDQuNDk5MiAwIDAgMSA2LjY4MDIgNC42NnpNOC4zMDY1IDEyLjg2M2wtMi4wMi0xLjE2MzhhLjA4MDQuMDgwNCAwIDAgMS0uMDM4LS4wNTY3VjYuMDc0MmE0LjQ5OTIgNC40OTkyIDAgMCAxIDcuMzc1Ny0zLjQ1MzdsLS4xNDIuMDgwNUw4LjcwNCA1LjQ1OWEuNzk0OC43OTQ4IDAgMCAwLS4zOTI3LjY4MTN6bTEuMDk3Ni0yLjM2NTRsMi42MDItMS40OTk4IDIuNjA2OSAxLjQ5OTh2Mi45OTk0bC0yLjU5NzQgMS40OTk3LTIuNjA2Ny0xLjQ5OTdaIi8+PC9zdmc+Cg==","claude":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZTZlZGYzIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJzcXVhcmUiPjxwYXRoIGQ9Ik0xMiAydjIwTTIgMTJoMjBNNC45IDQuOWwxNC4yIDE0LjJNNC45IDE5LjEgMTkuMSA0LjlNOC4yIDIuOGw3LjYgMTguNE0yLjggOC4ybDE4LjQgNy42TTIuOCAxNS44bDE4LjQtNy42TTguMiAyMS4ybDcuNi0xOC40Ii8+PC9zdmc+Cg=="};
+    const toolbar = document.getElementById('toolbar');
+    const toggle = document.getElementById('toggle-labels');
+    const variants = {
+      inline: { caption: 'A · Подписи справа', note: '<strong>Подписи справа.</strong> Все названия появляются рядом с иконками. При уменьшении ширины группы переносятся целиком; кнопка сворачивания всегда остаётся доступной.' },
+      below: { caption: 'B · Подписи снизу', note: '<strong>Подписи снизу.</strong> Крупнее зона нажатия и одинаковая ширина кнопок. В окне 980 px названия остаются видны в одной строке панели.' },
+      rows: { caption: 'C · Две строки', note: '<strong>Две строки.</strong> Запуск агентов и служебные действия остаются сверху. Разделы получают отдельную строку с подписями. При сворачивании всё снова собирается в компактную панель.' }
+    };
+    const groups = {
+      agents: [
+        { id: 'opencode', label: 'OpenCode', accessible: 'New OpenCode', source: 'opencode', shortcut: '⌘⇧O' },
+        { id: 'codex', label: 'Codex', accessible: 'New Codex', source: 'codex', shortcut: '⌘⇧C' },
+        { id: 'claude', label: 'Claude Code', accessible: 'New Claude Code', source: 'claude', shortcut: '⌘⇧A' },
+        { id: 'terminal', label: 'Terminal', icon: 'terminal', shortcut: '⌘J' }
+      ],
+      views: [
+        { id: 'sessions', label: 'Sessions', icon: 'folder', shortcut: '⌃1' },
+        { id: 'kanban', label: 'Kanban', icon: 'kanban', shortcut: '⌃2' },
+        { id: 'office', label: 'Office', icon: 'office', shortcut: '⌃3' },
+        { id: 'git', label: 'Git', icon: 'git', shortcut: '⌃4' },
+        { id: 'usage', label: 'Usage', icon: 'usage', shortcut: '⌃5' },
+        { id: 'statistics', label: 'Statistics', icon: 'stats', shortcut: '⌃6' }
+      ],
+      utilities: [
+        { id: 'updates', label: 'Updates', accessible: 'Check for Updates', icon: 'updates' },
+        { id: 'shortcuts', label: 'Shortcuts', accessible: 'Keyboard shortcuts', icon: 'help' },
+        { id: 'settings', label: 'Settings', icon: 'settings', shortcut: '⌘,' }
+      ]
+    };
+    const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
+    const escapeHTML = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    for (const [group, items] of Object.entries(groups)) {
+      document.getElementById(group).innerHTML = items.map(item => {
+        const label = item.accessible || item.label;
+        return `<button type="button" class="tool" data-action="${item.id}" aria-label="${label}" title="${label}${item.shortcut ? ` (${item.shortcut})` : ''}"${group === 'views' ? ` aria-pressed="${item.id === 'kanban'}"` : ''}>${item.source ? `<img src="${harness[item.source]}" alt="" aria-hidden="true">` : icon(item.icon)}<span class="tool-label" aria-hidden="true">${item.label}</span></button>`;
+      }).join('');
+    }
+    const fixture = JSON.parse(document.getElementById('fixture').textContent);
+    document.getElementById('board').innerHTML = Object.entries(fixture).map(([key, column]) => `<section class="column" data-column="${key}" aria-label="${escapeHTML(column.title)}"><div class="column-head">${icon(key === 'attention' ? 'alert' : key === 'running' ? 'terminal' : 'mail')}${escapeHTML(column.title)}<span class="column-count">${column.cards.length}</span></div><div class="cards">${column.cards.map(card => `<article class="session-card"><div class="card-title">${icon(key === 'attention' ? 'alert' : key === 'running' ? 'working' : 'mail')}<span>${escapeHTML(card.title)}</span></div><div class="card-meta"><span class="source"><img src="${harness[card.source]}" alt="">${card.source === 'codex' ? 'Codex CLI' : 'OpenCode'}</span><span>${escapeHTML(card.stage)}</span></div><div class="card-project">${icon('git')}${escapeHTML(card.branch)} · ${icon('folder')}${escapeHTML(card.directory_name)}</div><div class="context-track"><span style="width:${card.context.percent}%"></span></div><div class="context-note">${escapeHTML(card.context.model)} · ${card.context.percent}% context</div></article>`).join('')}</div></section>`).join('');
+    const measure = () => {
+      document.getElementById('height-caption').textContent = `${Math.round(toolbar.getBoundingClientRect().height)} px`;
+      const width = Math.round(document.querySelector('.app').getBoundingClientRect().width);
+      document.getElementById('width-caption').textContent = `${width} px`;
+    };
+    new ResizeObserver(measure).observe(toolbar);
+    new ResizeObserver(measure).observe(document.querySelector('.app'));
+    toggle.addEventListener('click', () => {
+      const expanded = toolbar.dataset.expanded !== 'true';
+      toolbar.dataset.expanded = String(expanded);
+      toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.setAttribute('aria-label', expanded ? 'Hide labels' : 'Show labels');
+      toggle.title = expanded ? 'Hide labels' : 'Show labels';
+      toggle.querySelector('use').setAttribute('href', expanded ? '#i-collapse' : '#i-expand');
+      document.getElementById('state-caption').textContent = expanded ? 'Панель раскрыта' : 'Только иконки';
+      measure();
+    });
+    document.querySelectorAll('[data-choose]').forEach(button => button.addEventListener('click', () => {
+      const variant = button.dataset.choose;
+      toolbar.dataset.variant = variant;
+      document.querySelectorAll('[data-choose]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+      document.getElementById('variant-caption').textContent = variants[variant].caption;
+      document.getElementById('variant-note').innerHTML = variants[variant].note;
+      history.replaceState(null, '', `#${variant}`);
+      measure();
+    }));
+    document.querySelectorAll('[data-size]').forEach(button => button.addEventListener('click', () => {
+      document.getElementById('stage').dataset.width = button.dataset.size;
+      document.querySelectorAll('[data-size]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+      measure();
+    }));
+    let toastTimer;
+    toolbar.addEventListener('click', event => {
+      const button = event.target.closest('[data-action]');
+      if (!button) return;
+      const toast = document.getElementById('toast');
+      toast.textContent = `${button.getAttribute('aria-label')} — preview only. Choose a toolbar style above.`;
+      toast.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.hidden = true; }, 2800);
+    });
+    const selectHash = () => {
+      const variant = location.hash.slice(1);
+      if (Object.hasOwn(variants, variant)) document.querySelector(`[data-choose="${variant}"]`).click();
+    };
+    window.addEventListener('hashchange', selectHash);
+    selectHash();
+    measure();
+  </script>
+</body>
+</html>

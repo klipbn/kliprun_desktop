@@ -4138,6 +4138,22 @@
       "queries/projects.sql": "-- Demo project usage\nSELECT project_name, COUNT(*) AS sessions\nFROM project_sessions\nWHERE active = true\nGROUP BY project_name\nORDER BY sessions DESC;\n",
       "src/api/search.ts": "export function search(query: string) {\n  return query.trim();\n}\n"
     },
+    "file_baselines": {
+      "src/api/search.ts": "export function search(query: string) {\n  return query;\n}\n",
+      "README.md": "# Atlas search\n\nA fictional search project.\n\n- Search projects\n\n```python\nprint(\"demo only\")\n```\n"
+    },
+    "ignored_files": {
+      "cache/demo.json": "{\n  \"project\": \"Atlas\",\n  \"mode\": \"fictional\"\n}\n",
+      "cache/nested/readme.txt": "Fictional cached preview data.\n",
+      "demo.local.txt": "Local demo settings.\n"
+    },
+    "diff_examples": {
+      "deleted_before": "keep\nremoved\n",
+      "deleted_after": "keep\n",
+      "added_before": "keep\n",
+      "added_after": "keep\nadded\n",
+      "unsafe_before": "<img src=x onerror=window.diffScriptExecuted=true>\n"
+    },
     "repositories": [
       "/Users/demo/Projects/atlas",
       "/Users/demo/Projects/aurora"

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { closeFileTab, editFileTab, openFileTab, type FileTab, type FileTabs } from "../git/fileTabs";
+import { closeFileTab, editFileTab, openFileTab, refreshFileTab, type FileTab, type FileTabs } from "../git/fileTabs";
 const document = (id: number, path: string, pinned = false): FileTab => ({ id, path, pinned, file: { root: "/demo", path, revision: "1", content: "original", draft: "original" }, loading: false, error: null, saving: false, savedAt: 0 });
 const empty: FileTabs = { directory: "/demo", tabs: [], activeId: null };
 test("single-click replaces only the clean preview while pinned documents stay open", () => {
@@ -30,4 +30,26 @@ test("closing the active tab selects its neighbor and leaves other drafts unchan
   expect(state.activeId).toBe(1);
   expect(state.tabs[0].file?.draft).toBe("unsaved");
   expect(closeFileTab(state, 1).activeId).toBeNull();
+});
+
+test("disk refresh updates a clean tab and its revision without changing selection or pinning", () => {
+  const tab = document(1, "first.py", true), state = openFileTab(empty, tab), snapshot = tab.file!;
+  const updated = refreshFileTab(state, 1, snapshot, { ...snapshot, content: "agent update", revision: "2" });
+  expect(updated.activeId).toBe(1); expect(updated.tabs[0]!.pinned).toBe(true);
+  expect(updated.tabs[0]!.file).toMatchObject({ content: "agent update", draft: "agent update", revision: "2" });
+  expect(snapshot.draft).toBe("original");
+  expect(refreshFileTab(state, 1, snapshot, snapshot)).toBe(state);
+});
+
+test("late disk reads cannot overwrite edits, saves, another file or another repository", () => {
+  const tab = document(1, "first.py"), state = openFileTab(empty, tab), snapshot = tab.file!;
+  const data = { ...snapshot, content: "disk", revision: "2" };
+  const dirty = editFileTab(state, 1, "local draft");
+  expect(refreshFileTab(dirty, 1, snapshot, data)).toBe(dirty);
+  const saving = { ...state, tabs: [{ ...tab, saving: true }] };
+  expect(refreshFileTab(saving, 1, snapshot, data)).toBe(saving);
+  expect(refreshFileTab(state, 1, snapshot, { ...data, path: "other.py" })).toBe(state);
+  expect(refreshFileTab(state, 1, snapshot, { ...data, root: "/other" })).toBe(state);
+  const closed = closeFileTab(state, 1);
+  expect(refreshFileTab(closed, 1, snapshot, data)).toBe(closed);
 });

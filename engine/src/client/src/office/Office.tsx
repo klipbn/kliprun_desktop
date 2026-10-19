@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Settings2, Trophy, X } from 'lucide-react';
+import { Settings2, Trophy, X } from 'lucide-react';
 import type { BoardPayload, CardPayload } from '@shared/types';
 import type { TrackedCard } from '@shared/readTracker';
 import { OfficeLeaderboard, useOfficeUsage } from './Leaderboard';
@@ -16,9 +16,9 @@ function Leaderboard({ residents, skin, onSelect }: { residents: CardPayload[]; 
   return <OfficeLeaderboard skin={skin} residents={residents} usage={usage} pending={pending} error={error} onSelect={onSelect} />;
 }
 
-export default function Office({ board, onSelect, onBack, isRead, activeTerminalId = null, selectedId = null,
+export default function Office({ board, onSelect, isRead, activeTerminalId = null, selectedId = null,
   reduceMotion = false, skin = 'default', now = Date.now() }: {
-  board: BoardPayload | null; onSelect: (id: string) => void; onBack?: () => void;
+  board: BoardPayload | null; onSelect: (id: string) => void;
   isRead: (card: TrackedCard) => boolean; activeTerminalId?: string | null; selectedId?: string | null; reduceMotion?: boolean; skin?: KlopikSkin; now?: number;
 }) {
   const [preferences, setPreferences] = useState(loadOfficePreferences);
@@ -83,7 +83,6 @@ export default function Office({ board, onSelect, onBack, isRead, activeTerminal
       <div className="office-toolbar-actions">
         <button ref={leaderboardButton} type="button" aria-label="Token usage leaderboard" title="Token usage leaderboard" aria-expanded={popover === 'leaderboard'} onClick={() => setPopover(p => p === 'leaderboard' ? null : 'leaderboard')}><Trophy size={15} /></button>
         <button ref={settingsButton} type="button" aria-label="Office settings" title="Office settings" aria-expanded={popover === 'settings'} onClick={() => setPopover(p => p === 'settings' ? null : 'settings')}><Settings2 size={15} /></button>
-        {onBack && <button type="button" aria-label="Back to board" title="Back to board" onClick={onBack}><ArrowLeft size={15} /></button>}
       </div>
     </header>
     <div className="office-stage" ref={stage}>

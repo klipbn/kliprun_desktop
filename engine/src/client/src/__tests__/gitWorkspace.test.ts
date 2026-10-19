@@ -28,3 +28,11 @@ test("Git ignores malformed state and unsafe restored paths", () => {
   const host = { kliprunGitWorkspace: { version: 1, repositories: { "/atlas": { tab: "bad", expandedFiles: ["src", "../outside"], files: [{ path: "/etc/passwd" }, { path: "../outside" }, { path: "README.md", pinned: true }], selection: { path: "../outside", mode: "staged" }, changeFolders: { src: "false" } } } } };
   expect(loadRepositoryWorkspace("/atlas", host)).toMatchObject({ tab: "changes", expandedFiles: ["src"], files: [{ path: "README.md", pinned: true }], selection: null, changeFolders: {} });
 });
+
+test("ignored file visibility defaults to shown and persists through a new native origin", () => {
+  const posted: unknown[] = [];
+  const host = { webkit: { messageHandlers: { gitWorkspace: { postMessage: (value: unknown) => posted.push(value) } } } };
+  expect(loadRepositoryWorkspace("/atlas", host)).toMatchObject({ showIgnoredFiles: true });
+  saveRepositoryWorkspace("/atlas", { showIgnoredFiles: false }, host);
+  expect(loadRepositoryWorkspace("/atlas", { kliprunGitWorkspace: posted.at(-1) })).toMatchObject({ showIgnoredFiles: false });
+});

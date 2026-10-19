@@ -4,6 +4,25 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.27] - 2026-10-19
+
+### Added
+
+- Show Git changes directly in Files with added/modified/deleted gutter marks, expandable HEAD/current blocks, word highlighting, line counts, and Show/Hide changes. Include unsaved edits and refresh the baseline after HEAD changes without replacing the draft or undo history.
+- Refresh clean open files when the repository updates so agent edits appear without reopening the tab; preserve unsaved drafts and reject stale reads for edited, saving, or replaced tabs.
+- Show ignored files and folders with muted names, a persistent Show/Hide ignored files control, and lazy folder loading. Allow ignored text files to open and save with the existing repository, revision, encoding, and size checks.
+- Add a Show labels / Hide labels button to the top toolbar. Expanded mode names the agent and utility buttons and puts workspace navigation on a second row. Keep compact icons as the default and save the choice across refreshes and application restarts.
+
+### Changed
+
+- Remove the status-colored left strip and its attention pulse from Kanban cards; use a neutral outline in every column.
+- Make green Running status dots brighter in Sessions, with a contrasting green for light themes.
+- Remove the redundant Back to board button from Office; use Kanban in the main toolbar to return to the board.
+
+### Fixed
+
+- Scroll overflowing terminal tabs horizontally with the mouse wheel without holding Shift. Preserve horizontal trackpad gestures, tab actions, automatic selection reveal, and terminal-content scrolling.
+
 ## [0.0.26] - 2026-10-19
 
 ### Added
@@ -437,4 +456,7 @@ First public macOS release.
 [0.0.17]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.17
 [0.0.18]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.18
 [0.0.24]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.24
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.24...main
+[0.0.25]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.25
+[0.0.26]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.26
+[0.0.27]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.27
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.27...main

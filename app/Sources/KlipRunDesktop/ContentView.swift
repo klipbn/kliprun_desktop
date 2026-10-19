@@ -124,6 +124,7 @@ struct ContentView: View {
                                 terminalTab(terminal).id(terminal.id)
                             }
                         }
+                        .background(TerminalTabWheelScroll())
                     }
                     .onChange(of: store.selectedTerminalID) { id in
                         if let id { reader.scrollTo(id, anchor: .center) }

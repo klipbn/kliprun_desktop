@@ -31,3 +31,13 @@ test("repository tree reveals selected descendants, colors only real Git states 
   expect(html).toContain('disabled=""');
   expect(html).not.toContain('diagnostic');
 });
+
+test("ignored files and empty folders are visible and muted without hiding tracked exceptions", () => {
+  const html = renderToStaticMarkup(<RepositoryTree root="demo" files={["README.md", "cache/tracked.txt", "private.txt"]} directories={["cache", "empty"]}
+    ignored={["cache", "empty", "private.txt"]} statuses={{ "cache/tracked.txt": "M" }} selected={null} onSelect={() => {}} disabled={false} />);
+  expect(html).toContain('aria-label="Open file private.txt"');
+  expect(html).toContain('aria-label="empty"');
+  expect(html).toMatch(/title="private.txt[^\"]*"[^>]*data-git-ignored="true"/);
+  expect(html).toContain('aria-label="Hide ignored files"');
+  expect(html).toMatch(/aria-label="cache"[^>]*aria-expanded="false"/);
+});

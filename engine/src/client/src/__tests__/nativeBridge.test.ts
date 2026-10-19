@@ -28,9 +28,22 @@ test("desktop preferences are delivered initially and live, with validated defau
   stop();
   host.dispatchEvent(new Event("kliprun:preferences"));
   expect(values).toEqual([
-    { detailTab: "agent-text", theme: "graphite", klopikSkin: "default", reduceMotion: true }, { detailTab: "agent", theme: "graphite", klopikSkin: "default", reduceMotion: false },
-    { detailTab: "agent-text", theme: "graphite", klopikSkin: "default", reduceMotion: false },
+    { detailTab: "agent-text", theme: "graphite", klopikSkin: "default", reduceMotion: true, toolbarExpanded: false }, { detailTab: "agent", theme: "graphite", klopikSkin: "default", reduceMotion: false, toolbarExpanded: false },
+    { detailTab: "agent-text", theme: "graphite", klopikSkin: "default", reduceMotion: false, toolbarExpanded: false },
   ]);
+});
+
+test("toolbar labels accept only a native boolean and follow live preference changes", () => {
+  expect(desktopPreferences({})).toMatchObject({ toolbarExpanded: false });
+  const host = Object.assign(new EventTarget(), { kliprunPreferences: { toolbarExpanded: true as unknown } });
+  const values: unknown[] = [];
+  const stop = observeNativePreferences(value => values.push(value), host);
+  for (const value of [false, "true", 1, null]) {
+    host.kliprunPreferences = { toolbarExpanded: value };
+    host.dispatchEvent(new Event("kliprun:preferences"));
+  }
+  stop();
+  expect(values.map(value => (value as { toolbarExpanded: boolean }).toolbarExpanded)).toEqual([true, false, false, false, false]);
 });
 
 test("theme preference accepts only known themes", () => {

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownToLine, BarChart3, Building2, Columns3, Folder, Gauge, GitBranch, Settings2, SquareTerminal } from "lucide-react";
+import { ArrowDownToLine, BarChart3, Building2, Columns3, Folder, Gauge, GitBranch, PanelTopClose, PanelTopOpen, Settings2, SquareTerminal } from "lucide-react";
 import type { CardPayload, ColumnKey } from "@shared/types";
 import { sessionCards } from "@shared/readTracker";
 import { linkedSessionId } from "@shared/sessionLink";
@@ -21,13 +21,14 @@ import { loadCardPriorities, saveCardPriorities, updateCardPriority, type CardPr
 import { loadCardOrder, saveCardOrder, type CardOrder } from "./cardOrder";
 
 import { installWebMenuBridge } from "./webMenu";
+import "./styles/toolbar.css";
 
 const Sessions = lazy(() => import("./sessions/Sessions"));
 const Statistics = lazy(() => import("./statistics/Statistics"));
 const Office = lazy(() => import("./office/Office"));
 const Usage = lazy(() => import("./quota/Usage"));
 const Git = lazy(() => import("./git/Git"));
-const HEADER_BUTTON = "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60";
+const HEADER_BUTTON = "toolbar-button flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60";
 
 function currentPage() {
   return window.location.pathname === "/sessions" ? "sessions" : window.location.pathname === "/git" ? "git" : window.location.pathname === "/stats" ? "stats" : window.location.pathname === "/office" ? "office" : window.location.pathname === "/usage" ? "usage" : "board";
@@ -217,8 +218,8 @@ export default function App() {
 
   return (
     <div className={`h-screen flex flex-col bg-background text-text-primary ${preferences.reduceMotion ? "reduce-office-motion" : ""}`}>
-      <header className={`relative shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 border-b border-border bg-surface ${desktop ? "md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : ""}`}>
-        <div className="flex items-center gap-3 min-w-0">
+      <header className={`app-toolbar relative shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 border-b border-border bg-surface ${desktop ? "md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : ""} ${desktop && preferences.toolbarExpanded ? "toolbar-expanded" : ""}`}>
+        <div className="toolbar-brand flex items-center gap-3 min-w-0">
           <div className="flex items-center gap-2">
             <img src="/kliprun-icon.png" alt="" className="w-6 h-6" />
             <h1 className="font-semibold text-lg">KlipRun</h1>
@@ -231,26 +232,31 @@ export default function App() {
             </span>
           )}
         </div>
-        {desktop && <div className="order-last w-full flex justify-center items-center gap-1.5 md:order-none md:w-auto" aria-label="Agent terminals">
+        {desktop && <div id="toolbar-agents" className="toolbar-agents order-last w-full flex justify-center items-center gap-1.5 md:order-none md:w-auto" aria-label="Agent terminals">
           <button type="button" onClick={() => notifyNativeAction("new-opencode")} data-testid="new-opencode-button"
-            aria-label="New OpenCode" title="New OpenCode (⌘⇧O)" className={`${HEADER_BUTTON} border-border text-white hover:bg-white/10`}>
+            aria-label="New OpenCode" title="New OpenCode (⌘⇧O)" className={`${HEADER_BUTTON} border-border text-text-primary hover:bg-white/10`}>
             <HarnessIcon source="opencode" className="w-4 h-4" />
+            <span className="toolbar-label" aria-hidden="true">OpenCode</span>
           </button>
           <button type="button" onClick={() => notifyNativeAction("new-codex")} data-testid="new-codex-button"
-            aria-label="New Codex" title="New Codex (⌘⇧C)" className={`${HEADER_BUTTON} border-border text-white hover:bg-white/10`}>
+            aria-label="New Codex" title="New Codex (⌘⇧C)" className={`${HEADER_BUTTON} border-border text-text-primary hover:bg-white/10`}>
             <HarnessIcon source="codex" className="w-4 h-4" />
+            <span className="toolbar-label" aria-hidden="true">Codex</span>
           </button>
           <button type="button" onClick={() => notifyNativeAction("new-claude")} data-testid="new-claude-button"
-            aria-label="New Claude Code" title="New Claude Code (⌘⇧A)" className={`${HEADER_BUTTON} border-border text-white hover:bg-white/10`}>
+            aria-label="New Claude Code" title="New Claude Code (⌘⇧A)" className={`${HEADER_BUTTON} border-border text-text-primary hover:bg-white/10`}>
             <HarnessIcon source="claude" className="w-4 h-4" />
+            <span className="toolbar-label" aria-hidden="true">Claude Code</span>
           </button>
           <button type="button" onClick={() => notifyNativeAction("show-terminal")} data-testid="show-terminal-button"
-            aria-label="Terminal" title="Show or hide terminal (⌘J)" className={`${HEADER_BUTTON} border-border text-white hover:bg-white/10`}>
+            aria-label="Terminal" title="Show or hide terminal (⌘J)" className={`${HEADER_BUTTON} border-border text-text-primary hover:bg-white/10`}>
             <SquareTerminal className="w-4 h-4" />
+            <span className="toolbar-label" aria-hidden="true">Terminal</span>
           </button>
         </div>}
-        <div className={`ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 ${desktop ? "md:ml-0" : ""}`}>
-          <nav className="flex items-center gap-1.5" aria-label="Views">
+        <div className={`toolbar-controls ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 ${desktop ? "md:ml-0" : ""}`}>
+          <nav id="toolbar-views" className="toolbar-views flex items-center gap-1.5" aria-label="Views">
+            <span className="toolbar-workspace-label" aria-hidden="true">Workspace</span>
             {[
               { id: "sessions", label: "Sessions", page: "sessions", icon: Folder, shortcut: 1, onClick: openSessions },
               { id: "kanban", label: "Kanban", page: "board", icon: Columns3, shortcut: 2, onClick: backToBoard },
@@ -260,24 +266,33 @@ export default function App() {
               { id: "statistics", label: "Statistics", page: "stats", icon: BarChart3, shortcut: 6, onClick: showStatistics ? backToBoard : openStatistics },
             ].map(item => <button key={item.id} type="button" onClick={item.onClick} aria-label={item.label}
               aria-pressed={page === item.page} data-testid={`${item.id}-button`} title={`${item.label} (Control+${item.shortcut})`}
-              className={`${HEADER_BUTTON} text-white hover:bg-white/10 ${page === item.page ? "border-accent/40 bg-accent/10" : "border-border"}`}>
+              className={`${HEADER_BUTTON} text-text-primary hover:bg-white/10 ${page === item.page ? "border-accent/40 bg-accent/10" : "border-border"}`}>
               <item.icon className="w-4 h-4" />
+              <span className="toolbar-label" aria-hidden="true">{item.label}</span>
             </button>)}
           </nav>
-          {desktop && <div className="flex items-center gap-1.5 border-l border-border pl-2" aria-label="Utilities">
+          {desktop && <div id="toolbar-utilities" className="toolbar-utilities flex items-center gap-1.5 border-l border-border pl-2" aria-label="Utilities">
             <button type="button" onClick={() => notifyNativeAction("check-updates")} data-testid="check-updates-button"
               aria-label={updateVersion ? `Update available: KlipRun ${updateVersion}` : "Check for Updates"}
               title={updateVersion ? `KlipRun ${updateVersion} is available` : "Check for Updates…"}
-              className={`relative ${HEADER_BUTTON} ${updateVersion ? "border-warning/60 bg-warning/10 text-warning hover:bg-warning/20" : "border-border text-white hover:bg-white/10"}`}>
+              className={`relative ${HEADER_BUTTON} ${updateVersion ? "border-warning/60 bg-warning/10 text-warning hover:bg-warning/20" : "border-border text-text-primary hover:bg-white/10"}`}>
               <ArrowDownToLine className="w-4 h-4" />
+              <span className="toolbar-label" aria-hidden="true">Updates</span>
               {updateVersion && <span aria-hidden="true" className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-warning" />}
             </button>
             <ShortcutHelp />
             <button type="button" onClick={() => notifyNativeAction("settings")} data-testid="settings-button"
-              aria-label="Settings" title="Settings (⌘,)" className={`${HEADER_BUTTON} border-border text-white hover:bg-white/10`}>
+              aria-label="Settings" title="Settings (⌘,)" className={`${HEADER_BUTTON} border-border text-text-primary hover:bg-white/10`}>
               <Settings2 className="w-4 h-4" />
+              <span className="toolbar-label" aria-hidden="true">Settings</span>
             </button>
           </div>}
+          {desktop && <button type="button" onClick={() => notifyNativeAction("toggle-toolbar-labels")} data-testid="toolbar-labels-button"
+            aria-label={preferences.toolbarExpanded ? "Hide labels" : "Show labels"} title={preferences.toolbarExpanded ? "Hide labels" : "Show labels"}
+            aria-expanded={preferences.toolbarExpanded} aria-controls="toolbar-agents toolbar-views toolbar-utilities"
+            className={`${HEADER_BUTTON} toolbar-toggle border-accent/40 text-accent hover:bg-accent/10`}>
+            {preferences.toolbarExpanded ? <PanelTopClose className="w-4 h-4" /> : <PanelTopOpen className="w-4 h-4" />}
+          </button>}
         </div>
       </header>
 
@@ -303,7 +318,7 @@ export default function App() {
 
       {page === "office" && <main className="office-view flex-1 min-h-0 flex">
         <Suspense fallback={<div className="flex-1 flex items-center justify-center text-text-secondary">Loading office…</div>}>
-          <Office board={board} now={now} isRead={isRead} activeTerminalId={activeTerminalId} selectedId={selectedId} reduceMotion={preferences.reduceMotion} skin={preferences.klopikSkin} onSelect={select} onBack={backToBoard} />
+          <Office board={board} now={now} isRead={isRead} activeTerminalId={activeTerminalId} selectedId={selectedId} reduceMotion={preferences.reduceMotion} skin={preferences.klopikSkin} onSelect={select} />
         </Suspense>
         {selectedId && <DetailsPanel sessionId={selectedId} onClose={closeDetails} />}
       </main>}

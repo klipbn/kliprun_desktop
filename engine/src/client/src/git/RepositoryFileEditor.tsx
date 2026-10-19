@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChevronRight, Eye, EyeOff, Save } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, FileDiff, Save } from "lucide-react";
+import type { GitFileBase } from "@shared/git";
 import { Annotation, Compartment, EditorState, Transaction } from "@codemirror/state";
 import { undo, redo, undoDepth, redoDepth } from "@codemirror/commands";
 import { openSearchPanel, findNext, findPrevious, getSearchQuery } from "@codemirror/search";
@@ -9,10 +10,15 @@ import remarkGfm from "remark-gfm";
 import { createRepositoryEditorState, repositoryFileLanguage, repositoryIndentUnit } from "./repositoryCodeEditor";
 import { NotebookPreview } from "./NotebookPreview";
 import { HTMLPreview } from "./HTMLPreview";
+import { useGitRequest } from "./useGitRequest";
+import { expandRepositoryGitHunks, repositoryGitDiff, repositoryGitState, repositoryGitSummary, setRepositoryGitBase } from "./repositoryGitDiff";
 import "./repositoryFileEditor.css";
 
 export interface RepositoryFileEditorProps {
   path: string;
+  directory?: string;
+  head?: string | null;
+  refresh?: number;
   active?: boolean;
   content: string;
   savedContent: string;
@@ -26,7 +32,11 @@ export interface RepositoryFileEditorProps {
 const externalContent = Annotation.define<boolean>();
 
 export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
-  const { path, active = true, content, savedContent, saving, savedAt = 0, error, onSave } = props;
+  const { path, directory, head, refresh = 0, active = true, content, savedContent, saving, savedAt = 0, error, onSave } = props;
+  const baseline = useGitRequest<GitFileBase>(directory && active ? `/api/git/file-base?${new URLSearchParams({ directory, path, head: head ?? "" })}` : null, refresh);
+  const [base, setBase] = useState<GitFileBase | null>(null);
+  const latestBase = useRef(base); latestBase.current = base;
+  const [review, setReview] = useState({ hunks: 0, additions: 0, deletions: 0, expanded: 0, limited: false });
   const current = useRef(props);
   current.current = props;
   const root = useRef<HTMLDivElement>(null);
@@ -59,6 +69,7 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
     const editor = new EditorView({
       parent: host.current,
       state: createRepositoryEditorState(path, current.current.content, [
+        repositoryGitDiff,
         editable.current.of(canEdit(current.current.saving)),
         keymap.of([{ key: "Mod-s", run: () => {
           const latest = current.current;
@@ -67,6 +78,7 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
         } }]),
         EditorView.updateListener.of(update => {
           publishHistory(update.state);
+          if (update.startState.field(repositoryGitState) !== update.state.field(repositoryGitState)) setReview(repositoryGitSummary(update.state));
           if (update.docChanged && !update.transactions.some(transaction => transaction.annotation(externalContent))) {
             current.current.onChange(update.state.sliceDoc());
           }
@@ -79,6 +91,7 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
       ]),
     });
     view.current = editor;
+    editor.dispatch({ effects: setRepositoryGitBase.of(latestBase.current?.content ?? null) });
     publishHistory(editor.state);
     const menu = (event: Event) => {
       if (!root.current?.getClientRects().length || root.current.closest('[hidden]')) return;
@@ -101,6 +114,19 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
     }
     return () => { element?.removeEventListener('kliprun:editor-command', menu); editor.destroy(); view.current = null; };
   }, [path, sourceOpened]);
+
+  useEffect(() => {
+    if (baseline.data) {
+      setBase(baseline.data);
+      view.current?.dispatch({ effects: setRepositoryGitBase.of(baseline.data.content) });
+    } else if (baseline.error) {
+      setBase(null); view.current?.dispatch({ effects: setRepositoryGitBase.of(null) });
+    }
+  }, [baseline.data, baseline.error]);
+
+  useEffect(() => {
+    setBase(null); view.current?.dispatch({ effects: setRepositoryGitBase.of(null) });
+  }, [head]);
 
   useEffect(() => {
     const element = root.current;
@@ -140,6 +166,9 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
   }, [savedAt]);
 
   return <div ref={root} className="repository-file-editor" onKeyDown={event => {
+    if (!event.defaultPrevented && event.key === "Escape" && review.expanded) {
+      event.preventDefault(); view.current?.dispatch({ effects: expandRepositoryGitHunks.of("none") }); view.current?.focus();
+    }
     if (!event.defaultPrevented && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
       event.stopPropagation();
@@ -155,6 +184,11 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
       </nav>
       {dirty && <span className="repository-editor-dirty" aria-label="Unsaved changes">Unsaved</span>}
       <span className="repository-editor-feedback" role="status">{saving ? "Saving…" : showSaved && !dirty && !error ? "Saved" : ""}</span>
+      {directory && <>
+        {review.hunks > 0 && <span className="repository-editor-change-count" aria-label={`${review.additions} added lines, ${review.deletions} deleted lines`}><span>+{review.additions}</span><span>−{review.deletions}</span></span>}
+        <button type="button" className="git-icon-button" aria-label={review.expanded ? "Hide changes" : "Show changes"} title={review.expanded ? "Hide changes (Esc)" : "Show changes compared with HEAD"} aria-pressed={review.expanded > 0}
+          disabled={preview || !review.hunks} onClick={() => view.current?.dispatch({ effects: expandRepositoryGitHunks.of(review.expanded ? "none" : "all") })}><FileDiff size={14} /></button>
+      </>}
       {(markdown || notebook || html) && <button type="button" className="git-icon-button" aria-label={previewLabel} title={previewLabel} aria-pressed={preview} onClick={() => { setSourceOpened(true); setPreview(value => !value); }}>{preview ? <EyeOff size={14} /> : <Eye size={14} />}</button>}
       <button type="button" className="git-icon-button repository-editor-save" disabled={!dirty || saving} aria-label="Save file" title="Save (⌘S / Ctrl+S)" onClick={onSave}><Save size={14} /></button>
     </div>
@@ -169,6 +203,7 @@ export function RepositoryFileEditor(props: RepositoryFileEditorProps) {
       }}>{content}</Markdown>
     </div>}
     <footer className="repository-editor-statusbar">
+      {(baseline.error || base?.notice || review.limited) && <span className="repository-git-notice" title={baseline.error ?? base?.notice ?? "Git diff is too large to display"}>{baseline.error ? "Git changes unavailable" : base?.notice ?? "Git diff is too large to display"}</span>}
       <span aria-label="Cursor position">Ln {position.line}, Col {position.column}</span>
       <span>{indentation === "\t" ? "Tabs: 4" : `Spaces: ${indentation.length}`}</span>
       <span>UTF-8</span>

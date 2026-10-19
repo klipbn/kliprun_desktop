@@ -153,6 +153,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
   const repositories = useGitRequest<{ repositories: string[] }>(repositoryUrl, refresh, 0, loadGitRepositories);
   const statusRequest = useGitRequest<GitStatus>(directory ? endpoint("status", directory) : null, refresh, busy ? 0 : 5000);
   const status = statusRequest.error ? null : statusRequest.data;
+  useEffect(() => { if (tab === "files" && status) documents.refreshActive(); }, [statusRequest.data, tab, documents.activeId]);
   const filesRequest = useGitRequest<GitFileList>(directory && status && tab === "files" ? endpoint("files", directory) : null, refresh);
   const fileStatuses = useMemo(() => Object.fromEntries((status?.files ?? []).map(file => [file.path, `${file.index}${file.worktree}`])), [status?.files]);
   const activeRemote = status?.remote ?? "";
@@ -325,7 +326,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
         </div>}
         {documents.tabs.map(document => <div key={document.id} id={`git-document-panel-${document.id}`} role="tabpanel" aria-labelledby={`git-document-tab-${document.id}`} className="git-document-view" hidden={tab !== "files" || document.id !== documents.activeId}>
           {document.loading ? <div className="git-empty"><Loader2 className="animate-spin" /><span>Loading file…</span></div>
-            : document.file ? <RepositoryFileEditor path={document.path} active={tab === "files" && document.id === documents.activeId} content={document.file.draft} savedContent={document.file.content} saving={document.saving || !!busy} error={document.error} savedAt={document.savedAt} onChange={content => documents.edit(document.id, content)} onSave={() => void documents.save(document.id)} />
+            : document.file ? <RepositoryFileEditor path={document.path} directory={directory} head={status?.head} refresh={refresh} active={tab === "files" && document.id === documents.activeId} content={document.file.draft} savedContent={document.file.content} saving={document.saving || !!busy} error={document.error} savedAt={document.savedAt} onChange={content => documents.edit(document.id, content)} onSave={() => void documents.save(document.id)} />
             : <div className="git-empty" role="alert"><strong>Unable to open file</strong><span>{document.error}</span></div>}
         </div>)}
         {tab === "history" && commitHash && <div className="git-commit-detail" title="Changes compared with the first parent; initial commits show all added files."><GitCommitHorizontal size={14} /><div><strong>{chosenCommit?.subject ?? commitHash.slice(0, 7)}</strong><p><code title={commitHash}>{commitHash.slice(0, 7)}</code>{chosenCommit ? ` · ${chosenCommit.author} · ${new Date(chosenCommit.date).toLocaleString()}` : ""}</p>{commitBody && <details><summary>Commit message</summary><pre>{commitBody}</pre></details>}</div></div>}
@@ -378,7 +379,7 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
           {tab === "files" ? <>
             {filesRequest.error && <p className="git-notice" role="alert">{filesRequest.error}</p>}
             {filesRequest.pending && !filesRequest.data ? <p className="git-history-loading"><Loader2 size={14} className="animate-spin" />Loading files…</p>
-              : filesRequest.data ? <RepositoryTree key={directory} root={directory} files={filesRequest.data.files} statuses={fileStatuses} selected={filePath} onSelect={openFile} disabled={workspaceBusy}
+              : filesRequest.data ? <RepositoryTree key={directory} root={directory} files={filesRequest.data.files} directories={filesRequest.data.directories} ignored={filesRequest.data.ignored} refresh={refresh} statuses={fileStatuses} selected={filePath} onSelect={openFile} disabled={workspaceBusy}
                 onMove={(path, destination) => requestFileAction({ action: "move", path, destination })} onRename={path => setRenaming({ path, name: nameOf(path) })}
                 onIgnore={path => requestFileAction({ action: "ignore", path })} onError={setOperationError} />
               : <div className="git-empty git-sidebar-empty"><FolderOpen size={26} /><strong>No files to display</strong><span>Choose a repository to browse its files.</span></div>}

@@ -2,8 +2,8 @@
 async (page) => {
   const base = "http://127.0.0.1:18796";
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
-  const ids = ["kanban-button", "git-button", "office-button", "usage-button", "statistics-button", "check-updates-button", "keyboard-shortcuts-button", "settings-button"];
-  const labels = ["Kanban", "Git", "Office", "Usage", "Statistics", "Check for Updates", "Keyboard shortcuts", "Settings"];
+  const ids = ["sessions-button", "kanban-button", "office-button", "git-button", "usage-button", "statistics-button", "check-updates-button", "keyboard-shortcuts-button", "settings-button", "toolbar-labels-button"];
+  const labels = ["Sessions", "Kanban", "Office", "Git", "Usage", "Statistics", "Check for Updates", "Keyboard shortcuts", "Settings", "Show labels"];
   for (const width of [1440, 900, 500]) {
     await page.setViewportSize({ width, height: 900 }); await page.goto(base);
     await page.getByTestId("card-ses_demo_search").waitFor();
@@ -11,21 +11,21 @@ async (page) => {
     assert(order.join("|") === labels.join("|"), `Unexpected toolbar order: ${order.join("|")}`);
     const utilities = await page.locator('[aria-label="Utilities"] button[data-testid]').evaluateAll(buttons => buttons.map(button => button.dataset.testid));
     assert(utilities.join("|") === "check-updates-button|keyboard-shortcuts-button|settings-button", "Updates, shortcuts, and Settings are not grouped together");
-    for (const id of [...ids, "new-opencode-button", "new-codex-button", "show-terminal-button", "check-updates-button"]) {
+    for (const id of [...ids, "new-opencode-button", "new-codex-button", "new-claude-button", "show-terminal-button"]) {
       const button = page.getByTestId(id);
       assert((await button.innerText()).trim() === "", `${id} still has a text label`);
       assert(await button.getAttribute("aria-label"), `${id} has no accessible name`);
       assert(await button.getAttribute("title"), `${id} has no tooltip`);
     }
-    for (const source of ["opencode", "codex"]) {
+    for (const source of ["opencode", "codex", "claude"]) {
       const image = page.getByTestId(`new-${source}-button`).locator("img");
       await image.evaluate(img => img.decode());
       assert((await image.getAttribute("src")).endsWith(`/harness-icons/${source}.svg`), `Missing ${source} toolbar logo`);
     }
     await page.evaluate(() => { window.__toolbarActions = []; window.webkit.messageHandlers.desktopAction.postMessage = action => window.__toolbarActions.push(action); });
-    for (const id of ["new-opencode-button", "new-codex-button", "show-terminal-button", "settings-button", "check-updates-button"]) await page.getByTestId(id).click();
+    for (const id of ["new-opencode-button", "new-codex-button", "new-claude-button", "show-terminal-button", "settings-button", "check-updates-button"]) await page.getByTestId(id).click();
     const actions = await page.evaluate(() => window.__toolbarActions);
-    assert(actions.join("|") === "new-opencode|new-codex|show-terminal|settings|check-updates", "Icon actions changed their native targets");
+    assert(actions.join("|") === "new-opencode|new-codex|new-claude|show-terminal|settings|check-updates", "Icon actions changed their native targets");
     const idleColor = await page.getByTestId("check-updates-button").evaluate(element => getComputedStyle(element).color);
     await page.evaluate(() => { window.kliprunUpdateVersion = "99.0.0"; window.dispatchEvent(new Event("kliprun:update")); });
     await page.getByRole("button", { name: "Update available: KlipRun 99.0.0", exact: true }).waitFor();
@@ -38,7 +38,7 @@ async (page) => {
     await page.getByRole("button", { name: "Keyboard shortcuts", exact: true }).click();
     const help = page.locator("dialog[open]"); await help.waitFor();
     const shortcuts = await help.locator("li").allTextContents();
-    for (const [label, number] of [["Kanban board", 1], ["Git", 2], ["Office", 3], ["Usage", 4], ["Statistics", 5]]) assert(shortcuts.some(text => text.includes(label) && text.includes(`⌃ ${number}`)), `Wrong shortcut for ${label}`);
+    for (const [label, number] of [["Sessions", 1], ["Kanban board", 2], ["Office", 3], ["Git", 4], ["Usage", 5], ["Statistics", 6]]) assert(shortcuts.some(text => text.includes(label) && text.includes(`⌃ ${number}`)), `Wrong shortcut for ${label}`);
     await help.getByRole("button", { name: "Close keyboard shortcuts", exact: true }).click();
     for (const tab of ["user", "agent-text", "agent", "models", "kanban"]) {
       await page.evaluate(detailTab => { window.kliprunPreferences = { detailTab, reduceMotion: true }; window.dispatchEvent(new Event("kliprun:preferences")); }, tab);

@@ -15,13 +15,24 @@ const clock = `<script>const OriginalDate = Date; window.Date = class extends Or
 const server = Bun.serve({ hostname: "127.0.0.1", port: Number(process.env.KLIPRUN_PREVIEW_PORT ?? 18796), idleTimeout: 0, async fetch(request) {
   const url = new URL(request.url), path = url.pathname;
   if (path === "/__preview/requests") return Response.json(requests);
+  if (path === "/__preview/git-diff-examples") return Response.json(fixture.git.diff_examples);
   if (path.startsWith("/api/")) requests.push(path+url.search);
   if (path === "/api/git/repositories") return Response.json({ repositories: fixture.git.repositories });
   if (path === "/api/git/status") return Response.json({ ...fixture.git.status, root: url.searchParams.get("directory") ?? fixture.git.status.root });
-  if (path === "/api/git/files") return Response.json({ root: url.searchParams.get("directory"), files: Object.keys(fixture.git.text_files), truncated: false });
+  if (path === "/api/git/files") {
+    const prefix = url.searchParams.get("path"), ignored = Object.keys(fixture.git.ignored_files ?? {});
+    const names = [...Object.keys(fixture.git.text_files), ...ignored].filter(name => !prefix || name.startsWith(`${prefix}/`));
+    const files = prefix ? names.filter(name => !name.slice(prefix.length + 1).includes("/")) : names.filter(name => !ignored.includes(name) || !name.includes("/"));
+    const directories = [...new Set(names.filter(name => ignored.includes(name) && name.slice(prefix ? prefix.length + 1 : 0).includes("/")).map(name => `${prefix ? `${prefix}/` : ""}${name.slice(prefix ? prefix.length + 1 : 0).split("/")[0]}`))];
+    return Response.json({ root: url.searchParams.get("directory"), files, directories, ignored: [...files.filter(name => ignored.includes(name)), ...directories], truncated: false });
+  }
+  if (path === "/api/git/file-base") {
+    const name = url.searchParams.get("path") ?? "";
+    return Response.json(Object.hasOwn(fixture.git.ignored_files ?? {}, name) ? { content: null, notice: "Ignored by Git" } : { content: fixture.git.file_baselines?.[name] ?? fixture.git.text_files[name] ?? "" });
+  }
   if (path === "/api/git/file") {
     if (request.method !== "GET") return Response.json({ error: "Fixture preview: files are not modified." }, { status: 409 });
-    const name = url.searchParams.get("path") ?? "", content = fixture.git.text_files[name];
+    const name = url.searchParams.get("path") ?? "", content = fixture.git.text_files[name] ?? fixture.git.ignored_files?.[name];
     return content === undefined ? Response.json({ error: "Unknown demo file." }, { status: 404 })
       : Response.json({ root: url.searchParams.get("directory"), path: name, content, revision: "demo-revision-1" });
   }

@@ -8,6 +8,21 @@
 .repository-editor-toolbar .git-icon-button:hover:not(:disabled),.repository-editor-toolbar .git-icon-button[aria-pressed=true]{color:var(--theme-text);background:var(--theme-surface)}
 .repository-editor-toolbar .repository-editor-save:not(:disabled){color:var(--theme-accent)}
 .repository-code-editor{flex:1;min-height:0;min-width:0;overflow:hidden}.repository-code-editor[hidden]{display:none}
+.repository-editor-change-count{display:flex;gap:6px;white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums}.repository-editor-change-count>span:first-child{color:var(--theme-success)}.repository-editor-change-count>span:last-child{color:var(--theme-error)}
+.repository-code-editor .cm-git-gutter{min-width:12px;padding:0 2px}.repository-code-editor .cm-git-gutter .cm-gutterElement{padding:0;position:relative}
+.repository-code-editor .cm-git-marker{display:block;position:relative;width:10px;height:100%;min-height:20px;padding:0;border:0;border-radius:0;background:transparent;cursor:pointer;color:var(--theme-accent)}
+.repository-code-editor .cm-git-marker:before{content:"";position:absolute;inset:0 3px;background:currentColor;opacity:.85}.repository-code-editor .cm-git-marker:hover:before{inset:0 1px;opacity:1}
+.repository-code-editor .cm-git-marker.is-added{color:var(--theme-success)}.repository-code-editor .cm-git-marker.is-deleted{color:var(--theme-error)}.repository-code-editor .cm-git-marker.is-deleted:before{inset:0 auto auto 0;background:none;border-top:5px solid currentColor;border-left:5px solid transparent;border-right:5px solid transparent}
+.repository-code-editor .cm-git-marker:focus-visible{outline:2px solid var(--theme-accent);outline-offset:-1px}
+.repository-code-editor .cm-git-diff-widget{margin:0 12px 0 6px;padding:4px 0 8px;font-size:12px}
+.cm-git-diff-panel{border:1px solid var(--theme-border);border-radius:5px;overflow:hidden;background:var(--theme-surface)}
+.cm-git-diff-header{display:flex;align-items:center;justify-content:space-between;padding:4px 9px;color:var(--theme-muted);font:11px -apple-system,BlinkMacSystemFont,sans-serif}
+.cm-git-diff-header button{border:0;background:transparent;color:var(--theme-muted);font-size:18px;line-height:20px;width:24px;border-radius:3px;cursor:pointer}.cm-git-diff-header button:focus-visible{outline:2px solid var(--theme-accent)}
+.cm-git-diff-old{background:color-mix(in srgb,var(--theme-error) 10%,transparent)}.cm-git-diff-new{background:color-mix(in srgb,var(--theme-success) 9%,transparent)}
+.cm-git-diff-caption{padding:3px 9px;font-size:10px;color:var(--theme-muted)}.cm-git-diff-old .cm-git-diff-caption{color:var(--theme-error)}.cm-git-diff-new .cm-git-diff-caption{color:var(--theme-success)}
+.repository-code-editor .cm-git-diff-widget pre{margin:0;padding:0 9px 7px;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;color:var(--theme-text)}
+.cm-git-diff-widget mark{color:inherit;background:color-mix(in srgb,var(--theme-accent) 22%,transparent)}.cm-git-diff-old mark{background:color-mix(in srgb,var(--theme-error) 30%,transparent)}.cm-git-diff-new mark{background:color-mix(in srgb,var(--theme-success) 27%,transparent)}
+.repository-git-notice{margin-right:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .repository-html-preview{display:block;flex:1;width:100%;min-height:0;min-width:0;border:0;background:#fff;color-scheme:normal}
 .repository-code-editor .cm-indent-guides{position:relative}.repository-code-editor .cm-indent-guides:before{content:"";position:absolute;top:0;bottom:0;left:6px;width:var(--indent-columns);background:linear-gradient(to right,color-mix(in srgb,var(--theme-muted) 15%,transparent) 1px,transparent 1px) 0 0/var(--indent-step) 100% repeat-x;pointer-events:none}
 .repository-code-editor .cm-foldGutter .cm-gutterElement{opacity:.65;padding:0 3px;cursor:pointer}.repository-code-editor .cm-foldGutter .cm-gutterElement:hover{opacity:1;color:var(--theme-text)}
