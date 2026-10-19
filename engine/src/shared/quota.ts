@@ -1,6 +1,11 @@
 export const QUOTA_PROVIDERS = ["openai", "codex", "claude", "zai", "kimi"] as const;
 export type QuotaProvider = typeof QUOTA_PROVIDERS[number];
 
+export function selectedQuotaProviders(value: unknown): QuotaProvider[] {
+  if (!Array.isArray(value)) return [...QUOTA_PROVIDERS];
+  return [...new Set(value.filter((id): id is QuotaProvider => (QUOTA_PROVIDERS as readonly unknown[]).includes(id)))];
+}
+
 export const QUOTA_LABELS: Record<QuotaProvider, string> = {
   openai: "OpenAI · OpenCode", codex: "OpenAI · Codex", claude: "Claude Code", zai: "Z.ai", kimi: "Kimi",
 };

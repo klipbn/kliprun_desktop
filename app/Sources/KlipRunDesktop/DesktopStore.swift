@@ -62,6 +62,18 @@ final class DesktopStore: ObservableObject {
         updated.save(to: defaults)
         terminals.forEach { $0.applyPreferences(updated) }
         webView?.pageZoom = CGFloat(interfaceZoom.factor)
+        if let controller = webView?.configuration.userContentController {
+            let current = WKUserScript(source: updated.webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+            var found = false
+            let scripts = controller.userScripts.map { script in
+                guard script.source.hasPrefix("window.kliprunPreferences = ") else { return script }
+                found = true
+                return current
+            }
+            controller.removeAllUserScripts()
+            scripts.forEach(controller.addUserScript)
+            if !found { controller.addUserScript(current) }
+        }
         webView?.evaluateJavaScript(updated.webScript)
     }
 

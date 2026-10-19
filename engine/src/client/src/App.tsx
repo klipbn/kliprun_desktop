@@ -64,7 +64,7 @@ export default function App() {
   const [catalogRefresh, setCatalogRefresh] = useState(0);
   const recent = useStatsRequest<SessionCatalogPayload>("/api/session-catalog", catalogRefresh);
   const now = useNow();
-  const quotaState = useQuotas();
+  const quotaState = useQuotas(preferences.usageProviders);
   const { isRead, counts, markRead } = useReadTracker(board);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [recentSelection, setRecentSelection] = useState<{ id: string; directory: string } | null>(null);

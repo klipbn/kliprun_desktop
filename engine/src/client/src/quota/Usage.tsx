@@ -10,10 +10,11 @@ import { useUsageHistory } from "./useUsageHistory";
 import { HistoryCoverage, TokenBreakdowns, TokenComposition, TokenSessions, TokenSummary, TokenTrend } from "./TokenPanels";
 import "../statistics/statistics.css";
 import "./usage.css";
+import { hasDesktopBridge, notifyNativeAction } from '../nativeBridge';
 
 type Quotas = Partial<Record<QuotaProvider, ProviderQuota>>;
 type Errors = Partial<Record<QuotaProvider, string>>;
-type Props = { quotas: Quotas; pending: QuotaProvider[]; errors: Errors; now: number; onRefresh: () => void; activeSessionIds?: Set<string>; onBoard?: (id: string) => void };
+type Props = { quotas: Quotas; pending: QuotaProvider[]; errors: Errors; now: number; onRefresh: () => void; activeSessionIds?: Set<string>; onBoard?: (id: string) => void; providers?: readonly QuotaProvider[] };
 const SOURCE = { openai: "OpenCode", codex: "Codex", claude: "Claude Code", zai: "OpenCode", kimi: "OpenCode" };
 const EMPTY_SESSIONS = new Set<string>();
 function updated(at: number, now: number): string {
@@ -51,12 +52,13 @@ function ProviderCard({ provider, quota, pending, error, now }: { provider: Quot
   </article>;
 }
 
-export function UsageDashboard({ quotas, pending, errors, now, onRefresh, activeSessionIds = EMPTY_SESSIONS, onBoard }: Props) {
+export function UsageDashboard({ quotas, pending, errors, now, onRefresh, activeSessionIds = EMPTY_SESSIONS, onBoard, providers = QUOTA_PROVIDERS }: Props) {
   const [refresh, setRefresh] = useState(0), [metric, setMetric] = useState<TokenMetric>("total");
   const [selectedId, setSelectedId] = useState<string | null>(null), [resetsOpen, setResetsOpen] = useState(false);
   const history = useUsageHistory(now, refresh), data = history.dashboard.data;
-  const overview = quotaOverview(quotas, errors, now), nextReset = overview.resets[0];
-  const checking = pending.length > 0, statsHref = statisticsHref(history.filters);
+  const overview = quotaOverview(quotas, errors, now, providers), nextReset = overview.resets[0];
+  const checking = pending.some(id => providers.includes(id)), statsHref = statisticsHref(history.filters);
+  const cadence = !providers.length ? 'Checks disabled' : providers.includes('claude') ? providers.length === 1 ? 'Claude: 5 min' : 'Claude: 5 min · other providers: 1 min' : 'Checks every minute';
   const closeDetail = useCallback(() => setSelectedId(null), []);
   const retryHistory = () => setRefresh(value => value + 1);
   function refreshAll() { onRefresh(); retryHistory(); }
@@ -75,12 +77,13 @@ export function UsageDashboard({ quotas, pending, errors, now, onRefresh, active
         <div className="usage-history-status"><span>{history.dashboard.pending ? "Updating token history…" : data ? `Recorded history · ${data.filters.timezone} · ${updated(data.generated_at, now)}` : "Token history is independent of subscription limits"}</span>{data?.summary.incomplete && <button type="button" onClick={() => jumpTo("usage-data-coverage")} className="usage-partial">Partial coverage</button>}</div>
       </section>
       <section id="usage-limits" className="usage-section">
-        <div className="usage-section-heading"><div><h2>Subscription limits</h2><p>Live provider allowances · independent of the selected token period</p></div><span>{checking ? "Checking providers…" : "Claude: 5 min · other providers: 1 min"}</span></div>
-        <div className="usage-health" aria-label="Subscription overview"><div><ShieldCheck size={16} /><span><strong>{overview.current ? overview.available : "—"}<small> / {QUOTA_PROVIDERS.length}</small></strong><span>Connections with capacity</span></span><small>{overview.current} current reports</small></div>
+        <div className="usage-section-heading"><div><h2>Subscription limits</h2><p>Live provider allowances · independent of the selected token period</p></div><span>{checking ? "Checking providers…" : cadence}</span></div>
+        {providers.length > 0 && <div className="usage-health" aria-label="Subscription overview"><div><ShieldCheck size={16} /><span><strong>{overview.current ? overview.available : "—"}<small> / {providers.length}</small></strong><span>Connections with capacity</span></span><small>{overview.current} current reports</small></div>
           <div data-attention={overview.attention.length > 0}><AlertTriangle size={16} /><span><strong>{overview.attention.length || (overview.current ? 0 : "—")}</strong><span>Need attention</span></span><small>{overview.attention.length ? overview.attention.map(item => QUOTA_LABELS[item.provider]).join(", ") : "No current limit alerts"}</small></div>
           <button type="button" onClick={() => { setResetsOpen(true); jumpTo("usage-resets"); }} disabled={!nextReset}><Clock3 size={16} /><span><strong>{nextReset ? countdown(nextReset.at, now) : "—"}</strong><span>Next window reset</span></span><small>{nextReset ? `${QUOTA_LABELS[nextReset.provider]} · ${nextReset.label}` : "No confirmed reset time"}</small></button>
-        </div>
-        <div className="usage-provider-grid" aria-label="Provider balances">{QUOTA_PROVIDERS.map(provider => <ProviderCard key={provider} provider={provider} quota={quotas[provider]} pending={pending.includes(provider)} error={errors[provider]} now={now} />)}</div>
+        </div>}
+        {providers.length ? <div className="usage-provider-grid" data-count={providers.length} aria-label="Provider balances">{providers.map(provider => <ProviderCard key={provider} provider={provider} quota={quotas[provider]} pending={pending.includes(provider)} error={errors[provider]} now={now} />)}</div>
+          : <div className="usage-history-empty"><strong>No providers selected</strong><p>Choose subscription providers in Settings → Usage. Token history is still available below.</p>{typeof window !== 'undefined' && hasDesktopBridge() && <button className="usage-button" onClick={()=>notifyNativeAction('settings')}>Open Settings</button>}</div>}
       </section>
       {data && hasTokenCoverage(data) && <>
         <div id="usage-token-activity" className="usage-analysis-grid"><TokenTrend data={data} period={history.period} metric={metric} onMetric={setMetric} /><TokenComposition data={data} metric={metric} onMetric={setMetric} /></div>

@@ -28,8 +28,8 @@ test("desktop preferences are delivered initially and live, with validated defau
   stop();
   host.dispatchEvent(new Event("kliprun:preferences"));
   expect(values).toEqual([
-    { detailTab: "agent-text", theme: "graphite", klopikSkin: "default", reduceMotion: true, toolbarExpanded: false }, { detailTab: "agent", theme: "graphite", klopikSkin: "default", reduceMotion: false, toolbarExpanded: false },
-    { detailTab: "agent-text", theme: "graphite", klopikSkin: "default", reduceMotion: false, toolbarExpanded: false },
+    { detailTab: "agent-text", theme: "graphite", klopikSkin: "default", reduceMotion: true, toolbarExpanded: false, usageProviders: ['openai','codex','claude','zai','kimi'] }, { detailTab: "agent", theme: "graphite", klopikSkin: "default", reduceMotion: false, toolbarExpanded: false, usageProviders: ['openai','codex','claude','zai','kimi'] },
+    { detailTab: "agent-text", theme: "graphite", klopikSkin: "default", reduceMotion: false, toolbarExpanded: false, usageProviders: ['openai','codex','claude','zai','kimi'] },
   ]);
 });
 
@@ -44,6 +44,13 @@ test("toolbar labels accept only a native boolean and follow live preference cha
   }
   stop();
   expect(values.map(value => (value as { toolbarExpanded: boolean }).toolbarExpanded)).toEqual([true, false, false, false, false]);
+});
+
+test("Usage provider preferences preserve the chosen order and allow all providers to be disabled", () => {
+  expect(desktopPreferences({}).usageProviders).toEqual(['openai','codex','claude','zai','kimi']);
+  expect(desktopPreferences({kliprunPreferences:{usageProviders:['claude','bad','codex','claude',null]}}).usageProviders).toEqual(['claude','codex']);
+  expect(desktopPreferences({kliprunPreferences:{usageProviders:[]}}).usageProviders).toEqual([]);
+  expect(desktopPreferences({kliprunPreferences:{usageProviders:'codex'}}).usageProviders).toEqual(['openai','codex','claude','zai','kimi']);
 });
 
 test("theme preference accepts only known themes", () => {

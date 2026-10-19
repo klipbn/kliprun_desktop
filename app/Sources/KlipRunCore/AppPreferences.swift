@@ -1,6 +1,7 @@
 import Foundation
 
 public struct AppPreferences: Equatable {
+    public static let usageProviders = ["openai", "codex", "claude", "zai", "kimi"]
     public var wheelSensitivity: Double
     public var smoothSensitivity: Double
     public var terminalFontSize: Double
@@ -12,6 +13,8 @@ public struct AppPreferences: Equatable {
     public var klopikSkin: String
     public var reduceMotion: Bool
     public var toolbarExpanded: Bool
+    public var usageProviderOrder: [String]
+    public var usageEnabledProviders: [String]
 
     public init(defaults: UserDefaults = .standard) {
         wheelSensitivity = defaults.object(forKey: "terminal.wheelSensitivity") as? Double ?? 5
@@ -25,6 +28,8 @@ public struct AppPreferences: Equatable {
         klopikSkin = defaults.string(forKey: "appearance.klopikSkin") ?? "default"
         reduceMotion = defaults.bool(forKey: "appearance.reduceMotion")
         toolbarExpanded = defaults.bool(forKey: "appearance.toolbarExpanded")
+        usageProviderOrder = defaults.stringArray(forKey: "usage.providerOrder") ?? Self.usageProviders
+        usageEnabledProviders = defaults.stringArray(forKey: "usage.enabledProviders") ?? Self.usageProviders
         self = validated()
     }
 
@@ -42,6 +47,11 @@ public struct AppPreferences: Equatable {
         if !["user", "agent-text", "agent", "models", "kanban"].contains(detailTab) { value.detailTab = "agent-text" }
         if !["default", "ember", "dusk", "graphite", "daybreak", "paper"].contains(theme) { value.theme = "graphite" }
         if KlopikSkin(rawValue: klopikSkin) == nil { value.klopikSkin = "default" }
+        var seen = Set<String>()
+        value.usageProviderOrder = (usageProviderOrder + Self.usageProviders).filter {
+            Self.usageProviders.contains($0) && seen.insert($0).inserted
+        }
+        value.usageEnabledProviders = value.usageProviderOrder.filter { usageEnabledProviders.contains($0) }
         return value
     }
 
@@ -58,11 +68,14 @@ public struct AppPreferences: Equatable {
         defaults.set(value.klopikSkin, forKey: "appearance.klopikSkin")
         defaults.set(value.reduceMotion, forKey: "appearance.reduceMotion")
         defaults.set(value.toolbarExpanded, forKey: "appearance.toolbarExpanded")
+        defaults.set(value.usageProviderOrder, forKey: "usage.providerOrder")
+        defaults.set(value.usageEnabledProviders, forKey: "usage.enabledProviders")
     }
 
     public var webScript: String {
         // Only validated enum values and booleans cross into the web view.
         let value = validated()
-        return "window.kliprunPreferences = {detailTab: '\(value.detailTab)', theme: '\(value.theme)', klopikSkin: '\(value.klopikSkin)', reduceMotion: \(value.reduceMotion), toolbarExpanded: \(value.toolbarExpanded)}; window.dispatchEvent(new Event('kliprun:preferences'));"
+        let providers = value.usageEnabledProviders.map { "'\($0)'" }.joined(separator: ",")
+        return "window.kliprunPreferences = {detailTab: '\(value.detailTab)', theme: '\(value.theme)', klopikSkin: '\(value.klopikSkin)', reduceMotion: \(value.reduceMotion), toolbarExpanded: \(value.toolbarExpanded), usageProviders: [\(providers)]}; window.dispatchEvent(new Event('kliprun:preferences'));"
     }
 }

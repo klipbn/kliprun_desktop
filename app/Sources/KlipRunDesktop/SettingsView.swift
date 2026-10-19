@@ -10,7 +10,7 @@ struct SettingsView: View {
     @State private var copied = false
     @State private var themeMenuOpen = false
     private let sections = [("Terminal", "terminal"), ("Appearance", "paintpalette"), ("Notifications", "bell"),
-                            ("Agents", "command"), ("Updates", "arrow.down.circle"), ("About", "info.circle")]
+                            ("Agents", "command"), ("Usage", "gauge"), ("Updates", "arrow.down.circle"), ("About", "info.circle")]
 
     init(store: DesktopStore) {
         self.store = store
@@ -69,6 +69,7 @@ struct SettingsView: View {
                         case "Terminal": terminal
                         case "Appearance": appearance
                         case "Agents": AgentSettingsView(store: store)
+                        case "Usage": UsageSettingsView(store: store)
                         case "Notifications":
                             SettingsCard(title: "Coworker notifications", subtitle: "Choose which events need your attention and how they appear.") {
                                 NotificationSettingsView(store: store, notifications: store.notifications)
