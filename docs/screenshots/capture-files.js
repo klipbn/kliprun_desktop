@@ -15,7 +15,11 @@ async (page, directory = "docs/screenshots", fixture, base = "http://127.0.0.1:1
     await page.getByRole("button", { name: "Repository", exact: true }).click();
     await page.getByRole("option").filter({ hasText: root }).click();
     await page.getByRole("tab", { name: "Files", exact: true }).click();
-    for (const path of ["README.md", "queries/projects.sql"]) await page.getByRole("treeitem", { name: `Open file ${path}`, exact: true }).dblclick();
+    for (const path of ["README.md", "queries/projects.sql"]) {
+      await page.getByRole("textbox", { name: "Filter files", exact: true }).fill(path);
+      await page.getByRole("treeitem", { name: `Open file ${path}`, exact: true }).dblclick();
+      await page.getByRole("button", { name: "Clear file filter", exact: true }).click();
+    }
     await page.getByRole("textbox", { name: "Filter files", exact: true }).fill("src/api/search.ts");
     await page.getByRole("treeitem", { name: "Open file src/api/search.ts", exact: true }).click();
     await page.getByRole("textbox", { name: "Edit src/api/search.ts", exact: true }).waitFor();
@@ -31,7 +35,9 @@ async (page, directory = "docs/screenshots", fixture, base = "http://127.0.0.1:1
     await page.locator('button[aria-label="Preview Markdown"]:visible').click();
     await page.getByRole("heading", { name: "Atlas search", exact: true }).waitFor();
     await page.screenshot({ path: `${directory}/git-markdown.png`, animations: "disabled" });
+    await page.getByRole("textbox", { name: "Filter files", exact: true }).fill("notebooks/activity.ipynb");
     await page.getByRole("treeitem", { name: "Open file notebooks/activity.ipynb", exact: true }).click();
+    await page.getByRole("button", { name: "Clear file filter", exact: true }).click();
     await page.getByRole("heading", { name: "Atlas project activity", exact: true }).waitFor();
     await page.screenshot({ path: `${directory}/git-notebook.png`, animations: "disabled" });
     if (external.length) throw new Error("Capture made external requests");

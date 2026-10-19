@@ -4,6 +4,13 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.28] - 2026-10-19
+
+### Fixed
+
+- Load Git Files one directory at a time with additional pages for large folders instead of omitting paths after the first 10,000. Search the entire repository with paged, streamed results, Unicode matching, ignored-file visibility, and safe cancellation of stale responses; reveal selected search results in the tree.
+- Recover Sessions and statistics on the next refresh after a temporary history-index startup failure, including a locked SQLite database. Restart only the failed worker, share recovery across concurrent requests, and preserve saved session organization.
+
 ## [0.0.27] - 2026-10-19
 
 ### Added
