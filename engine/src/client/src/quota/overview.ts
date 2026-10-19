@@ -16,8 +16,8 @@ export function providerView(quota: ProviderQuota | undefined, error: string | u
   return { value, cached, due, live, status, tone: live ? tone(value) : "unknown", limiting: quota?.limits.find(limit => limit.remaining_percent === value) };
 }
 
-export function quotaOverview(quotas: Partial<Record<QuotaProvider, ProviderQuota>>, errors: Partial<Record<QuotaProvider, string>>, now: number) {
-  const views = QUOTA_PROVIDERS.map(provider => ({ provider, ...providerView(quotas[provider], errors[provider], false, now) }));
+export function quotaOverview(quotas: Partial<Record<QuotaProvider, ProviderQuota>>, errors: Partial<Record<QuotaProvider, string>>, now: number, providers: readonly QuotaProvider[] = QUOTA_PROVIDERS) {
+  const views = providers.map(provider => ({ provider, ...providerView(quotas[provider], errors[provider], false, now) }));
   const resets = views.filter(view => view.live).flatMap(view => quotas[view.provider]!.limits
     .filter(limit => limit.reset_at !== null && limit.reset_at > now)
     .map(limit => ({ provider: view.provider, label: limit.label, at: limit.reset_at!, remaining: limit.remaining_percent }))).sort((a, b) => a.at - b.at);

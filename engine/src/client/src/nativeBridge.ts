@@ -1,4 +1,5 @@
 import { validateKlopikSkin, type KlopikSkin } from './office/skins';
+import { selectedQuotaProviders, type QuotaProvider } from '@shared/quota';
 
 type NativeBridgeHost = {
   webkit?: { messageHandlers?: {
@@ -8,8 +9,13 @@ type NativeBridgeHost = {
     exportStatistics?: { postMessage: (request: { filename: string; content: string }) => void };
     gitRepository?: { postMessage: (directory: string) => void };
     repositoryFile?: { postMessage: (request: { action: "reveal" | "open" | "copy"; path: string }) => void };
+    workflowAction?: { postMessage: (request: Record<string, string>) => void };
   } };
 };
+
+export function notifyWorkflowAction(request: Record<string, string>, host: NativeBridgeHost = window as unknown as NativeBridgeHost): void {
+  host.webkit?.messageHandlers?.workflowAction?.postMessage(request);
+}
 
 export type DesktopAction = "new-opencode" | "new-codex" | "new-claude" | "show-terminal" | "open-iterm" | "settings" | "check-updates" | "open-repository" | "toggle-toolbar-labels";
 
@@ -45,9 +51,10 @@ export interface DesktopPreferences {
   reduceMotion: boolean;
   klopikSkin: KlopikSkin;
   toolbarExpanded: boolean;
+  usageProviders: QuotaProvider[];
 }
 
-type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; theme?: unknown; reduceMotion?: unknown; klopikSkin?: unknown; toolbarExpanded?: unknown } };
+type PreferencesHost = { kliprunPreferences?: { detailTab?: unknown; theme?: unknown; reduceMotion?: unknown; klopikSkin?: unknown; toolbarExpanded?: unknown; usageProviders?: unknown } };
 
 export function desktopPreferences(host: PreferencesHost = typeof window === "undefined" ? {} : window as PreferencesHost): DesktopPreferences {
   const value = host.kliprunPreferences;
@@ -58,6 +65,7 @@ export function desktopPreferences(host: PreferencesHost = typeof window === "un
     reduceMotion: value?.reduceMotion === true,
     klopikSkin: validateKlopikSkin(value?.klopikSkin),
     toolbarExpanded: value?.toolbarExpanded === true,
+    usageProviders: selectedQuotaProviders(value?.usageProviders),
   };
 }
 

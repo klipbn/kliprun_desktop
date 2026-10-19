@@ -33,6 +33,10 @@ final class EngineRuntime: ObservableObject {
         child.currentDirectoryURL = engine
         child.environment = EngineEnvironment.make(inherited: ProcessInfo.processInfo.environment,
                                                    token: token, statePath: support.path)
+        let agentSettings = Dictionary(uniqueKeysWithValues: AgentSettings.sources.map { ($0, AgentSettings(source: $0, defaults: .standard)) })
+        if let data = AgentSettings.workflowJSON(agentSettings) {
+            child.environment?["KLIPRUN_AGENT_SETTINGS"] = String(decoding: data, as: UTF8.self)
+        }
         let stdout = Pipe()
         child.standardOutput = stdout
         let logURL = support.appendingPathComponent("engine.log")
@@ -77,6 +81,16 @@ final class EngineRuntime: ObservableObject {
         if process?.isRunning == true { process?.terminate() }
         process = nil; output = nil; baseURL = nil
         try? errorLog?.close(); errorLog = nil
+    }
+
+    func updateAgentSettings(_ settings: [String: AgentSettings]) async {
+        guard let baseURL, let data = AgentSettings.workflowJSON(settings) else { return }
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/workflows/agent-settings"))
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = data
+        _ = try? await URLSession.shared.data(for: request)
     }
 
     private struct Ready: Decodable { let ready: Bool; let port: Int }

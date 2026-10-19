@@ -4,9 +4,30 @@ import { buildDashboard, buildSessionDetail, rankSessions } from "../../engine/s
 import { buildSessionCatalog } from "../../engine/src/server/usage/catalog.ts";
 import { parseStatsFilters } from "../../engine/src/server/usage/time.ts";
 import { UsageStore } from "../../engine/src/server/usage/store.ts";
+import { Hono } from 'hono';
+import { WorkflowRunner } from '../../engine/src/server/workflow/runner.ts';
+import { WorkflowStore } from '../../engine/src/server/workflow/store.ts';
+import { registerWorkflowRoutes } from '../../engine/src/server/workflow/routes.ts';
 import { parseRecentSessionsQuery } from "../../engine/src/server/usage/recent.ts";
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const fixture = await Bun.file(join(root, "docs/screenshots/mock-api.json")).json();
+let workflowClock = fixture.workflow.startedAt;
+Date.now = () => workflowClock;
+const workflowStore = new WorkflowStore(':memory:');
+let workflowRevision = 0;
+const workflowRunner = new WorkflowRunner(workflowStore, {
+  prepare: async flow => ({ directory: flow.directory, root: flow.directory, branch: flow.branch, baseHead: 'a'.repeat(40), remotes: { origin: 'https://github.com/example/aurora.git' } }),
+  inspect: async () => ({ head: 'a'.repeat(40), tree: String(workflowRevision), fingerprint: String(workflowRevision), paths: ['src/api.ts'] }),
+  validateFiles: async (_run, paths) => paths, isAlive: async () => false,
+  agent: async (run, node, _prompt, signal) => {
+    await Bun.sleep(1200); signal.throwIfAborted(); workflowClock += fixture.workflow.stepDurationMs;
+    if (node.resultKind === 'code') workflowRevision++;
+    return { text: node.resultKind === 'review' ? fixture.workflow.results[run.attempts.filter(a => a.nodeId === node.id).length === 1 ? 'review_changes' : 'review_approved'] : fixture.workflow.results[node.resultKind === 'code' ? 'build' : 'plan'], files: [] };
+  },
+  publish: async () => ({ text: 'Fixture publication confirmed.', files: [], publication: fixture.workflow.publication }),
+});
+workflowRunner.save(fixture.workflow.definition);
+const workflowApp = new Hono(); registerWorkflowRoutes(workflowApp, workflowRunner, workflowStore, '/fixture-only');
 const recent = new UsageStore(":memory:");
 for (const session of fixture.recent_sessions.sessions) recent.upsertSession(session);
 const build = join(root, "engine/src/client/dist");
@@ -17,6 +38,10 @@ const server = Bun.serve({ hostname: "127.0.0.1", port: Number(process.env.KLIPR
   if (path === "/__preview/requests") return Response.json(requests);
   if (path === "/__preview/git-diff-examples") return Response.json(fixture.git.diff_examples);
   if (path.startsWith("/api/")) requests.push(path+url.search);
+  if (path === '/api/workflows/models') return Response.json({ models: { codex: ['demo-codex'], opencode: ['demo/model'], claude: ['demo-claude'] } });
+  if (path === '/api/workflows/workspace') return Response.json({ directory: url.searchParams.get('directory'), git: { ...fixture.git.status, branch: fixture.workflow.definition.branch, files: [] } });
+
+  if (path.startsWith('/api/workflows')) return workflowApp.fetch(request);
   if (path === "/api/git/repositories") return Response.json({ repositories: fixture.git.repositories });
   if (path === "/api/git/status") return Response.json({ ...fixture.git.status, root: url.searchParams.get("directory") ?? fixture.git.status.root });
   if (path === "/api/git/files") {

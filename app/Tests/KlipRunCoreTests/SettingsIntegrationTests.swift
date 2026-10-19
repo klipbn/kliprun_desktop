@@ -17,7 +17,7 @@ import SwiftUI
     try await Task.sleep(for: .milliseconds(50))
     window.makeKeyAndOrderFront(nil)
     host.layoutSubtreeIfNeeded()
-    let location = NSPoint(x: 324, y: host.bounds.height - 110)
+    let location = NSPoint(x: 280, y: host.bounds.height - 110)
     for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
         NSApplication.shared.sendEvent(try #require(NSEvent.mouseEvent(with: type, location: location, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
             windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0)))
@@ -87,7 +87,7 @@ import SwiftUI
     try await click(50, positionY)
     #expect(store.preferences.terminalPosition == "left")
     window.setContentSize(NSSize(width: 560, height: 850))
-    try await click(174, 110) // Appearance
+    try await click(128, 110) // Appearance
     try await click(145, 332)
     #expect(store.preferences.interfaceZoomPercent == 80)
     try await click(60, 480)

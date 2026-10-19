@@ -33,7 +33,7 @@ struct NotificationView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Text(event.message).font(.system(size: 13)).foregroundStyle(Color(white: 0.75))
                     .fixedSize(horizontal: false, vertical: true)
-                Button("Open session", action: open)
+                Button(event.actionLabel, action: open)
                     .font(.system(size: 12, weight: .medium)).buttonStyle(.plain).foregroundStyle(accent)
             }
             .padding(16).frame(width: 285, alignment: .leading)
@@ -46,7 +46,7 @@ struct NotificationView: View {
             .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
             Button(action: open) { PixelCoworker(sessionID: event.sessionID) }
                 .buttonStyle(.plain).frame(width: 85, height: 105)
-                .accessibilityLabel("Open session \(event.title)")
+                .accessibilityLabel("\(event.actionLabel) \(event.title)")
         }
         .padding(12).frame(width: 420, alignment: .top)
         .foregroundStyle(.white).environment(\.colorScheme, .dark)

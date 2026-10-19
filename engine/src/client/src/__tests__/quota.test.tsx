@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { UsageDashboard } from "../quota/Usage";
+import { StatusQuota } from "../quota/StatusQuota";
+import { quotaOverview } from "../quota/overview";
 import type { ProviderQuota } from "@shared/quota";
 
 const now = Date.parse("2026-10-15T12:00:00Z");
@@ -60,4 +62,26 @@ test("Usage shows a rate-limit cooldown while retaining the last known balance",
   expect(html).toContain("Automatic retries are paused");
   expect(html).toContain('aria-label="Claude Code: 0% remaining"');
   expect(render({ claude: { ...quota, provider: "claude", status: "stale", retry_at: now - 1 } })).toContain("Retry available");
+});
+
+test("Usage limits and the status strip show only selected providers in their configured order", () => {
+  const quotas = { openai: quota, codex: {...quota,provider:'codex' as const}, claude:{...quota,provider:'claude' as const} };
+  const html = renderToStaticMarkup(<UsageDashboard providers={['claude','codex']} quotas={quotas} pending={[]} errors={{}} now={now} onRefresh={()=>{}}/>);
+  expect(html).not.toContain('data-provider="openai"');
+  expect(html).not.toContain('data-provider="kimi"');
+  expect(html.indexOf('data-provider="claude"')).toBeLessThan(html.indexOf('data-provider="codex"'));
+  const strip = renderToStaticMarkup(<StatusQuota providers={['claude','codex']} quotas={quotas} pending={[]} errors={{}} now={now} onOpen={()=>{}}/>);
+  expect(strip).not.toContain('OpenAI · OpenCode');
+  expect(strip.indexOf('Claude Code')).toBeLessThan(strip.indexOf('OpenAI · Codex'));
+  expect(quotaOverview(quotas,{},now,['codex']).attention.map(v=>v.provider)).toEqual(['codex']);
+  expect(quotaOverview(quotas,{},now,['codex']).resets.every(v=>v.provider==='codex')).toBe(true);
+});
+
+test("disabling all limits leaves token history available and removes the status strip",()=>{
+  const html=renderToStaticMarkup(<UsageDashboard providers={[]} quotas={{openai:quota}} pending={[]} errors={{}} now={now} onRefresh={()=>{}}/>);
+  expect(html).toContain('No providers selected');
+  expect(html).not.toContain('class="usage-provider"');
+  expect(html).toContain('Token usage period');
+  expect(html).toContain('Explore Statistics');
+  expect(renderToStaticMarkup(<StatusQuota providers={[]} quotas={{openai:quota}} pending={[]} errors={{}} now={now} onOpen={()=>{}}/>)).toBe('');
 });

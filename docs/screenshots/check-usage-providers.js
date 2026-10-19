@@ -1,0 +1,56 @@
+// Playwright callback against fixture-only preview.ts. Provider HTTP calls are mocked by that preview.
+async (page, base='http://127.0.0.1:18799') => {
+  const assert=(value,message)=>{if(!value)throw Error(message);};
+  await page.clock.install();
+  const requests=[];
+  page.on('request',request=>{if(request.url().startsWith(`${base}/api/quota/`))requests.push(new URL(request.url()).pathname.split('/').at(-1));});
+  await page.route(`${base}/usage*`,async route=>{
+    if(!route.request().isNavigationRequest())return route.continue();
+    const response=await route.fetch();const body=(await response.text()).replace('</head>',`<script>window.kliprunPreferences={...window.kliprunPreferences,usageProviders:['claude','codex']};</script></head>`);
+    await route.fulfill({response,body});
+  });
+  const choose=providers=>page.evaluate(providers=>{window.kliprunPreferences={...window.kliprunPreferences,usageProviders:providers};window.dispatchEvent(new Event('kliprun:preferences'));},providers);
+  const cards=()=>page.locator('.usage-provider').evaluateAll(es=>es.map(e=>e.getAttribute('data-provider')));
+  await page.setViewportSize({width:1440,height:1000});await page.goto(`${base}/usage`);
+  await page.locator('.usage-provider[data-provider=claude] [role=meter]').first().waitFor();
+  await page.locator('.usage-provider[data-provider=codex] [role=meter]').first().waitFor();
+  assert(JSON.stringify(await cards())===JSON.stringify(['claude','codex']),'Usage did not apply initial provider selection/order');
+  assert([...new Set(requests)].sort().join(',')==='claude,codex','Disabled providers were requested at startup');
+  const beforeReorder=requests.length;
+  await choose(['codex','claude']);await page.waitForFunction(()=>document.querySelector('.usage-provider')?.getAttribute('data-provider')==='codex');
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  assert(requests.length===beforeReorder,'Reordering caused unnecessary quota checks');
+  const names=await page.locator('.status-quota-name').allTextContents();assert(names[0].startsWith('Codex')&&names[1].startsWith('Claude'),'Status strip order differs from Usage');
+  await choose(['claude']);await page.waitForFunction(()=>document.querySelectorAll('.usage-provider').length===1);
+  const beforeRefresh=requests.length;await page.getByRole('button',{name:'Refresh',exact:true}).click();
+  await page.waitForFunction(()=>!document.querySelector('.usage-heading-actions button')?.disabled);
+  assert(requests.slice(beforeRefresh).every(id=>id==='claude'),'Refresh checked a disabled provider');
+  const beforePoll=requests.length;await page.clock.fastForward(61000);
+  await page.waitForFunction(()=>!document.querySelector('.usage-heading-actions button')?.disabled);
+  assert(requests.length>beforePoll&&requests.slice(beforePoll).every(id=>id==='claude'),'Automatic polling did not respect selection');
+  const total=await page.getByTestId('usage-total-tokens').textContent();
+  await choose([]);await page.getByText('No providers selected',{exact:true}).waitFor();
+  assert(await page.locator('.status-quotas,.status-quota-empty').count()===0,'Disabled providers remain in the status bar');
+  const beforeEmptyRefresh=requests.length;await page.getByRole('button',{name:'Refresh',exact:true}).click();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  assert(requests.length===beforeEmptyRefresh,'Empty selection requested limits');
+  await page.clock.fastForward(125000);assert(requests.length===beforeEmptyRefresh,'Disabled polling timer is still active');
+  assert(await page.getByTestId('usage-total-tokens').textContent()===total,'Provider selection filtered token history');
+  let release,started;
+  const held=new Promise(resolve=>{started=resolve;});
+  const failed=[];page.on('requestfailed',request=>{if(request.url().includes('/api/quota/kimi'))failed.push(request.url());});
+  await page.route(`${base}/api/quota/kimi*`,async route=>{const response=await route.fetch();started();await new Promise(resolve=>{release=resolve;});try{await route.fulfill({response});}catch{}});
+  await choose(['kimi','claude']);await held;
+  const cancelled=page.waitForEvent('requestfailed',{predicate:request=>request.url().includes('/api/quota/kimi'),timeout:3000});
+  await choose(['claude']);await page.waitForFunction(()=>document.querySelectorAll('.usage-provider').length===1);release();await cancelled;
+  assert(failed.length>0,'Disabling a provider did not cancel its in-flight request');
+  await page.unroute(`${base}/api/quota/kimi*`);
+  await page.setViewportSize({width:620,height:800});await choose(['kimi','claude']);
+  await page.waitForFunction(()=>document.querySelector('.usage-provider')?.getAttribute('data-provider')==='kimi');
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Narrow Usage overflows');
+  await page.getByRole('link',{name:'Explore Statistics'}).click();
+  await page.waitForURL('**/stats?**');
+  const query=new URL(page.url()).searchParams;assert(!query.has('source')&&!query.has('model')&&!query.has('provider'),'Usage display preference leaked into Statistics filters');
+  await page.unroute(`${base}/usage*`);
+  return {passed:true,selectedOnly:true,reorderWithoutFetch:true,polling:true,cancellation:true,emptySelection:true,tokenHistoryUnchanged:true,statisticsUnchanged:true};
+}

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownToLine, BarChart3, Building2, Columns3, Folder, Gauge, GitBranch, PanelTopClose, PanelTopOpen, Settings2, SquareTerminal } from "lucide-react";
+import { ArrowDownToLine, BarChart3, Building2, Columns3, Folder, Gauge, GitBranch, PanelTopClose, PanelTopOpen, Settings2, SquareTerminal, Workflow as WorkflowIcon } from "lucide-react";
 import type { CardPayload, ColumnKey } from "@shared/types";
 import { sessionCards } from "@shared/readTracker";
 import { linkedSessionId } from "@shared/sessionLink";
@@ -28,10 +28,11 @@ const Statistics = lazy(() => import("./statistics/Statistics"));
 const Office = lazy(() => import("./office/Office"));
 const Usage = lazy(() => import("./quota/Usage"));
 const Git = lazy(() => import("./git/Git"));
+const Workflow = lazy(() => import("./workflow/Workflow"));
 const HEADER_BUTTON = "toolbar-button flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60";
 
 function currentPage() {
-  return window.location.pathname === "/sessions" ? "sessions" : window.location.pathname === "/git" ? "git" : window.location.pathname === "/stats" ? "stats" : window.location.pathname === "/office" ? "office" : window.location.pathname === "/usage" ? "usage" : "board";
+  return window.location.pathname === "/workflow" ? "workflow" : window.location.pathname === "/sessions" ? "sessions" : window.location.pathname === "/git" ? "git" : window.location.pathname === "/stats" ? "stats" : window.location.pathname === "/office" ? "office" : window.location.pathname === "/usage" ? "usage" : "board";
 }
 
 function ConnectionIndicator(state: "connecting" | "live" | "polling", error: string | null) {
@@ -63,7 +64,7 @@ export default function App() {
   const [catalogRefresh, setCatalogRefresh] = useState(0);
   const recent = useStatsRequest<SessionCatalogPayload>("/api/session-catalog", catalogRefresh);
   const now = useNow();
-  const quotaState = useQuotas();
+  const quotaState = useQuotas(preferences.usageProviders);
   const { isRead, counts, markRead } = useReadTracker(board);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [recentSelection, setRecentSelection] = useState<{ id: string; directory: string } | null>(null);
@@ -149,6 +150,10 @@ export default function App() {
     window.history.pushState(null, "", "/git");
     setPage("git");
   }, []);
+  const openWorkflow = useCallback(() => {
+    if (window.location.pathname === "/stats") statisticsSearch.current = window.location.search;
+    window.history.pushState(null, "", "/workflow"); setPage("workflow");
+  }, []);
   useEffect(() => observeNativeNavigation(path => {
     if (path === "/sessions") openSessions();
     else if (path === "/") backToBoard();
@@ -156,16 +161,17 @@ export default function App() {
     else if (path === "/office") openOffice();
     else if (path === "/usage") openUsage();
     else if (path === "/git") openGit();
-  }), [backToBoard, openStatistics, openOffice, openUsage, openGit, openSessions]);
+    else if (path === "/workflow") openWorkflow();
+  }), [backToBoard, openStatistics, openOffice, openUsage, openGit, openSessions, openWorkflow]);
   useEffect(() => {
     const navigate = (event: KeyboardEvent) => {
       if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || document.querySelector("dialog[open]")) return;
-      const action = [openSessions, backToBoard, openOffice, openGit, openUsage, openStatistics][Number(event.key) - 1];
+      const action = [openSessions, backToBoard, openOffice, openGit, openUsage, openStatistics, openWorkflow][Number(event.key) - 1];
       if (action) { event.preventDefault(); action(); }
     };
     window.addEventListener("keydown", navigate);
     return () => window.removeEventListener("keydown", navigate);
-  }, [openSessions, backToBoard, openOffice, openGit, openUsage, openStatistics]);
+  }, [openSessions, backToBoard, openOffice, openGit, openUsage, openStatistics, openWorkflow]);
   const menuActions = useRef({ newProject: () => {}, findSession: () => {}, refresh: () => {} });
   menuActions.current = {
     newProject: () => { openSessions(); setSessionMenuRequest("new-project"); },
@@ -262,6 +268,7 @@ export default function App() {
               { id: "kanban", label: "Kanban", page: "board", icon: Columns3, shortcut: 2, onClick: backToBoard },
               { id: "office", label: "Office", page: "office", icon: Building2, shortcut: 3, onClick: page === "office" ? backToBoard : openOffice },
               { id: "git", label: "Git", page: "git", icon: GitBranch, shortcut: 4, onClick: openGit },
+              { id: "workflow", label: "Workflow", page: "workflow", icon: WorkflowIcon, shortcut: 7, onClick: openWorkflow },
               { id: "usage", label: "Usage", page: "usage", icon: Gauge, shortcut: 5, onClick: page === "usage" ? backToBoard : openUsage },
               { id: "statistics", label: "Statistics", page: "stats", icon: BarChart3, shortcut: 6, onClick: showStatistics ? backToBoard : openStatistics },
             ].map(item => <button key={item.id} type="button" onClick={item.onClick} aria-label={item.label}
@@ -305,6 +312,10 @@ export default function App() {
         </Suspense>
         {selectedId && <DetailsPanel sessionId={selectedId} onClose={closeDetails} />}
       </main>}
+
+      {page === "workflow" && <Suspense fallback={<div className="p-4 text-text-secondary">Loading workflows…</div>}>
+        <Workflow directories={gitDirectories} onGit={openGit} />
+      </Suspense>}
 
       {page === "git" && <Suspense fallback={<div className="flex-1 flex items-center justify-center text-text-secondary">Loading Git…</div>}>
         <Git directories={gitDirectories} sessionId={selectedId} sessionDirectory={gitSessionDirectory} />

@@ -32,6 +32,7 @@ struct KlipRunWebView: NSViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: "gitWorkspace")
         configuration.userContentController.addUserScript(WKUserScript(source: GitWorkspace().webScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         configuration.userContentController.add(context.coordinator, name: "repositoryFile")
+        configuration.userContentController.add(context.coordinator, name: "workflowAction")
         if let repository = UserDefaults.standard.string(forKey: "git.repository"),
            let data = try? JSONEncoder().encode(repository), let literal = String(data: data, encoding: .utf8) {
             configuration.userContentController.addUserScript(WKUserScript(source: "window.kliprunGitRepository = \(literal);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -69,6 +70,7 @@ struct KlipRunWebView: NSViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "gitRepository")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "gitWorkspace")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "repositoryFile")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "workflowAction")
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
     }
@@ -85,7 +87,18 @@ struct KlipRunWebView: NSViewRepresentable {
                   message.frameInfo.securityOrigin.protocol == loadedBaseURL?.scheme,
                   message.frameInfo.securityOrigin.host == "127.0.0.1",
                   message.frameInfo.securityOrigin.port == loadedBaseURL?.port else { return }
-            if message.name == "menuState",
+            if message.name == "workflowAction", let body = message.body as? [String: String] {
+                if body["action"] == "choose-directory" {
+                    let panel = NSOpenPanel()
+                    panel.canChooseFiles = false; panel.canChooseDirectories = true; panel.allowsMultipleSelection = false
+                    panel.prompt = "Choose working folder"
+                    panel.begin { [weak self] response in
+                        guard response == .OK, let path = panel.url?.path,
+                              let data = try? JSONEncoder().encode(path), let literal = String(data: data, encoding: .utf8) else { return }
+                        self?.store.webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('kliprun:workflow-directory', { detail: \(literal) }));")
+                    }
+                }
+            } else if message.name == "menuState",
                message.frameInfo.isMainFrame,
                message.frameInfo.securityOrigin.host == "127.0.0.1",
                message.frameInfo.securityOrigin.port == loadedBaseURL?.port,

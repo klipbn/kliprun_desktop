@@ -3,6 +3,7 @@ import { countdown, date, percent, retryHint, tone } from "./format";
 import "./status-quota.css";
 
 type Props = {
+  providers?: readonly QuotaProvider[];
   quotas: Partial<Record<QuotaProvider, ProviderQuota>>;
   errors: Partial<Record<QuotaProvider, string>>;
   pending: QuotaProvider[];
@@ -14,8 +15,9 @@ const labels = { openai: "OpenAI OC", codex: "Codex", claude: "Claude", zai: "Z.
 const order = { fiveHour: 0, weekly: 1, monthly: 2, period: 3 };
 const windows = { fiveHour: "5h", weekly: "7d", monthly: "Month", period: "Period" };
 
-export function StatusQuota({ quotas, errors, pending, now, onOpen }: Props) {
-  const providers = QUOTA_PROVIDERS.filter(id => quotas[id] && quotas[id]!.status !== "not_configured");
+export function StatusQuota({ quotas, errors, pending, now, onOpen, providers: selected = QUOTA_PROVIDERS }: Props) {
+  if (!selected.length) return null;
+  const providers = selected.filter(id => quotas[id] && quotas[id]!.status !== "not_configured");
   if (!providers.length) return <button type="button" className="status-quota-empty" onClick={onOpen}>
     {pending.length ? "Checking limits…" : "Usage"}
   </button>;
