@@ -4,6 +4,21 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.29] - 2026-10-19
+
+### Added
+
+- Add Settings → Usage to choose and reorder subscription-limit providers for Usage and the status strip. Persist the selection, stop disabled-provider checks, cancel obsolete requests, and apply current settings before web-view startup requests. Keep token history and Statistics independent of these display preferences.
+- Add Workflow sidebar search and Rename/Hide/Show/Delete actions, with recoverable hiding and in-app delete confirmation. Show local clock time and exact HH:MM:SS durations, Auto layout and the Run order inspector.
+- Scope run-history selection to the selected Workflow ID and reject stale/foreign selections instead of opening an unrelated snapshot. Preserve immutable run snapshots through renaming and active runs through hiding.
+- Add a collapsible Workflow list with run dates/status, persistent resizing for both side panes, reusable code/text/file review and Git publication presets, and an active-agent panel with elapsed time and process details.
+- Show cumulative task duration across attempts and runs; reuse native notifications for Workflow completion, human review and needs-attention transitions, with direct navigation to the workflow.
+- Replace Workflow Log with readable assistant Responses and formatted review verdicts. Keep bounded prose and compact recovery records instead of duplicated raw tool logs; poll summaries rather than every workflow's full history.
+- Add Workflow (Control+7), immediately after Git in the toolbar: a saved canvas of agent, Git publication and human-review cards, editable connections, per-card models/tasks, zoom, Fit view, result/input/response inspectors and attempt history.
+- Execute one connected sequence with current-result handoff, validated review verdicts, bounded automatic rework, human feedback, Pause/Resume/Stop, folder ownership and explicit recovery of interrupted attempts.
+- Publish approved content with separate source/target branches, one authorization per run, ordinary push and reconciled GitHub PR / GitLab MR creation or update. Keep acceptance local; never merge automatically.
+- Add structured OpenCode, Codex and Claude Code execution adapters, durable owned-process records, snapshot agent settings and compact Workflow response history. Add fake-adapter, disposable-Git, protocol, API, native bridge and fixture browser coverage.
+
 ## [0.0.28] - 2026-10-19
 
 ### Fixed
