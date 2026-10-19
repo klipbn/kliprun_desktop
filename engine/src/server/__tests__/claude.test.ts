@@ -72,6 +72,21 @@ test("ambiguous terminals stay unlinked and stale running turns become unknown",
   expect(adapter.cards(at + 16 * 60_000)[0]).toMatchObject({ column: "idle", stage: "Status unknown" });
 });
 
+test("Claude slash commands are not prompts, interruptions finish turns and titles follow Claude's naming", () => {
+  const { path, entry, adapter } = fixture();
+  appendFileSync(path, entry("ai-title", { aiTitle: "Search feature" }, 1));
+  adapter.setProcesses([{ pid: "42", cwd: "/demo", sessionId: id, name: "demo-c5" }]);
+  expect(adapter.cards(at + 1000)[0]).toMatchObject({ title: "Search feature", prompt_snippet: "Implement search" });
+  appendFileSync(path, entry("user", { message: { role: "user", content: "[Request interrupted by user]" } }, 2));
+  expect(adapter.cards(at + 2000)[0]).toMatchObject({ column: "idle", stage: "Interrupted", prompt_snippet: "Implement search" });
+  appendFileSync(path, entry("user", { message: { role: "user", content: "<command-name>/clear</command-name>\n<command-args></command-args>" } }, 3));
+  expect(adapter.cards(at + 3000)[0]).toMatchObject({ column: "idle", prompt_snippet: "Implement search" });
+  appendFileSync(path, entry("custom-title", { customTitle: "Renamed" }, 4) + entry("ai-title", { aiTitle: "Later AI title" }, 5));
+  expect(adapter.cards(at + 5000)[0].title).toBe("Renamed");
+  const fresh = readClaudeJournal(path, at + 5000);
+  expect(fresh.messages.filter(m => m.role === "user").map(m => m.text)).toEqual(["Implement search"]);
+});
+
 test("confirmed native Claude status reports permission prompts and resumes without journal writes", () => {
   const { adapter } = fixture();
   adapter.setProcesses([{ pid: "42", cwd: "/demo", sessionId: id, status: "waiting", statusUpdatedAt: at + 1000 }]);
@@ -122,6 +137,7 @@ test("Claude native records reject reused PIDs and different working directories
   const data = { pid: 42, cwd: "/demo", sessionId: id, startedAt: at + 500, status: "waiting", statusUpdatedAt: at + 1000 };
   expect(claudeSessionRecord(process, startedAt, data)).toMatchObject({ sessionId: id, status: "waiting" });
   expect(claudeSessionRecord(process, startedAt, { ...data, startedAt: at - 60_000 })).toBeNull();
+  expect(claudeSessionRecord(process, startedAt, { ...data, startedAt: at + 30 * 60_000 })).toMatchObject({ sessionId: id });
   expect(claudeSessionRecord(process, startedAt, { ...data, pid: 43 })).toBeNull();
   expect(claudeSessionRecord(process, startedAt, { ...data, cwd: "/other" })).toBeNull();
   expect(claudeSessionRecord(process, startedAt, { ...data, sessionId: "../../settings" })).toBeNull();

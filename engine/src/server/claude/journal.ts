@@ -12,6 +12,9 @@ export const claudeHome = () => process.env.KLIPRUN_BUN_CLAUDE_HOME ?? process.e
 const MAX_READ = 4 * 1024 * 1024;
 const MAX_LINE = 1024 * 1024;
 const string = (v: unknown): string | null => typeof v === "string" ? v : null;
+// Slash commands and ! shell turns are echoed as user entries; they are not prompts.
+const LOCAL_COMMAND = /^\s*<(?:command-name|command-message|command-args|local-command-|bash-input|bash-stdout|bash-stderr)/;
+const INTERRUPTED = /^\[Request interrupted by user/;
 
 /** Only root CLI journals, never debug logs, API request blobs, or helper transcripts. */
 export function claudeJournals(home: string): string[] {
@@ -55,6 +58,8 @@ function* entries(path: string, maxBytes: number, tail = true): Generator<Record
 
 export interface ClaudeJournal {
   session: UsageSession;
+  /** The title came from Claude's own naming (custom or AI title), not from the first prompt. */
+  named: boolean;
   column: ColumnKey;
   stage: string;
   since: number;
@@ -77,7 +82,7 @@ export interface ClaudeJournal {
 export function readClaudeJournal(path: string, now: number, maxBytes = MAX_READ): ClaudeJournal {
   const id = basename(path, ".jsonl");
   if (!CLAUDE_ID.test(id)) throw new Error("Invalid Claude session id");
-  const state: ClaudeJournal = { session: { id: `claude:${id}`, source: "claude", parent_id: null, title: "Claude Code", directory: "", created_at: 0, updated_at: 0 },
+  const state: ClaudeJournal = { session: { id: `claude:${id}`, source: "claude", parent_id: null, title: "Claude Code", directory: "", created_at: 0, updated_at: 0 }, named: false,
     column: "idle", stage: "Status unknown", since: 0, startedAt: null, finishedAt: null, lastEventAt: 0, lastTool: null,
     prompt: null, model: null, contextTokens: null, contextLimit: null, tokens: null, error: null, messages: [], models: [], events: [] };
   const messages = new Map<string, DetailMessage>();
@@ -86,6 +91,11 @@ export function readClaudeJournal(path: string, now: number, maxBytes = MAX_READ
   const seenTools = new Set<string>();
   const usageByMessage = new Map<string, { model: string; tokens: ModelUsageSummary["tokens"] }>();
   let customTitle = false;
+  // A /rename title wins over Claude's AI title, which wins over the first prompt.
+  const name = (entry: Record<string, unknown>) => {
+    if (entry.type === "custom-title" && typeof entry.customTitle === "string") { state.session.title = scrub(entry.customTitle).slice(0, 90); customTitle = state.named = true; }
+    else if (entry.type === "ai-title" && typeof entry.aiTitle === "string" && !customTitle) { state.session.title = scrub(entry.aiTitle).slice(0, 90); state.named = true; }
+  };
   const truncated = statSync(path).size > maxBytes;
   // Metadata stays at the head even when the board tails a large journal.
   if (truncated) {
@@ -95,12 +105,12 @@ export function readClaudeJournal(path: string, now: number, maxBytes = MAX_READ
       if (typeof entry.timestamp === "string" && !state.session.created_at) {
         const at = Date.parse(entry.timestamp); if (Number.isFinite(at) && at >= 0) state.session.created_at = at;
       }
-      if (entry.type === "custom-title" && typeof entry.customTitle === "string") { state.session.title = scrub(entry.customTitle).slice(0, 90); customTitle = true; }
+      name(entry);
       const message = record(entry.message);
       if (entry.type === "user" && !entry.isMeta && !state.prompt) {
         const content = Array.isArray(message.content) ? message.content.map(record) : [];
         const text = typeof message.content === "string" ? message.content : content.filter(c => c.type === "text").map(c => string(c.text) ?? "").join("\n");
-        if (text) { state.prompt = scrub(text).slice(0, 140); if (!customTitle) state.session.title = scrub(text).slice(0, 90); }
+        if (text && !LOCAL_COMMAND.test(text) && !INTERRUPTED.test(text)) { state.prompt = scrub(text).slice(0, 140); if (!state.named) state.session.title = scrub(text).slice(0, 90); }
       }
     }
   }
@@ -108,7 +118,7 @@ export function readClaudeJournal(path: string, now: number, maxBytes = MAX_READ
     if (entry.sessionId && entry.sessionId !== id || entry.isSidechain === true) continue;
     // Later cwd values follow Claude's shell, not the session's original project.
     if (!state.session.directory && typeof entry.cwd === "string") state.session.directory = scrub(entry.cwd);
-    if (entry.type === "custom-title" && typeof entry.customTitle === "string") { state.session.title = scrub(entry.customTitle).slice(0, 90); customTitle = true; }
+    name(entry);
     const at = typeof entry.timestamp === "string" ? Date.parse(entry.timestamp) : NaN;
     if (!Number.isFinite(at) || at < 0) continue;
     if (!state.session.created_at) state.session.created_at = at;
@@ -126,8 +136,12 @@ export function readClaudeJournal(path: string, now: number, maxBytes = MAX_READ
       state.stage = state.column === "attention" ? "Waiting for input" : "Working";
       state.since = at; state.lastEventAt = at; continue;
     }
+    if (entry.type === "user" && !entry.isMeta && LOCAL_COMMAND.test(text)) continue;
+    if (entry.type === "user" && !entry.isMeta && INTERRUPTED.test(text)) {
+      pending.clear(); state.column = "idle"; state.stage = "Interrupted"; state.since = at; state.lastEventAt = at; state.finishedAt = at; continue;
+    }
     if (entry.type === "user" && !entry.isMeta && text) {
-      if (!state.prompt && !customTitle) state.session.title = text.slice(0, 90);
+      if (!state.prompt && !state.named) state.session.title = text.slice(0, 90);
       state.prompt = text.slice(0, 140); state.startedAt = at; state.finishedAt = null; state.error = null;
       pending.clear(); state.column = "running"; state.stage = "Working"; state.since = at; state.lastEventAt = at;
       const key = string(entry.uuid) ?? `user:${at}`;

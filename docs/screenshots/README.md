@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All twenty-one current screenshots were captured from **KlipRun Desktop 0.0.29** on **2026-10-19**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All twenty-one current screenshots were captured from **KlipRun Desktop 0.0.30** on **2026-10-19**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -44,7 +44,7 @@ tracked exceptions in ignored folders, state restoration, selected search result
 and three window widths. It uses a fresh browser context and in-memory responses
 based on the same fictional paths; review screenshots stay in `/private/tmp`.
 
-Usage now also reads the existing statistics endpoints against that same fixture. [`../../scripts/usage-overview.test.js`](../../scripts/usage-overview.test.js) verifies history periods and source filters, composition-to-trend controls, model drilldowns, task details, seven viewport widths, a 420 px pane inside a wide viewport, the light theme, and error recovery. Its default fixture preview port is 18826. Provider balances remain separate from local token counts; cached/reset-pending providers and unavailable/empty history are checked without live credentials or session stores. All gallery images were refreshed for 0.0.29, including the Usage page.
+Usage now also reads the existing statistics endpoints against that same fixture. [`../../scripts/usage-overview.test.js`](../../scripts/usage-overview.test.js) verifies history periods and source filters, composition-to-trend controls, model drilldowns, task details, seven viewport widths, a 420 px pane inside a wide viewport, the light theme, and error recovery. Its default fixture preview port is 18826. Provider balances remain separate from local token counts; cached/reset-pending providers and unavailable/empty history are checked without live credentials or session stores. All gallery images were refreshed for 0.0.30, including the Usage page.
 
 `git.text_files["notebooks/activity.ipynb"]` is a fictional notebook with Markdown, Python cells, saved tables, text, and an embedded PNG. [`../../scripts/git-notebook.test.js`](../../scripts/git-notebook.test.js) is a Playwright callback `(page, base = "http://127.0.0.1:18796")` checking its default preview, saved outputs, JSON editing and save, invalid JSON fallback, metadata preservation, inactive HTML scripts and remote images, bounded preview of a synthetic 5 MB HTML output, lazy JSON editor creation, and layouts at 1440, 720, and 500 pixels. Its saves stay in memory.
 
@@ -80,7 +80,7 @@ Klopik skin thumbnails in `engine/src/client/public/klopik-skins/` are generated
 
 [`../../scripts/git-review-layout.test.js`](../../scripts/git-review-layout.test.js) checks the compact repository toolbar, staging controls before filenames, loaded-commit search, keyboard navigation, automatic first-file diffs, persistent close, and small layouts using fixture data without Git writes.
 
-[`capture-files.js`](capture-files.js) takes `(page, outputDirectory, fixture, base)` and captures Files, its context menu, Markdown, and Jupyter Notebook from `git.text_files` in `mock-api.json`, with all file reads intercepted and no writes. All current images were refreshed for 0.0.29.
+[`capture-files.js`](capture-files.js) takes `(page, outputDirectory, fixture, base)` and captures Files, its context menu, Markdown, and Jupyter Notebook from `git.text_files` in `mock-api.json`, with all file reads intercepted and no writes. All current images were refreshed for 0.0.30.
 
 The shortcut image includes the native File/Edit/View/Navigate/Terminal commands. `scripts/native-menus.test.js` verifies the real web command bridge using fixture files and in-memory saves, including CodeMirror history, native-menu capability updates, unsaved-state reporting, close/cancel and draft-preserving refresh. Native focus/routing and standard menu shortcuts are checked separately with Swift tests and a disposable menu probe.
 
@@ -120,3 +120,5 @@ with disposable UserDefaults and captured at 560×850 and 500×660; review captu
 stay outside the committed gallery.
 
 The 0.0.29 refresh updates all 19 existing gallery images and adds `workflow.png` and `workflow-review.png` through `capture-workflow.js`, using the workflow fixture and its in-memory executor. All 21 captures use only fixture data and make no external requests. Provider selection/order and native Settings are verified separately; the Usage gallery retains all five fixture providers.
+
+The 0.0.30 refresh recaptures all 21 gallery images with the same callbacks and fixture, changing only the displayed version. The Claude Code session-linking and journal fixes are engine-side and covered by `engine/src/server/__tests__/claude.test.ts`. All captures made zero external requests.
