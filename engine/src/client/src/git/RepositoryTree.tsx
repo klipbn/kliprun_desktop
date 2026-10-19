@@ -30,14 +30,19 @@ function buildTree(files: string[], statuses: Record<string, string>, directorie
         node = { name, path: partial, ignored: ignored.has(partial), ...(index < parts.length - 1 || folders.has(partial) ? { children: [] } : {}) };
         children.push(node); paths.set(partial, node);
       }
-      const status = gitStatus(statuses[path]);
-      if (status && (!node.status || status === "conflict" || status === "modified" && node.status !== "conflict")) node.status = status;
       if (node.children) children = node.children;
     });
   }
+  for (const [path, value] of Object.entries(statuses)) {
+    const parts = path.split("/"), status = gitStatus(value);
+    for (let i = 1; status && i <= parts.length; i++) {
+      const node = paths.get(parts.slice(0, i).join("/"));
+      if (node && (!node.status || status === "conflict" || status === "modified" && node.status !== "conflict")) node.status = status;
+    }
+  }
   function compact(nodes: Node[]): Node[] {
     return nodes.map(node => {
-      while (!node.ignored && node.children?.length === 1 && node.children[0].children && !node.children[0].ignored) {
+      while (!folders.has(node.path) && !node.ignored && node.children?.length === 1 && node.children[0].children && !node.children[0].ignored) {
         const child = node.children[0];
         node = { ...child, name: `${node.name} / ${child.name}`, status: node.status };
       }
@@ -47,8 +52,10 @@ function buildTree(files: string[], statuses: Record<string, string>, directorie
   }
   return compact(roots);
 }
-function initialExpanded(tree: Node[], selected: string | null): Set<string> {
-  const result = new Set(tree.filter(node => node.children && !node.ignored).map(node => node.path));
+function initialExpanded(tree: Node[], selected: string | null, directories: string[]): Set<string> {
+  const result = new Set(tree.filter(node => node.children && !node.ignored && !directories.includes(node.path)).map(node => node.path));
+  const parts = selected?.split("/") ?? [];
+  for (let i = 1; i < parts.length; i++) result.add(parts.slice(0, i).join("/"));
   function reveal(nodes: Node[]) { for (const node of nodes) if (node.children && selected?.startsWith(`${node.path}/`)) { result.add(node.path); reveal(node.children); } }
   reveal(tree);
   return result;
@@ -61,9 +68,16 @@ function FileIcon({ path }: { path: string }) {
 }
 const emptyStatuses: Record<string, string> = {};
 const emptyPaths: string[] = [];
-export function RepositoryTree({ root, files, directories = emptyPaths, ignored = emptyPaths, refresh = 0, selected, onSelect, disabled, statuses = emptyStatuses, onMove, onRename, onIgnore, onError }: {
+function appendList(previous: GitFileList | undefined | null, next: GitFileList): GitFileList {
+  if (!previous) return next;
+  return { ...next, files: [...new Set([...previous.files, ...next.files])],
+    directories: [...new Set([...(previous.directories ?? []), ...(next.directories ?? [])])],
+    ignored: [...new Set([...(previous.ignored ?? []), ...(next.ignored ?? [])])],
+    trackedDirectories: [...new Set([...(previous.trackedDirectories ?? []), ...(next.trackedDirectories ?? [])])] };
+}
+export function RepositoryTree({ root, files, directories = emptyPaths, ignored = emptyPaths, trackedDirectories = emptyPaths, nextOffset, refresh = 0, selected, onSelect, disabled, statuses = emptyStatuses, onMove, onRename, onIgnore, onError }: {
   root: string; files: string[]; selected: string | null; onSelect: (path: string, permanent?: boolean) => void; disabled: boolean; statuses?: Record<string, string>;
-  directories?: string[]; ignored?: string[]; refresh?: number;
+  directories?: string[]; ignored?: string[]; trackedDirectories?: string[]; nextOffset?: number; refresh?: number;
   onMove?: (path: string, destination: string) => void; onRename?: (path: string) => void; onIgnore?: (path: string) => void; onError?: (error: string) => void;
 }) {
   const saved = useMemo(() => loadRepositoryWorkspace(root), [root]);
@@ -74,12 +88,18 @@ export function RepositoryTree({ root, files, directories = emptyPaths, ignored 
   const requests = useRef(new Map<string, AbortController>()), cache = useRef(new Map<string, GitFileList>()), failed = useRef(new Set<string>());
   const loadedLists = useMemo(() => loaded.refresh === refresh ? Object.values(loaded.entries) : [], [loaded, refresh]);
   const allFiles = useMemo(() => [...new Set([...files, ...loadedLists.flatMap(list => list.files)])], [files, loadedLists]);
-  const allDirectories = useMemo(() => [...new Set([...directories, ...loadedLists.flatMap(list => list.directories ?? [])])], [directories, loadedLists]);
+  const selectedDirectories = useMemo(() => {
+    if (!selected || allFiles.includes(selected)) return [];
+    const parts = selected.split("/");
+    return parts.slice(1).map((_, i) => parts.slice(0, i + 1).join("/"));
+  }, [selected, allFiles]);
+  const allDirectories = useMemo(() => [...new Set([...directories, ...loadedLists.flatMap(list => list.directories ?? []), ...selectedDirectories])], [directories, loadedLists, selectedDirectories]);
   const allIgnored = useMemo(() => new Set([...ignored, ...loadedLists.flatMap(list => list.ignored ?? [])]), [ignored, loadedLists]);
+  const allTrackedDirectories = useMemo(() => new Set([...trackedDirectories, ...loadedLists.flatMap(list => list.trackedDirectories ?? [])]), [trackedDirectories, loadedLists]);
   const visibleFiles = useMemo(() => showIgnored ? allFiles : allFiles.filter(path => !allIgnored.has(path)), [allFiles, allIgnored, showIgnored]);
-  const visibleDirectories = useMemo(() => showIgnored ? allDirectories : allDirectories.filter(path => !allIgnored.has(path) || visibleFiles.some(file => file.startsWith(`${path}/`))), [allDirectories, allIgnored, visibleFiles, showIgnored]);
+  const visibleDirectories = useMemo(() => showIgnored ? allDirectories : allDirectories.filter(path => !allIgnored.has(path) || allTrackedDirectories.has(path) || visibleFiles.some(file => file.startsWith(`${path}/`))), [allDirectories, allIgnored, allTrackedDirectories, visibleFiles, showIgnored]);
   const tree = useMemo(() => buildTree(visibleFiles, statuses, visibleDirectories, allIgnored), [visibleFiles, statuses, visibleDirectories, allIgnored]);
-  const [expanded, setExpanded] = useState(() => saved.expandedFiles === null ? initialExpanded(tree, selected) : new Set(saved.expandedFiles));
+  const [expanded, setExpanded] = useState(() => saved.expandedFiles === null ? initialExpanded(tree, selected, directories) : new Set(saved.expandedFiles));
   const previousSelected = useRef(selected);
   const [focused, setFocused] = useState<string | null>(selected);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
@@ -88,24 +108,44 @@ export function RepositoryTree({ root, files, directories = emptyPaths, ignored 
   const dragged = useRef<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const query = filter.trim().toLowerCase();
-  const filtered = useMemo(() => query ? buildTree(visibleFiles.filter(path => path.toLowerCase().includes(query)), statuses, visibleDirectories.filter(path => path.toLowerCase().includes(query)), allIgnored) : tree, [visibleFiles, visibleDirectories, allIgnored, statuses, tree, query]);
+  const [search, setSearch] = useState<{ query: string; data: GitFileList | null; pending: boolean; error: string | null }>({ query: "", data: null, pending: false, error: null });
+  const searchController = useRef<AbortController | null>(null);
+  const searchData = search.query === query ? search.data : null;
+  const filtered = useMemo(() => query ? buildTree(searchData?.files ?? [], statuses, searchData?.directories ?? [], new Set([...allIgnored, ...(searchData?.ignored ?? [])])) : tree, [searchData, allIgnored, statuses, tree, query]);
+  useEffect(() => {
+    if (!query) return;
+    setSearch({ query, data: null, pending: true, error: null });
+    const timer = window.setTimeout(() => void loadSearch(), 250);
+    return () => { window.clearTimeout(timer); searchController.current?.abort(); };
+  }, [root, query, refresh, showIgnored]);
+  async function loadSearch(offset = 0) {
+    searchController.current?.abort();
+    const controller = new AbortController(); searchController.current = controller;
+    setSearch(previous => ({ query, data: offset && previous.query === query ? previous.data : null, pending: true, error: null }));
+    try {
+      const list = await gitRequest<GitFileList>(`/api/git/files?${new URLSearchParams({ directory: root, search: query, includeIgnored: String(showIgnored), offset: String(offset) })}`, { signal: controller.signal });
+      if (!controller.signal.aborted) setSearch(previous => ({ query, data: appendList(offset ? previous.data : null, list), pending: false, error: null }));
+    } catch (error) {
+      if (!controller.signal.aborted) setSearch(previous => ({ ...previous, pending: false, error: error instanceof Error ? error.message : "Unable to search repository." }));
+    }
+  }
   useEffect(() => { saveRepositoryWorkspace(root, { expandedFiles: [...expanded], fileFilter: filter, showIgnoredFiles: showIgnored }); }, [root, expanded, filter, showIgnored]);
   useEffect(() => {
     cache.current.clear(); failed.current.clear(); setLoaded({ refresh, entries: {} }); setLoading(new Set());
     return () => { for (const controller of requests.current.values()) controller.abort(); requests.current.clear(); };
   }, [root, refresh]);
   useEffect(() => {
-    if (!showIgnored) return;
-    for (const path of allDirectories) if (expanded.has(path) && !cache.current.has(path) && !requests.current.has(path) && !failed.current.has(path)) void loadDirectory(path);
-  }, [root, refresh, allDirectories, expanded, showIgnored]);
-  async function loadDirectory(path: string) {
+    if (query) return;
+    for (const path of visibleDirectories) if (expanded.has(path) && !cache.current.has(path) && !requests.current.has(path) && !failed.current.has(path)) void loadDirectory(path);
+  }, [root, refresh, visibleDirectories, expanded, query]);
+  async function loadDirectory(path: string, offset = 0) {
+    if (requests.current.has(path)) return;
     const controller = new AbortController(); requests.current.set(path, controller);
     setLoading(previous => new Set([...previous, path]));
     try {
-      const list = await gitRequest<GitFileList>(`/api/git/files?${new URLSearchParams({ directory: root, path })}`, { signal: controller.signal });
+      const list = await gitRequest<GitFileList>(`/api/git/files?${new URLSearchParams({ directory: root, ...(path ? { path } : {}), offset: String(offset) })}`, { signal: controller.signal });
       if (controller.signal.aborted) return;
-      cache.current.set(path, list); setLoaded({ refresh, entries: Object.fromEntries(cache.current) });
-      if (list.truncated) onError?.(`Folder ${path} is too large. Only its first entries are shown.`);
+      cache.current.set(path, appendList(offset ? cache.current.get(path) : null, list)); setLoaded({ refresh, entries: Object.fromEntries(cache.current) });
     } catch (error) {
       if (!controller.signal.aborted) { failed.current.add(path); onError?.(error instanceof Error ? error.message : "Unable to load folder. Collapse and expand it to retry."); }
     } finally {
@@ -138,6 +178,10 @@ export function RepositoryTree({ root, files, directories = emptyPaths, ignored 
     });
   }
   flatten(filtered);
+  const pages = query ? [] : [
+    { path: "", offset: loaded.refresh === refresh && loaded.entries[""] ? loaded.entries[""].nextOffset : nextOffset },
+    ...Object.entries(loaded.refresh === refresh ? loaded.entries : {}).filter(([path]) => path && expanded.has(path) && rows.some(row => row.node.path === path)).map(([path, list]) => ({ path, offset: list.nextOffset })),
+  ].filter(page => page.offset !== undefined);
   const focusPath = rows.some(row => row.node.path === focused) ? focused : rows[0]?.node.path;
   function focus(path: string | undefined) {
     if (!path) return;
@@ -196,8 +240,11 @@ export function RepositoryTree({ root, files, directories = emptyPaths, ignored 
           <span className="repository-browser-name">{node.name}</span>
         </button>;
       })}
-      {!rows.length && <p className="repository-browser-empty">{query ? "No matching files." : "No files to show."}</p>}
+      {!rows.length && <p className="repository-browser-empty" role="status">{query ? search.pending || search.query !== query ? "Searching repository…" : search.error ? "Search unavailable." : "No matching files." : "No files to show."}</p>}
     </div>
+    {query && search.error && <p className="repository-browser-empty" role="alert">{search.error}<button type="button" className="git-button" onClick={() => void loadSearch()}>Retry search</button></p>}
+    {query && searchData?.nextOffset !== undefined && <button type="button" className="repository-browser-more" disabled={search.pending} onClick={() => void loadSearch(searchData.nextOffset)}>Load more search results</button>}
+    {pages.map(page => <button key={page.path} type="button" className="repository-browser-more" aria-label={page.path ? `Load more in ${page.path}` : "Load more repository files"} disabled={loading.has(page.path)} onClick={() => void loadDirectory(page.path, page.offset)}>{loading.has(page.path) ? "Loading…" : page.path ? `Load more in ${page.path}` : "Load more files"}</button>)}
     {menu && <RepositoryFileMenu root={root} path={menu.node.path} folder={!!menu.node.children} expanded={expanded.has(menu.node.path)} x={menu.x} y={menu.y} disabled={disabled}
       onOpen={() => onSelect(menu.node.path, true)} onToggle={() => toggle(menu.node.path)} onRename={() => onRename?.(menu.node.path)} onIgnore={() => onIgnore?.(menu.node.path)} onError={error => onError?.(error)}
       onClose={restore => { setMenu(null); if (restore) buttons.current.get(menu.node.path)?.focus(); }} />}

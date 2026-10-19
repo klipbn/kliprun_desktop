@@ -41,3 +41,11 @@ test("ignored files and empty folders are visible and muted without hiding track
   expect(html).toContain('aria-label="Hide ignored files"');
   expect(html).toMatch(/aria-label="cache"[^>]*aria-expanded="false"/);
 });
+
+test("lazy folders stay collapsed, show descendant changes and offer the next root page", () => {
+  const html = renderToStaticMarkup(<RepositoryTree root="demo" files={["README.md"]} directories={["src"]} nextOffset={500}
+    statuses={{ "src/deep/hidden.py": "M" }} selected={null} onSelect={() => {}} disabled={false} />);
+  expect(html).toMatch(/aria-label="src"[^>]*aria-expanded="false"/);
+  expect(html).toMatch(/aria-label="src"[^>]*data-git-status="modified"/);
+  expect(html).toContain('aria-label="Load more repository files"');
+});

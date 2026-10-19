@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All nineteen current screenshots were captured from **KlipRun Desktop 0.0.27** on **2026-10-19**, using Graphite, the new default. The original palette is now named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All nineteen current screenshots were captured from **KlipRun Desktop 0.0.28** on **2026-10-19**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -34,6 +34,13 @@ HEAD and clean-file refresh, unsaved draft preservation, safe baseline text,
 ignored folders and visibility persistence, and narrow/light/dark
 layouts. Saves are intercepted in memory and Git writes are blocked. Review
 screenshots go to `/private/tmp`; the committed Files screenshots also show the current review controls and ignored entries.
+
+The fixture Files API now mirrors directory-by-directory browsing, paged lists,
+and repository-wide path searches. [`../../scripts/git-lazy-files.test.js`](../../scripts/git-lazy-files.test.js)
+checks unopened folders, root/folder/search pages, failed and delayed searches,
+tracked exceptions in ignored folders, state restoration, selected search results,
+and three window widths. It uses a fresh browser context and in-memory responses
+based on the same fictional paths; review screenshots stay in `/private/tmp`.
 
 Usage now also reads the existing statistics endpoints against that same fixture. [`../../scripts/usage-overview.test.js`](../../scripts/usage-overview.test.js) verifies history periods and source filters, composition-to-trend controls, model drilldowns, task details, seven viewport widths, a 420 px pane inside a wide viewport, the light theme, and error recovery. Its default fixture preview port is 18826. Provider balances remain separate from local token counts; cached/reset-pending providers and unavailable/empty history are checked without live credentials or session stores. All nineteen images were refreshed for this release, including the redesigned Usage page.
 
@@ -71,10 +78,15 @@ Klopik skin thumbnails in `engine/src/client/public/klopik-skins/` are generated
 
 [`../../scripts/git-review-layout.test.js`](../../scripts/git-review-layout.test.js) checks the compact repository toolbar, staging controls before filenames, loaded-commit search, keyboard navigation, automatic first-file diffs, persistent close, and small layouts using fixture data without Git writes.
 
-[`capture-files.js`](capture-files.js) takes `(page, outputDirectory, fixture, base)` and captures Files, its context menu, Markdown, and Jupyter Notebook from `git.text_files` in `mock-api.json`, with all file reads intercepted and no writes. All nineteen current images were refreshed for 0.0.27.
+[`capture-files.js`](capture-files.js) takes `(page, outputDirectory, fixture, base)` and captures Files, its context menu, Markdown, and Jupyter Notebook from `git.text_files` in `mock-api.json`, with all file reads intercepted and no writes. All nineteen current images were refreshed for 0.0.28.
 
 The shortcut image includes the native File/Edit/View/Navigate/Terminal commands. `scripts/native-menus.test.js` verifies the real web command bridge using fixture files and in-memory saves, including CodeMirror history, native-menu capability updates, unsaved-state reporting, close/cancel and draft-preserving refresh. Native focus/routing and standard menu shortcuts are checked separately with Swift tests and a disposable menu probe.
 
 The 0.0.27 refresh preserves the README and gallery ordering and includes the redesigned Usage overview with token history and provider capacity. Git workspace persistence is checked separately with the fixture-based state tests; native Agents settings and the terminal switcher are covered by Swift integration tests with disposable defaults and shells. HTML preview and status-popup checks use only fixture data through `scripts/html-preview.test.js` and `scripts/workspace-controls.test.js`; commit/history resizing is covered by `scripts/git-height-resize.test.js`.
 
 The 0.0.27 refresh includes neutral Kanban card outlines, brighter Sessions status dots, Office without the redundant Back to board button, and Git Files with HEAD/current review blocks and muted ignored entries. The toolbar remains compact in the gallery; its persisted expanded variant is covered by `scripts/toolbar-labels.test.js` in normal and small layouts. All captures made zero external requests.
+
+The 0.0.28 refresh retains the gallery order and shows the directory-by-directory
+Files tree. Root/folder/search pagination and recovery after a temporary Sessions
+startup failure are covered by regression tests; all captures use the fictional
+fixture and make zero external requests.

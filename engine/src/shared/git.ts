@@ -18,7 +18,7 @@ export interface GitCommitDetail { hash: string; message: string; files: GitComm
 export interface GitHistory { commits: GitCommit[]; hasMore: boolean }
 export type GitDiffMode = "staged" | "unstaged" | "commit";
 export interface GitDiff { patch: string; binary: boolean; truncated: boolean; notice?: string }
-export interface GitFileList { root: string; files: string[]; directories?: string[]; ignored?: string[]; truncated: boolean }
+export interface GitFileList { root: string; files: string[]; directories?: string[]; ignored?: string[]; trackedDirectories?: string[]; nextOffset?: number; truncated: boolean }
 export interface GitFileContent { root: string; path: string; content: string; revision: string }
 export interface GitFileBase { content: string | null; notice?: string }
 export type GitFileAction = { action: "move"; path: string; destination: string } | { action: "ignore"; path: string };

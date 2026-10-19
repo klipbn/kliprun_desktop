@@ -20,11 +20,16 @@ const server = Bun.serve({ hostname: "127.0.0.1", port: Number(process.env.KLIPR
   if (path === "/api/git/repositories") return Response.json({ repositories: fixture.git.repositories });
   if (path === "/api/git/status") return Response.json({ ...fixture.git.status, root: url.searchParams.get("directory") ?? fixture.git.status.root });
   if (path === "/api/git/files") {
-    const prefix = url.searchParams.get("path"), ignored = Object.keys(fixture.git.ignored_files ?? {});
-    const names = [...Object.keys(fixture.git.text_files), ...ignored].filter(name => !prefix || name.startsWith(`${prefix}/`));
-    const files = prefix ? names.filter(name => !name.slice(prefix.length + 1).includes("/")) : names.filter(name => !ignored.includes(name) || !name.includes("/"));
-    const directories = [...new Set(names.filter(name => ignored.includes(name) && name.slice(prefix ? prefix.length + 1 : 0).includes("/")).map(name => `${prefix ? `${prefix}/` : ""}${name.slice(prefix ? prefix.length + 1 : 0).split("/")[0]}`))];
-    return Response.json({ root: url.searchParams.get("directory"), files, directories, ignored: [...files.filter(name => ignored.includes(name)), ...directories], truncated: false });
+    const prefix = url.searchParams.get("path"), ignored = Object.keys(fixture.git.ignored_files ?? {}), search = url.searchParams.get("search")?.normalize("NFKC").toLowerCase();
+    const names = [...new Set([...Object.keys(fixture.git.text_files), ...ignored])].filter(name => !prefix || name.startsWith(`${prefix}/`));
+    const entries = search ? names.filter(name => name.normalize("NFKC").toLowerCase().includes(search) && (url.searchParams.get("includeIgnored") !== "false" || !ignored.includes(name)))
+      : [...new Set(names.map(name => `${prefix ? `${prefix}/` : ""}${name.slice(prefix ? prefix.length + 1 : 0).split("/")[0]}`))];
+    entries.sort();
+    const offset = Number(url.searchParams.get("offset") ?? 0), page = entries.slice(offset, offset + 500);
+    const directories = search ? [] : page.filter(name => names.some(file => file.startsWith(`${name}/`)));
+    const files = page.filter(name => !directories.includes(name));
+    const ignoredEntries = page.filter(name => ignored.includes(name) || directories.includes(name) && names.filter(file => file.startsWith(`${name}/`)).every(file => ignored.includes(file)));
+    return Response.json({ root: url.searchParams.get("directory"), files, directories, ignored: ignoredEntries, ...(entries.length > offset + 500 ? { nextOffset: offset + 500 } : {}), truncated: false });
   }
   if (path === "/api/git/file-base") {
     const name = url.searchParams.get("path") ?? "";

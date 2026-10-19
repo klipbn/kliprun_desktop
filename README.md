@@ -33,7 +33,7 @@ use **Kanban** in this toolbar to return to the board.
 
 Requires **Apple Silicon and macOS 13+**.
 
-1. Download `KlipRun-0.0.27-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.28-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip and move `KlipRun.app` to **Applications**. Quit KlipRun before replacing an older version.
 3. Open the app. If macOS blocks it, use **System Settings → Privacy & Security → Open Anyway**. The build is locally signed and not notarized.
 
@@ -42,6 +42,8 @@ Install and sign in to [OpenCode](https://opencode.ai/), [Codex CLI](https://git
 The Claude Code button is immediately to the right of Codex; **⌘⇧A** opens a project picker and starts `claude` in an embedded terminal. Sessions shows Claude history and can resume a chat in its original folder. Working in a subdirectory keeps the original project folder and live session link. KlipRun reads `~/.claude/projects` (or `CLAUDE_CONFIG_DIR`) without modifying Claude's configuration or journals. Live cards use confirmed process/session records or open journal descriptors; ambiguous terminals display “Status unknown”. Model, token usage, messages, tool activity, and observed status history appear alongside the other agents. Context bars use recorded model limits or the existing model-limit catalog/overrides; unavailable limits are left blank. Usage and the bottom status bar show remaining 5-hour and weekly Claude subscription limits using the existing OAuth sign-in from macOS Keychain or `.credentials.json`. Renew expired sign-ins in Claude Code; API keys do not expose subscription limits.
 
 In **Sessions**, drag the divider beside All sessions, Favorites, and Projects to resize the sidebar; its width is saved. Hover or focus the running/unread counters or an agent badge in the bottom bar to open a session list, then click a session to view its details. Terminal tabs offer **Rename…**, **Pin / Unpin**, and **Close** on right-click. Pinned tabs collapse to squares with the full title on hover and stay on the left in pin order; the active tab has a thin accent line above it. Closing a running tab ends its process after confirmation.
+
+If Sessions cannot refresh after a temporary history-index startup failure, **Retry** or the next automatic refresh restarts the history service. Saved projects, groups, and favorites are preserved.
 
 Click the terminal icon at the far left of the terminal tab bar to open a scrollable list of all open terminal tabs. Each row shows its number, title, project folder, running indicator, and pin state; a checkmark identifies the active tab. Numbers follow the current tab order, including pinned and reordered tabs. The first nine show their **⌘1–9** shortcuts; later tabs remain available by clicking. Choosing a row switches to that terminal and its linked session and closes the list.
 
@@ -71,9 +73,15 @@ Clean open files also follow disk updates on the repository's regular refresh;
 an unsaved draft is never replaced by an agent's changes.
 Diffs above the 512 KiB limit show a notice; the file editor keeps its existing limits.
 
+**Git → Files** loads the repository root first and folder contents when expanded.
+Large folders and search results offer **Load more**; browsing is no longer cut
+off at 10,000 repository paths. **Filter files** searches paths throughout the
+repository, including unopened folders, and follows the ignored-files setting.
+
 Ignored files and folders are visible with muted names. **Hide ignored files**
 and **Show ignored files** control their visibility; the choice is saved per
-repository. Ignored folders load one level at a time when expanded. Regular
+repository. Folders containing tracked files remain accessible when ignored
+entries are hidden. Regular
 ignored text files can be opened and saved, but do not receive Git change marks.
 The existing checks for symlinks, Git metadata, nested repositories, and concurrent
 file edits still apply.

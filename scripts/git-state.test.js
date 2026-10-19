@@ -30,6 +30,7 @@ async (page, base = "http://127.0.0.1:18816") => {
     check(await panel.locator("details[open]").count() === 0, "Returning to Git expanded collapsed Changes folders");
     check(await diffPath() === selectedPath, "Returning to Git reset the selected Changes file");
     await tab("Files").click();
+    await page.getByRole("treeitem", { name: "src", exact: true }).click();
     await file("src/search.py").click(); await editor("src/search.py").waitFor();
     await file("src/search.py").dblclick();
     await file("README.md").click(); await editor("README.md").waitFor();
