@@ -22,6 +22,78 @@ function fixture() {
   return { root, app, git, get, save, action };
 }
 
+test("large repositories list one folder at a time and page through every entry", async () => {
+  const { root, app, get } = fixture();
+  mkdirSync(join(root, "bulk")); mkdirSync(join(root, "z-last"));
+  for (let index = 0; index < 10_005; index++) writeFileSync(join(root, "bulk", `file-${String(index).padStart(5, "0")}.txt`), "fixture");
+  writeFileSync(join(root, "README.md"), "fixture");
+  writeFileSync(join(root, "z-last", "target.sql"), "select 1");
+  const top = await (await get("files")).json() as GitFileList;
+  expect(top.files).toHaveLength(1);
+  expect(top).toMatchObject({ files: ["README.md"], directories: ["bulk", "z-last"], truncated: false });
+  const files: string[] = [];
+  let offset = 0;
+  do {
+    const response = await app.request(`/api/git/files?${new URLSearchParams({ directory: root, path: "bulk", offset: String(offset) })}`);
+    expect(response.status).toBe(200);
+    const page = await response.json() as GitFileList & { nextOffset?: number };
+    expect(page.files.length).toBeLessThanOrEqual(500);
+    files.push(...page.files);
+    offset = page.nextOffset ?? 0;
+  } while (offset);
+  expect(files).toHaveLength(10_005);
+  expect(new Set(files).size).toBe(10_005);
+  expect(files.at(-1)).toBe("bulk/file-10004.txt");
+  expect((await (await get("files", "z-last")).json() as GitFileList).files).toEqual(["z-last/target.sql"]);
+  const lastSearchPage = await app.request(`/api/git/files?${new URLSearchParams({ directory: root, search: "file-", offset: "10000" })}`);
+  const matches = await lastSearchPage.json() as GitFileList;
+  expect(matches.files).toHaveLength(5);
+  expect(matches.files.at(-1)).toBe("bulk/file-10004.txt");
+  expect(matches.nextOffset).toBeUndefined();
+}, 30_000);
+
+test("file search streams beyond Git's normal output limit", async () => {
+  const { root, app } = fixture();
+  const folder = "a".repeat(200); mkdirSync(join(root, folder));
+  for (let i = 0; i < 10_005; i++) writeFileSync(join(root, folder, `${String(i).padStart(5, "0")}-${"x".repeat(220)}.txt`), "");
+  writeFileSync(join(root, "z-needle.sql"), "select 1");
+  const response = await app.request(`/api/git/files?${new URLSearchParams({ directory: root, search: "needle" })}`);
+  expect(response.status).toBe(200);
+  expect((await response.json() as GitFileList).files).toEqual(["z-needle.sql"]);
+}, 30_000);
+
+test("root pages retain every file and reject malformed listing parameters", async () => {
+  const { root, app, get } = fixture();
+  for (let i = 0; i < 505; i++) writeFileSync(join(root, `${String(i).padStart(3, "0")}.txt`), "fixture");
+  const first = await (await get("files")).json() as GitFileList;
+  expect(first.nextOffset).toBe(500);
+  const second = await (await app.request(`/api/git/files?${new URLSearchParams({ directory: root, offset: String(first.nextOffset) })}`)).json() as GitFileList;
+  expect(new Set([...first.files, ...second.files]).size).toBe(505);
+  expect(second.nextOffset).toBeUndefined();
+  const invalid: Array<Record<string, string>> = [{ offset: "-1" }, { offset: "0.5" }, { offset: "NaN" }, { search: "" }, { search: "x".repeat(201) }, { search: "\0" }, { search: "x", path: "src" }, { includeIgnored: "yes" }];
+  for (const params of invalid) {
+    expect((await app.request(`/api/git/files?${new URLSearchParams({ directory: root, ...params })}`)).status).toBe(400);
+  }
+});
+
+test("file search finds unopened paths with Unicode and literal query characters", async () => {
+  const { root, app, git } = fixture();
+  mkdirSync(join(root, "src/deep"), { recursive: true }); mkdirSync(join(root, "cache"));
+  writeFileSync(join(root, "src/deep/КЛЮЧ [raw]*?.sql"), "select 1");
+  writeFileSync(join(root, ".gitignore"), "cache/\n");
+  writeFileSync(join(root, "cache/ключ.txt"), "ignored");
+  writeFileSync(join(root, "cache/ключ-tracked.txt"), "tracked"); git("add", "-f", "cache/ключ-tracked.txt");
+  const search = async (query: string, includeIgnored = true) => {
+    const response = await app.request(`/api/git/files?${new URLSearchParams({ directory: root, search: query, includeIgnored: String(includeIgnored) })}`);
+    expect(response.status).toBe(200);
+    return await response.json() as GitFileList;
+  };
+  expect((await search("ключ [raw]*?")).files).toEqual(["src/deep/КЛЮЧ [raw]*?.sql"]);
+  expect((await search("SRC/DEEP")).files).toEqual(["src/deep/КЛЮЧ [raw]*?.sql"]);
+  expect((await search("ключ", false)).files.sort()).toEqual(["cache/ключ-tracked.txt", "src/deep/КЛЮЧ [raw]*?.sql"]);
+  expect(await search("ключ")).toMatchObject({ ignored: ["cache/ключ.txt"] });
+});
+
 test("file browser includes ignored roots without scanning their contents", async () => {
   const { root, git, get } = fixture();
   writeFileSync(join(root, ".gitignore"), "ignored/\n");
@@ -32,7 +104,7 @@ test("file browser includes ignored roots without scanning their contents", asyn
   git("add", "src/query.sql");
   const result = await get("files");
   expect(result.status).toBe(200);
-  expect(await result.json()).toEqual({ root, files: [".gitignore", "read me.md", "src/query.sql"], directories: ["ignored"], ignored: ["ignored"], truncated: false });
+  expect(await result.json()).toEqual({ root, files: [".gitignore", "read me.md"], directories: ["ignored", "src"], ignored: ["ignored"], truncated: false });
 });
 
 test("reading and saving UTF-8 text preserves content, returns a new revision and leaves staging alone", async () => {
@@ -99,9 +171,9 @@ test("ignored folders load one level at a time, including empty directories and 
   writeFileSync(join(root, "cache dir/tracked.txt"), "tracked exception"); git("add", "-f", "cache dir/tracked.txt");
   writeFileSync(join(root, "cache dir/deep/child.txt"), "lazy grandchild");
   const top = await (await get("files")).json() as GitFileList;
-  expect(top.files).toContain("cache dir/tracked.txt");
+  expect(top.files).toEqual([".gitignore"]);
   expect(top.files).not.toContain("cache dir/[name].txt");
-  expect(top).toMatchObject({ directories: ["cache dir", "empty"], ignored: ["cache dir", "empty"] });
+  expect(top).toMatchObject({ directories: ["cache dir", "empty"], ignored: ["cache dir", "empty"], trackedDirectories: ["cache dir"] });
   const children = await (await get("files", "cache dir")).json();
   expect(children).toEqual({ root, files: ["cache dir/[name].txt", "cache dir/tracked.txt"], directories: ["cache dir/deep"], ignored: ["cache dir/[name].txt", "cache dir/deep"], truncated: false });
   expect((await (await get("files", "cache dir/deep")).json() as GitFileList).files).toEqual(["cache dir/deep/child.txt"]);
@@ -165,11 +237,14 @@ test("lazy folder listing rejects metadata, links, traversal and nested reposito
 });
 
 test("browser excludes tracked paths that now live in a nested repository", async () => {
-  const { root, git, get } = fixture();
+  const { root, git, get, app } = fixture();
   mkdirSync(join(root, "nested")); writeFileSync(join(root, "nested", "file.py"), "print(1)");
   git("add", ".");
   Bun.spawnSync(["git", "-C", join(root, "nested"), "init", "-q"]);
   expect((await (await get("files")).json() as GitFileList).files).toEqual([]);
+  const search = await app.request(`/api/git/files?${new URLSearchParams({ directory: root, search: "file.py" })}`);
+  expect(search.status).toBe(200);
+  expect((await search.json() as GitFileList).files).toEqual([]);
 });
 
 test("stale or simultaneous saves do not overwrite another writer", async () => {
@@ -234,7 +309,7 @@ test("moving a folder preserves all contents and the index, and never replaces a
   expect(readFileSync(join(root, "dest/src/run.py"), "utf8")).toBe("local edits");
   expect(readFileSync(join(root, "dest/src/untracked.txt"), "utf8")).toBe("keep me");
   expect(Bun.spawnSync(["git", "-C", root, "show", ":src/run.py"]).stdout.toString()).toBe("original");
-  expect((await (await get("files")).json() as GitFileList).files).toEqual(["dest/src/run.py", "dest/src/untracked.txt"]);
+  expect((await (await get("files", "dest/src")).json() as GitFileList).files).toEqual(["dest/src/run.py", "dest/src/untracked.txt"]);
   writeFileSync(join(root, "existing.txt"), "do not overwrite");
   expect((await action({ action: "move", path: "dest/src/run.py", destination: "existing.txt" })).status).toBe(409);
   expect(readFileSync(join(root, "existing.txt"), "utf8")).toBe("do not overwrite");
@@ -257,7 +332,8 @@ test("ignore appends literal root-relative rules without changing existing conte
   expect(ignore.startsWith("# keep this\r\nexisting\r\n")).toBe(true);
   expect(ignore).toContain("/report\\ \\[draft\\]\\*\\?.txt\r\n");
   expect(ignore.match(/^\/data\/$/gm)?.length).toBe(1);
-  expect((await (await get("files")).json() as GitFileList).files).toEqual([".gitignore", "data/file.csv", "report [draft]*?.txt", "report d0.txt"]);
+  expect((await (await get("files")).json() as GitFileList).files).toEqual([".gitignore", "report [draft]*?.txt", "report d0.txt"]);
+  expect((await (await get("files", "data")).json() as GitFileList).files).toEqual(["data/file.csv"]);
   expect(Bun.spawnSync(["git", "-C", root, "show", ":data/file.csv"]).stdout.toString()).toBe("tracked");
 });
 

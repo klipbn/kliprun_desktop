@@ -23,6 +23,8 @@
 .repository-file-icon.is-python{color:var(--repository-yellow)}.repository-file-icon.is-sql{color:var(--repository-cyan)}.repository-file-icon.is-markdown{color:var(--repository-blue)}.repository-file-icon.is-javascript{color:var(--repository-yellow)}.repository-file-icon.is-typescript{color:var(--repository-blue)}.repository-file-icon.is-json{color:var(--repository-purple)}
 .repository-browser-row[data-git-status=modified] .repository-browser-name{color:var(--repository-yellow)}.repository-browser-row[data-git-status=added] .repository-browser-name{color:var(--repository-green)}.repository-browser-row[data-git-status=deleted] .repository-browser-name,.repository-browser-row[data-git-status=conflict] .repository-browser-name{color:var(--repository-red)}
 .repository-browser-empty{margin:8px 12px;color:var(--theme-muted);font-size:11px}
+.repository-browser-more{flex-shrink:0;margin:3px 9px 7px;padding:5px 8px;border:1px solid var(--theme-border);border-radius:4px;background:var(--theme-surface);color:var(--theme-text);font:inherit;text-align:left;cursor:pointer;overflow-wrap:anywhere}
+.repository-browser-more:hover{background:var(--theme-raised)}.repository-browser-more:disabled{opacity:.55;cursor:default}.repository-browser-more:focus-visible{outline:1px solid var(--theme-accent)}
 .repository-browser-row[data-git-ignored=true]:not([data-git-status]) .repository-browser-name{color:var(--theme-muted)}
 .repository-browser-row[data-git-ignored=true] .repository-file-icon,.repository-browser-row[data-git-ignored=true] .repository-folder-icon{color:var(--theme-muted);opacity:.65}
 

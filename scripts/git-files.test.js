@@ -22,7 +22,14 @@ async (page, fixture) => {
     if (delayRead && path === "src/search.py") await page.waitForTimeout(400);
     return route.fulfill({ json: saved.get(`${root}:${path}`) ?? { root, path, content: fixture.git.text_files[path], revision: "fixture-original" } });
   };
-  const filesRoute = route => route.fulfill({ json: { root: parameter(route.request().url(), "directory"), files: parameter(route.request().url(), "directory").endsWith("/aurora") ? ["README.md"] : Object.keys(fixture.git.text_files), truncated: false } });
+  const filesRoute = route => {
+    const url = route.request().url(), root = parameter(url, "directory"), path = parameter(url, "path"), search = parameter(url, "search");
+    const names = root.endsWith("/aurora") ? ["README.md"] : Object.keys(fixture.git.text_files);
+    const matches = names.filter(name => path ? name.startsWith(`${path}/`) : true);
+    const directories = search ? [] : [...new Set(matches.filter(name => name.slice(path ? path.length + 1 : 0).includes("/")).map(name => `${path ? `${path}/` : ""}${name.slice(path ? path.length + 1 : 0).split("/")[0]}`))];
+    const files = search ? names.filter(name => name.toLowerCase().includes(search)) : matches.filter(name => !name.slice(path ? path.length + 1 : 0).includes("/"));
+    return route.fulfill({ json: { root, files, directories, truncated: false } });
+  };
   const item = path => page.getByRole("treeitem", { name: `Open file ${path}`, exact: true });
   const source = path => page.locator(`[role="textbox"][aria-label="Edit ${path}"]:visible`);
   const tabs = () => page.getByRole("tablist", { name: "Open files", exact: true });

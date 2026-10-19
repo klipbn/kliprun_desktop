@@ -20,7 +20,11 @@ export function registerGitRoutes(parent: Hono) {
     return c.json({ repositories: [...roots].sort() });
   });
   app.get("/status", async c => c.json(await gitStatus(await root(c))));
-  app.get("/files", async c => c.json(await gitFiles(await root(c), c.req.query("path"))));
+  app.get("/files", async c => {
+    const includeIgnored = c.req.query("includeIgnored");
+    if (includeIgnored !== undefined && !["true", "false"].includes(includeIgnored)) throw new GitError("Invalid ignored-file visibility.", 400);
+    return c.json(await gitFiles(await root(c), c.req.query("path"), { offset: Number(c.req.query("offset") ?? 0), search: c.req.query("search"), includeIgnored: includeIgnored !== "false" }));
+  });
   app.get("/file", async c => c.json(await gitFile(await root(c), gitPath(c.req.query("path")))));
   app.get("/file-base", async c => c.json(await gitFileBase(await root(c), gitPath(c.req.query("path")))));
   app.post("/file-action", async c => {

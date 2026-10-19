@@ -118,35 +118,41 @@ export async function saveGitFile(root: string, path: string, content: unknown, 
   } finally { saves.delete(absolute); await unlink(temporary).catch(() => {}); }
 }
 
-export async function gitFiles(root: string, path?: string): Promise<GitFileList> {
-  let candidates: string[], ignored = new Set<string>();
-  if (path !== undefined) {
-    const parent = await repositoryEntry(root, path);
-    if (!parent.info.isDirectory()) throw new GitError("Choose a repository folder.", 400);
-    candidates = (await readdir(parent.absolute)).map(name => `${path}/${name}`).sort();
-    ignored = await ignoredPaths(root, candidates.slice(0, 10_000));
+export async function gitFiles(root: string, path?: string, options: { offset?: number; search?: string; includeIgnored?: boolean } = {}): Promise<GitFileList> {
+  const limit = 500, offset = options.offset ?? 0, query = options.search?.trim().normalize("NFKC").toLowerCase();
+  if (!Number.isSafeInteger(offset) || offset < 0 || options.search !== undefined && (!query || options.search.length > 200 || /[\x00-\x1f\x7f]/.test(options.search) || path !== undefined)) throw new GitError("Invalid file listing or search.", 400);
+  let candidates: string[], nextOffset: number | undefined;
+  if (query) {
+    let matched = 0;
+    const result = await runGit(root, ["ls-files", "--cached", "--others", "--deduplicate", ...(options.includeIgnored === false ? ["--exclude-standard"] : []), "-z"], {
+      // Stream all names but retain one page, including matches after Git's normal output limit.
+      readStdout: async stream => {
+        const page: string[] = [], decoder = new TextDecoder();
+        let pending = "";
+        for await (const chunk of stream) {
+          pending += decoder.decode(chunk, { stream: true });
+          let end: number;
+          while ((end = pending.indexOf("\0")) !== -1) {
+            const name = pending.slice(0, end); pending = pending.slice(end + 1);
+            if (!name || name.endsWith("/") || !name.normalize("NFKC").toLowerCase().includes(query)) continue;
+            if (matched++ >= offset && page.length < limit) page.push(name);
+          }
+        }
+        return page.join("\0");
+      },
+    });
+    candidates = result.out.split("\0").filter(Boolean);
+    if (matched > offset + limit) nextOffset = offset + limit;
   } else {
-    const [visible, hidden] = await Promise.all([
-      runGit(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]),
-      runGit(root, ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"]),
-    ]);
-    const hiddenPaths = hidden.out.split("\0").filter(Boolean).map(path => path.replace(/\/$/, ""));
-    const parents = new Set<string>();
-    for (const path of hiddenPaths.slice(0, 10_000)) {
-      const parts = path.split("/");
-      for (let i = 1; i < parts.length && parents.size < 10_000; i++) parents.add(parts.slice(0, i).join("/"));
-    }
-    const ignoredParents = await ignoredPaths(root, [...parents], true);
-    ignored = new Set(hiddenPaths.map(path => {
-      const parts = path.split("/");
-      for (let i = 1; i < parts.length; i++) if (ignoredParents.has(parts.slice(0, i).join("/"))) return parts.slice(0, i).join("/");
-      return path;
-    }));
-    candidates = [...new Set([...visible.out.split("\0").filter(Boolean), ...ignored])].sort();
+    const parent = path === undefined ? { absolute: root, info: await lstat(root) } : await repositoryEntry(root, path);
+    if (!parent.info.isDirectory()) throw new GitError("Choose a repository folder.", 400);
+    const entries = (await readdir(parent.absolute)).map(name => path === undefined ? name : `${path}/${name}`).sort();
+    candidates = entries.slice(offset, offset + limit);
+    if (entries.length > offset + limit) nextOffset = offset + limit;
   }
+  const ignored = await ignoredPaths(root, candidates.filter(path => !path.split("/").some(part => part.toLowerCase() === ".git")));
   const files: string[] = [];
   const folders: string[] = [];
-  const visibleIgnored: string[] = [];
   const directories = new Map<string, Promise<boolean>>();
   function belongsToRepository(directory: string): Promise<boolean> {
     if (directory === root) return Promise.resolve(true);
@@ -160,8 +166,8 @@ export async function gitFiles(root: string, path?: string): Promise<GitFileList
     }
     return result;
   }
-  for (let i = 0; i < Math.min(candidates.length, 10_000); i += 32) {
-    await Promise.all(candidates.slice(i, Math.min(i + 32, 10_000)).map(async path => {
+  for (let i = 0; i < candidates.length; i += 32) {
+    await Promise.all(candidates.slice(i, i + 32).map(async path => {
       try {
         const absolute = resolve(root, gitPath(path));
         const info = await lstat(absolute);
@@ -169,11 +175,13 @@ export async function gitFiles(root: string, path?: string): Promise<GitFileList
         if (info.isFile()) files.push(path);
         else if (info.isDirectory()) folders.push(path);
         else return;
-        if (ignored.has(path)) visibleIgnored.push(path);
       } catch { /* Deleted files and links are not editable. */ }
     }));
   }
-  return { root, files: files.sort(), ...(path !== undefined || visibleIgnored.length ? { directories: folders.sort(), ignored: visibleIgnored.sort() } : {}), truncated: candidates.length > 10_000 };
+  const ignoredFolders = await ignoredPaths(root, folders, true);
+  const visibleIgnored = [...files.filter(path => ignored.has(path)), ...ignoredFolders];
+  const trackedDirectories = folders.filter(path => ignoredFolders.has(path) && !ignored.has(path));
+  return { root, files: files.sort(), directories: folders.sort(), ignored: visibleIgnored.sort(), ...(trackedDirectories.length ? { trackedDirectories: trackedDirectories.sort() } : {}), ...(nextOffset !== undefined ? { nextOffset } : {}), truncated: false };
 }
 
 function actionPath(value: unknown): string {

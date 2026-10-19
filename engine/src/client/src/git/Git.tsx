@@ -379,11 +379,10 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
           {tab === "files" ? <>
             {filesRequest.error && <p className="git-notice" role="alert">{filesRequest.error}</p>}
             {filesRequest.pending && !filesRequest.data ? <p className="git-history-loading"><Loader2 size={14} className="animate-spin" />Loading files…</p>
-              : filesRequest.data ? <RepositoryTree key={directory} root={directory} files={filesRequest.data.files} directories={filesRequest.data.directories} ignored={filesRequest.data.ignored} refresh={refresh} statuses={fileStatuses} selected={filePath} onSelect={openFile} disabled={workspaceBusy}
+              : filesRequest.data ? <RepositoryTree key={directory} root={directory} files={filesRequest.data.files} directories={filesRequest.data.directories} ignored={filesRequest.data.ignored} trackedDirectories={filesRequest.data.trackedDirectories} nextOffset={filesRequest.data.nextOffset} refresh={refresh} statuses={fileStatuses} selected={filePath} onSelect={openFile} disabled={workspaceBusy}
                 onMove={(path, destination) => requestFileAction({ action: "move", path, destination })} onRename={path => setRenaming({ path, name: nameOf(path) })}
                 onIgnore={path => requestFileAction({ action: "ignore", path })} onError={setOperationError} />
               : <div className="git-empty git-sidebar-empty"><FolderOpen size={26} /><strong>No files to display</strong><span>Choose a repository to browse its files.</span></div>}
-            {filesRequest.data?.truncated && <p className="git-notice">File list truncated. Only the first files are shown.</p>}
           </> : tab === "changes" ? <>
             {displayGroups.map(group => {
               const tree = <FileTree files={group.files} selected={selection?.path ?? null} selectedMode={selection?.mode === "staged" ? "staged" : "unstaged"}

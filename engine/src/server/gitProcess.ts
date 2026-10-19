@@ -10,7 +10,7 @@ function redact(message: string) {
 }
 
 // No shell, interactive prompts, optional index locks, external diff or textconv.
-export async function runGit(directory: string, args: string[], options: { allowFailure?: boolean; timeout?: number; input?: string } = {}) {
+export async function runGit(directory: string, args: string[], options: { allowFailure?: boolean; timeout?: number; input?: string; readStdout?: (stream: ReadableStream<Uint8Array>) => Promise<string> } = {}) {
   const env: Record<string, string | undefined> = { ...process.env, GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never", GIT_PAGER: "cat", LC_ALL: "C.UTF-8" };
   for (const key of Object.keys(env)) if (/^GIT_(DIR|WORK_TREE|INDEX_FILE|COMMON_DIR|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|CONFIG_COUNT|CONFIG_KEY_\d+|CONFIG_VALUE_\d+)$/.test(key)) delete env[key];
   let child: Bun.Subprocess<"ignore", "pipe", "pipe">;
@@ -34,7 +34,7 @@ export async function runGit(directory: string, args: string[], options: { allow
     return Buffer.concat(chunks).toString("utf8");
   }
   try {
-    const [out, err, code] = await Promise.all([read(child.stdout), read(child.stderr), child.exited]);
+    const [out, err, code] = await Promise.all([options.readStdout ? options.readStdout(child.stdout) : read(child.stdout), read(child.stderr), child.exited]);
     if (timedOut) throw new GitError("Git timed out. Check authentication or repository hooks and try again.", 504);
     if (overflow) throw new GitError("Git output is too large to display. Narrow the selection.", 413);
     if (code && !options.allowFailure) throw new GitError(redact(err.trim() || out.trim() || "Git operation failed."));
