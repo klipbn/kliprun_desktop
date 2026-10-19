@@ -12,15 +12,24 @@ import { parseRecentSessionsQuery } from "./recent";
 export interface StatsOptions { path: string; historyPath: string; opencodePath: string; codexHome: string; claudeHome: string }
 /** All history parsing and aggregation stays off the board's server thread. */
 export class StatsService {
-  private worker: Worker;
+  private worker!: Worker;
+  private readonly options: StatsOptions;
   private sequence = 0;
   private pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: Timer }>();
-  private ready: Promise<unknown>;
+  private ready!: Promise<unknown>;
+  private initializationFailed = false;
   private closed = false;
   private failure: Error | null = null;
   constructor(options: Partial<StatsOptions> = {}) {
-    this.worker = new Worker(new URL("./worker.ts", import.meta.url).href);
-    this.worker.onmessage = event => {
+    this.options = { path: join(process.env.KLIPRUN_BUN_HOME ?? join(homedir(), ".kliprun_bun"), "usage.sqlite3"), historyPath: defaultHistoryPath(), opencodePath: getDbPath(), codexHome: codexHome(), claudeHome: claudeHome(), ...options };
+    this.start();
+  }
+  private start(): void {
+    this.failure = null;
+    this.initializationFailed = false;
+    const worker = this.worker = new Worker(new URL("./worker.ts", import.meta.url).href);
+    worker.onmessage = event => {
+      if (this.worker !== worker) return;
       const { id, result, error } = event.data as { id: number; result?: unknown; error?: string };
       const pending = this.pending.get(id);
       if (!pending) return;
@@ -28,12 +37,13 @@ export class StatsService {
       if (error) pending.reject(new Error(error)); else pending.resolve(result);
     };
     const failed = () => {
+      if (this.worker !== worker) return;
       this.failure = new Error("Statistics worker unavailable");
       this.failPending(this.failure);
     };
-    this.worker.onerror = failed;
-    this.worker.addEventListener("close", failed);
-    this.ready = this.send("init", { path: join(process.env.KLIPRUN_BUN_HOME ?? join(homedir(), ".kliprun_bun"), "usage.sqlite3"), historyPath: defaultHistoryPath(), opencodePath: getDbPath(), codexHome: codexHome(), claudeHome: claudeHome(), ...options });
+    worker.onerror = failed;
+    worker.addEventListener("close", failed);
+    this.ready = this.send("init", this.options).catch(error => { this.initializationFailed = true; throw error; });
     // A worker startup failure must not crash the read-only board.
     void this.ready.catch(() => {});
   }
@@ -55,6 +65,8 @@ export class StatsService {
     void this.ready.then(() => { if (!this.closed && !this.failure) this.worker.postMessage({ op: "observe", data: observation }); }).catch(() => {});
   }
   async query(op: "dashboard" | "sessions" | "detail" | "office" | "recent" | "catalog", filters: StatsFilters | null, extra: Record<string, unknown> = {}): Promise<unknown> {
+    if (this.closed) throw new Error("Statistics service stopped");
+    if (this.initializationFailed) { this.worker.terminate(); this.start(); }
     await this.ready;
     if (this.closed) throw new Error("Statistics service stopped");
     return this.send(op, { filters, ...extra });

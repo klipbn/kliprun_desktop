@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { Hono } from "hono";
+import { Database } from "bun:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -80,6 +81,33 @@ test("session catalog includes history beyond a page and sessions without direct
     expect(result.sessions).toHaveLength(105);
     expect(result.sessions.at(-1)).toMatchObject({ id: "ses_catalog_0", running_ms: null });
   } finally { store.close(); }
+});
+test("session catalog recovers after a temporary statistics startup lock", async () => {
+  const home = mkdtempSync(join(tmpdir(), "kliprun-usage-recovery-"));
+  const path = join(home, "usage.sqlite3");
+  const store = new UsageStore(path);
+  store.upsertSession({ id: "ses_recovered", source: "opencode", parent_id: null, title: "Recovered task", directory: "/demo", created_at: 1, updated_at: 2 });
+  store.close();
+  const lock = new Database(path);
+  lock.exec("BEGIN IMMEDIATE");
+  const service = new StatsService({ path, historyPath: join(home, "missing-history"), opencodePath: join(home, "missing-opencode"), codexHome: home, claudeHome: join(home, "missing-claude") });
+  resources.push({ service, home });
+  const app = new Hono(); registerStatsRoutes(app, service);
+  try {
+    expect((await app.request("/api/session-catalog")).status).toBe(503);
+    expect((await app.request("/api/session-catalog")).status).toBe(503);
+  } finally { lock.exec("ROLLBACK"); lock.close(); }
+  const [catalog, recent] = await Promise.all([app.request("/api/session-catalog"), app.request("/api/recent-sessions")]);
+  expect(catalog.status).toBe(200);
+  expect(recent.status).toBe(200);
+  expect((await catalog.json() as { sessions: Array<{ id: string }> }).sessions.map(session => session.id)).toEqual(["ses_recovered"]);
+  expect((await recent.json() as RecentSessionsPayload).sessions.map(session => session.id)).toEqual(["ses_recovered"]);
+  service.observe({ at: 150, cards: [], intervals: [{ id: 1, session_id: "ses_recovered", directory: "/demo", column_name: "running", entered_at: 100, exited_at: null, duration_ms: null }] });
+  const refreshed = await app.request("/api/session-catalog");
+  expect(refreshed.status).toBe(200);
+  expect(await refreshed.json()).toMatchObject({ sessions: [{ id: "ses_recovered", running_ms: 50 }] });
+  await service.close();
+  expect((await app.request("/api/session-catalog")).status).toBe(503);
 });
 test("worker-backed statistics serve independent observations while unavailable sources remain isolated", async () => {
   const { service, app } = fixture();
