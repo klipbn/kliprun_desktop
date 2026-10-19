@@ -62,6 +62,7 @@ struct DesktopCommands: Commands {
             Button("Git") { store.showPage("/git") }.keyboardShortcut("4", modifiers: .control)
             Button("Usage") { store.showPage("/usage") }.keyboardShortcut("5", modifiers: .control)
             Button("Statistics") { store.showPage("/stats") }.keyboardShortcut("6", modifiers: .control)
+            Button("Workflow") { store.showPage("/workflow") }.keyboardShortcut("7", modifiers: .control)
             Divider()
             Button("Find Session…") { menu.run(.findSession) }.keyboardShortcut("f", modifiers: [.command, .shift]).disabled(!menu.canRun(.findSession))
         }

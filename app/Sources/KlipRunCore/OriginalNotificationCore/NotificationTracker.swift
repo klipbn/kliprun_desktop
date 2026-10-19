@@ -28,9 +28,12 @@ public struct AgentNotification: Equatable, Identifiable {
     public let title: String
     public let kind: Kind
     public let revision: Double
+    private let customMessage: String?
+    public let actionLabel: String
     public var id: String { "\(sessionID):\(kind.rawValue):\(revision)" }
 
     public var message: String {
+        if let customMessage { return customMessage }
         switch kind {
         case .finished: return "Response ready. You can review it."
         case .question: return "I have a question. Your answer is needed."
@@ -39,8 +42,9 @@ public struct AgentNotification: Equatable, Identifiable {
         }
     }
 
-    public init(sessionID: String, title: String, kind: Kind, revision: Double) {
+    public init(sessionID: String, title: String, kind: Kind, revision: Double, message: String? = nil, actionLabel: String = "Open session") {
         self.sessionID = sessionID; self.title = title; self.kind = kind; self.revision = revision
+        self.customMessage = message; self.actionLabel = actionLabel
     }
 
     public static func from(_ card: SessionCard) -> AgentNotification? {

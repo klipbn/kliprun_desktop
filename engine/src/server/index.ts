@@ -15,6 +15,13 @@ import { checkDbExists, getDbPath } from "./storage/db";
 import { StatsService, registerStatsRoutes } from "./usage/service";
 import { QuotaService, registerQuotaRoutes } from "./quota";
 import { registerGitRoutes } from "./routes/git";
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { WorkflowStore } from './workflow/store';
+import { WorkflowRunner } from './workflow/runner';
+import { createAgentAdapter, ownedProcessAlive, recoverAgentResult } from './workflow/agents';
+import { prepareWorkspace, inspectWorkspace, publishWorkflow, validateOutputFiles } from './workflow/git';
+import { registerWorkflowRoutes } from './workflow/routes';
 
 function resolvePort(args: string[]): number {
   const flagIndex = args.indexOf("--port");
@@ -60,6 +67,13 @@ registerStreamRoute(app, watcher, service);
 registerStatsRoutes(app, statistics);
 registerQuotaRoutes(app, new QuotaService());
 registerGitRoutes(app);
+const workflowState = process.env.KLIPRUN_BUN_HOME ?? join(homedir(), '.kliprun_bun');
+const workflowStore = new WorkflowStore(join(workflowState, 'workflows.sqlite3'));
+const workflows = new WorkflowRunner(workflowStore, {
+  prepare: prepareWorkspace, inspect: inspectWorkspace, validateFiles: validateOutputFiles,
+  agent: createAgentAdapter(workflowState), publish: publishWorkflow, isAlive: ownedProcessAlive, recover: recoverAgentResult,
+});
+registerWorkflowRoutes(app, workflows, workflowStore, workflowState);
 
 app.all("/api/*", c => {
   c.header("Cache-Control", "no-store");
@@ -92,6 +106,8 @@ async function shutdown() {
   closeAllSSEConnections();
   watcher.stop();
   service.stop();
+  await workflows.close();
+  workflowStore.close();
   await statistics.close();
   server.stop(true);
   process.exit(0);

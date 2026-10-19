@@ -4,7 +4,7 @@ async (page, base = "http://127.0.0.1:18810") => {
   const test = await context.newPage(), errors = [];
   test.on("pageerror", error => errors.push(error.message));
   const check = (value, message) => { if (!value) throw new Error(message); };
-  const labels = ["OpenCode", "Codex", "Claude Code", "Terminal", "Sessions", "Kanban", "Office", "Git", "Usage", "Statistics", "Updates", "Shortcuts", "Settings"];
+  const labels = ["OpenCode", "Codex", "Claude Code", "Terminal", "Sessions", "Kanban", "Office", "Git", "Workflow", "Usage", "Statistics", "Updates", "Shortcuts", "Settings"];
   const actions = ["new-opencode", "new-codex", "new-claude", "show-terminal", "check-updates", "settings"];
   const expanded = () => test.getByTestId("toolbar-labels-button").getAttribute("aria-expanded");
   try {

@@ -8,8 +8,13 @@ type NativeBridgeHost = {
     exportStatistics?: { postMessage: (request: { filename: string; content: string }) => void };
     gitRepository?: { postMessage: (directory: string) => void };
     repositoryFile?: { postMessage: (request: { action: "reveal" | "open" | "copy"; path: string }) => void };
+    workflowAction?: { postMessage: (request: Record<string, string>) => void };
   } };
 };
+
+export function notifyWorkflowAction(request: Record<string, string>, host: NativeBridgeHost = window as unknown as NativeBridgeHost): void {
+  host.webkit?.messageHandlers?.workflowAction?.postMessage(request);
+}
 
 export type DesktopAction = "new-opencode" | "new-codex" | "new-claude" | "show-terminal" | "open-iterm" | "settings" | "check-updates" | "open-repository" | "toggle-toolbar-labels";
 

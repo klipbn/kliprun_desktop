@@ -10,9 +10,10 @@ function redact(message: string) {
 }
 
 // No shell, interactive prompts, optional index locks, external diff or textconv.
-export async function runGit(directory: string, args: string[], options: { allowFailure?: boolean; timeout?: number; input?: string; readStdout?: (stream: ReadableStream<Uint8Array>) => Promise<string> } = {}) {
+export async function runGit(directory: string, args: string[], options: { allowFailure?: boolean; timeout?: number; input?: string; indexFile?: string; readStdout?: (stream: ReadableStream<Uint8Array>) => Promise<string> } = {}) {
   const env: Record<string, string | undefined> = { ...process.env, GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never", GIT_PAGER: "cat", LC_ALL: "C.UTF-8" };
   for (const key of Object.keys(env)) if (/^GIT_(DIR|WORK_TREE|INDEX_FILE|COMMON_DIR|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|CONFIG_COUNT|CONFIG_KEY_\d+|CONFIG_VALUE_\d+)$/.test(key)) delete env[key];
+  if (options.indexFile) env.GIT_INDEX_FILE = options.indexFile;
   let child: Bun.Subprocess<"ignore", "pipe", "pipe">;
   try {
     child = Bun.spawn(["git", "--no-optional-locks", "--literal-pathspecs", "-c", "color.ui=false", "-C", directory, ...args], {

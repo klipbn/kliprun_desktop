@@ -4406,5 +4406,127 @@
         "truncated": false
       }
     }
+  },
+  "workflow": {
+    "startedAt": 1791978900000,
+    "stepDurationMs": 30000,
+    "definition": {
+      "id": "demo-workflow",
+      "name": "Aurora · API reliability",
+      "directory": "/Users/demo/Projects/atlas",
+      "branch": "feature/empty-response",
+      "createBranch": true,
+      "nodes": [
+        {
+          "id": "plan",
+          "kind": "agent",
+          "title": "Plan the change",
+          "x": 60,
+          "y": 100,
+          "agent": "codex",
+          "model": "",
+          "task": "Plan empty-response handling for the demo API.",
+          "resultKind": "text",
+          "outputFiles": [],
+          "completion": "Produce the requested result and report verification."
+        },
+        {
+          "id": "build",
+          "kind": "agent",
+          "title": "Implement the plan",
+          "x": 380,
+          "y": 100,
+          "agent": "opencode",
+          "model": "",
+          "task": "Implement the plan and address current findings.",
+          "resultKind": "code",
+          "outputFiles": [],
+          "completion": "Produce the requested result and report verification."
+        },
+        {
+          "id": "review",
+          "kind": "agent",
+          "title": "Review current files",
+          "x": 700,
+          "y": 100,
+          "agent": "claude",
+          "model": "",
+          "task": "Review the current diff without changing files.",
+          "resultKind": "review",
+          "outputFiles": [],
+          "completion": "Produce the requested result and report verification."
+        },
+        {
+          "id": "publish",
+          "kind": "publication",
+          "title": "Publish for review",
+          "x": 1020,
+          "y": 100,
+          "mode": "request",
+          "remote": "origin",
+          "provider": "github",
+          "targetBranch": "develop",
+          "requestTitle": "Handle empty API responses",
+          "description": "{{results}}"
+        },
+        {
+          "id": "human",
+          "kind": "human",
+          "title": "Human review",
+          "x": 1340,
+          "y": 100
+        }
+      ],
+      "edges": [
+        {
+          "id": "plan-build",
+          "from": "plan",
+          "to": "build",
+          "port": "done"
+        },
+        {
+          "id": "build-review",
+          "from": "build",
+          "to": "review",
+          "port": "done"
+        },
+        {
+          "id": "review-publish",
+          "from": "review",
+          "to": "publish",
+          "port": "approved"
+        },
+        {
+          "id": "publish-human",
+          "from": "publish",
+          "to": "human",
+          "port": "done"
+        },
+        {
+          "id": "review-return",
+          "from": "review",
+          "to": "build",
+          "port": "changes_requested",
+          "maxReturns": 3
+        }
+      ],
+      "viewport": {
+        "x": 20,
+        "y": 50,
+        "zoom": 0.65
+      }
+    },
+    "results": {
+      "plan": "Plan: add empty-response handling and verify the API contract.",
+      "build": "Implemented empty-response handling in src/api.ts. Focused checks pass.",
+      "review_changes": "{\"verdict\": \"changes_requested\", \"summary\": \"Check the empty payload.\", \"findings\": [{\"id\": \"R-1\", \"message\": \"Add an explicit empty-payload case.\"}]}",
+      "review_approved": "{\"verdict\": \"approved\", \"summary\": \"Current files and checks satisfy the plan.\", \"findings\": []}"
+    },
+    "publication": {
+      "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "url": "https://github.com/example/aurora/pull/42",
+      "remote": "origin",
+      "branch": "feature/empty-response"
+    }
   }
 }

@@ -27,6 +27,8 @@ final class DesktopStore: ObservableObject {
 
     private var links: [String: Int32] = [:]
     private var tracker = NotificationTracker()
+    private var workflowTracker = WorkflowNotificationTracker()
+    private var pendingWorkflowNotice: WorkflowNotice?
     let notifications: PopupNotifications
     private let defaults: UserDefaults
     private var loop: Task<Void, Never>?
@@ -69,6 +71,7 @@ final class DesktopStore: ObservableObject {
         guard settings != agentSettings[source] else { return }
         agentSettings[source] = settings
         settings.save(source: source, to: defaults)
+        Task { await runtime.updateAgentSettings(agentSettings) }
     }
 
     func start() {
@@ -94,6 +97,12 @@ final class DesktopStore: ObservableObject {
     private func refresh() async {
         guard let baseURL = runtime.baseURL else { error = runtime.error; return }
         let api = DesktopAPI(baseURL: baseURL, token: runtime.token)
+        // Workflow notifications must not depend on the visible web view or session-store health.
+        if let workflows: WorkflowStatusSnapshot = try? await api.get("api/workflows/status") {
+            for notice in workflowTracker.observe(workflows.notices) {
+                notifications.show(notice.notification) { [weak self] in self?.openWorkflowNotice(notice) }
+            }
+        }
         do {
             let (snapshot, notificationSnapshot) = try await api.board()
             board = snapshot
@@ -163,6 +172,16 @@ final class DesktopStore: ObservableObject {
         openInWeb(event.sessionID)
     }
 
+    func openWorkflowNotice(_ notice: WorkflowNotice) {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.windows.first(where: { $0.canBecomeKey })?.makeKeyAndOrderFront(nil)
+        guard webReady, let webView else { pendingWorkflowNotice = notice; return }
+        showPage("/workflow")
+        guard let data = try? JSONEncoder().encode(["workflowId": notice.workflowId, "runId": notice.runId, "nodeId": notice.nodeId ?? ""]),
+              let literal = String(data: data, encoding: .utf8) else { return }
+        webView.evaluateJavaScript("window.kliprunPendingWorkflow = \(literal); window.dispatchEvent(new CustomEvent('kliprun:workflow', { detail: \(literal) }));")
+    }
+
     func openInWeb(_ id: String) {
         guard webReady, let webView, let literal = try? String(data: JSONEncoder().encode(id), encoding: .utf8) else {
             pendingWebSessionID = id; return
@@ -182,10 +201,11 @@ final class DesktopStore: ObservableObject {
         publishTerminalSelection()
         if let pendingWebPage { self.pendingWebPage = nil; showPage(pendingWebPage) }
         if let pendingWebSessionID { self.pendingWebSessionID = nil; openInWeb(pendingWebSessionID) }
+        if let pendingWorkflowNotice { self.pendingWorkflowNotice = nil; openWorkflowNotice(pendingWorkflowNotice) }
     }
 
     func showPage(_ path: String) {
-        guard ["/sessions", "/", "/git", "/stats", "/office", "/usage"].contains(path) else { return }
+        guard ["/sessions", "/", "/git", "/stats", "/office", "/usage", "/workflow"].contains(path) else { return }
         terminalExpanded = false
         guard webReady, let webView else { pendingWebPage = path; return }
         webView.evaluateJavaScript("window.kliprunPendingNavigation = '\(path)'; window.dispatchEvent(new CustomEvent('kliprun:navigate', { detail: '\(path)' }));")
