@@ -4,6 +4,18 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.31] - 2026-10-20
+
+### Added
+
+- Add an independent terminal palette in Settings → Terminal with a live terminal preview, Follow app theme, Dracula, Nord and Solarized Dark/Light alongside the existing palettes. Apply saved colors to all open terminals and before new agents start.
+
+### Fixed
+
+- Honor the configured mouse-wheel step in alternate-screen arrow-key scrolling instead of saturating at six keys. Respect independent smooth-scrolling speeds up to 10× in application mouse/arrow reporting while preserving the input rate limit.
+- Match navigation shortcuts to toolbar order: Control+5 Workflow, Control+6 Usage and Control+7 Statistics, including the macOS menu and shortcut help.
+- Zoom the Workflow canvas with the mouse wheel without a modifier; drag the background to pan and keep wheel events from scrolling the surrounding page.
+
 ## [0.0.30] - 2026-10-19
 
 ### Fixed
@@ -491,4 +503,5 @@ First public macOS release.
 [0.0.28]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.28
 [0.0.29]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.29
 [0.0.30]: https://github.com/klipbn/kliprun_desktop/releases/tag/v0.0.30
-[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.30...main
+[Unreleased]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.31...main
+[0.0.31]: https://github.com/klipbn/kliprun_desktop/compare/v0.0.30...v0.0.31

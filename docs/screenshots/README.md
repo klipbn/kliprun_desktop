@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All twenty-one current screenshots were captured from **KlipRun Desktop 0.0.30** on **2026-10-19**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All twenty-one current screenshots were captured from **KlipRun Desktop 0.0.31** on **2026-10-20**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -68,7 +68,7 @@ The `git` fixture supplies repository roots, status, history, commit files, sour
 
 `git.text_files` supplies fictional Python, SQL, Markdown, and TypeScript source for the Files tab. The preview serves `/api/git/files` and reads from `/api/git/file`; save requests are rejected. [`../../scripts/git-files.test.js`](../../scripts/git-files.test.js) is a Playwright callback `(page, fixture)` taking the parsed `mock-api.json`. It intercepts file requests and keeps simulated saves in memory, checking the right-hand project tree and its filter/keyboard controls, preview and permanent tabs, CodeMirror indentation/search/undo across tabs, save/close/cancel, Markdown preview, save conflicts, delayed responses, inactive drafts on repository changes, and normal/small windows.
 
-The toolbar follows **Sessions → Kanban → Office → Git → Workflow → Usage → Statistics**, with a separate **Check for Updates → Keyboard shortcuts → Settings** utility group. Shortcuts use Control+1 Sessions, Control+2 Kanban, Control+3 Office, Control+4 Git, Control+5 Usage, and Control+6 Statistics, and Control+7 Workflow. Capture callbacks made **zero external requests**.
+The toolbar follows **Sessions → Kanban → Office → Git → Workflow → Usage → Statistics**, with a separate **Check for Updates → Keyboard shortcuts → Settings** utility group. Shortcuts use Control+1 Sessions, Control+2 Kanban, Control+3 Office, Control+4 Git, Control+5 Workflow, Control+6 Usage, and Control+7 Statistics. Capture callbacks made **zero external requests**.
 
 The Office image now shows the Shared loft floor plan with the same fictional sessions. [`../../scripts/office.test.js`](../../scripts/office.test.js) checks all three floor plans, persistent settings, new and removed helpers, observed-state transitions and idle grace, selection, active-terminal highlighting, usage, zoom, and reduced motion in normal and constrained web-view sizes.
 
@@ -122,3 +122,12 @@ stay outside the committed gallery.
 The 0.0.29 refresh updates all 19 existing gallery images and adds `workflow.png` and `workflow-review.png` through `capture-workflow.js`, using the workflow fixture and its in-memory executor. All 21 captures use only fixture data and make no external requests. Provider selection/order and native Settings are verified separately; the Usage gallery retains all five fixture providers.
 
 The 0.0.30 refresh recaptures all 21 gallery images with the same callbacks and fixture, changing only the displayed version. The Claude Code session-linking and journal fixes are engine-side and covered by `engine/src/server/__tests__/claude.test.ts`. All captures made zero external requests.
+
+`check-workflow-navigation.js` checks Control+5/6/7 navigation, plain-wheel zoom,
+canvas drag panning and page-scroll isolation at 1440- and 620-pixel widths using
+only the workflow fixture.
+
+The 0.0.31 refresh recaptures all 21 gallery images using only `mock-api.json`,
+including the corrected navigation shortcuts. Native terminal themes and controls
+are checked separately at normal and small Settings sizes with disposable defaults;
+review images remain in `/private/tmp`. All gallery captures made zero external requests.

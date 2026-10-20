@@ -8,6 +8,7 @@ async (page, directory = "docs/screenshots", base = "http://127.0.0.1:18796") =>
     await page.goto(`${base}/git`);
     await page.evaluate(() => { localStorage.removeItem("kliprun.git.sidebar-width"); localStorage.removeItem("kliprun.git.changes-view"); });
     await page.reload();
+    await page.getByRole("tab", { name: "Changes", exact: false }).click();
     await page.locator('.git-file-select[title="src/api/search.ts"]').click();
     await page.locator(".git-diff-heading").getByText("src/api/search.ts", { exact: true }).waitFor();
     await page.locator(".git-diff").waitFor();
