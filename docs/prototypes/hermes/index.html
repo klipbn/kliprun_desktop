@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Compare three independent Hermes layouts in KlipRun: companion window, dedicated workspace and bottom dock. Fictional data only.">
+  <title>KlipRun · Three Hermes layouts</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23282c33'/%3E%3Cpath d='m6 8 8 8-8 8h6l8-8-8-8' fill='%2374ade8'/%3E%3Cpath d='m15 8 8 8-8 8h5l8-8-8-8' fill='%23a1c181'/%3E%3C/svg%3E">
+  <style>
+    /* Match the app's Graphite palette; Hermes shares the existing detail pane. */
+    :root { color-scheme:dark; --bg:#282c33; --surface:#2f343e; --raised:#3b414d; --border:#464b57; --text:#dce0e5; --muted:#a9afbc; --accent:#74ade8; --green:#a1c181; --amber:#dec184; --red:#d07277; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:13px; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); height:100dvh; min-height:720px; display:flex; flex-direction:column; }
+    button,input,textarea { font:inherit; color:inherit; }
+    button { cursor:pointer; }
+    button:disabled { cursor:default; opacity:.45; }
+    button:focus-visible,a:focus-visible,textarea:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+    button { -webkit-tap-highlight-color:transparent; }
+    [hidden] { display:none!important; }
+    svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; vertical-align:middle; }
+    .sprite { position:absolute; width:0; height:0; overflow:hidden; }
+    .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .muted { color:var(--muted); }
+    .prototype-bar { height:38px; padding:0 18px; display:flex; align-items:center; gap:13px; color:var(--muted); background:#20242a; border-bottom:1px solid #15181c; font-size:11px; }
+    .prototype-label { color:var(--green); font-size:10px; letter-spacing:1px; font-weight:600; white-space:nowrap; }
+    .prototype-bar .description { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .prototype-bar button { margin-left:auto; padding:3px 0; border:0; background:none; color:var(--muted); white-space:nowrap; font-size:11px; }
+    .prototype-bar button:hover { color:var(--text); }
+    .variant-review { padding:12px 16px 10px; background:#22262d; flex-shrink:0; }
+    .variant-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+    .variant-choice { display:flex; align-items:center; gap:13px; min-width:0; text-align:left; padding:11px 13px; border:1px solid var(--border); border-radius:7px; background:var(--bg); }
+    .variant-choice:hover { border-color:#707b8a; }
+    .variant-choice[aria-pressed="true"] { background:#74ade80c; border-color:var(--accent); }
+    .variant-choice strong { font-size:12px; font-weight:550; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .variant-choice small { display:block; color:var(--muted); font-size:10px; line-height:1.5; margin-top:5px; }
+    .variant-letter { color:var(--accent); font-size:10px; }
+    .recommended { color:var(--green); background:#a1c18112; font-size:9px; font-weight:400; padding:2px 5px; border-radius:3px; }
+    .mini-layout { position:relative; width:62px; height:39px; background:#20242b; border:1px solid #566071; border-radius:4px; flex-shrink:0; }
+    .mini-layout::before { content:""; position:absolute; left:3px; right:3px; top:5px; height:4px; border-radius:1px; background:var(--border); }
+    .mini-layout::after { content:""; position:absolute; inset:12px 17px 4px 4px; border:1px solid #566071; border-radius:2px; }
+    .mini-layout i { position:absolute; z-index:1; background:#445c52; border:1px solid var(--green); border-radius:2px; }
+    .mini-layout.float i { left:17px; right:8px; top:16px; bottom:1px; box-shadow:0 2px 5px #0008; }
+    .mini-layout.focus i { inset:12px 4px 4px 16px; }
+    .mini-layout.dock i { left:3px; right:3px; height:12px; bottom:3px; }
+    .variant-note { margin:9px 1px 0; color:var(--muted); font-size:11px; line-height:1.5; }
+    .variant-note strong { color:var(--text); font-weight:500; }
+    .app { flex:1; min-height:0; display:flex; flex-direction:column; }
+    .app-content { display:flex; flex-direction:column; flex:1; min-height:0; position:relative; }
+    .toolbar { display:flex; align-items:center; gap:14px; padding:0 16px; height:56px; flex-shrink:0; border-bottom:1px solid var(--border); background:var(--surface); }
+    .brand { display:flex; align-items:center; gap:9px; font-size:17px; font-weight:600; letter-spacing:-.3px; white-space:nowrap; }
+    .brand svg { width:24px; height:24px; stroke:none; }
+    .toolbar-divider { height:23px; width:1px; background:var(--border); }
+    .view-current { display:flex; align-items:center; gap:7px; font-size:12px; border:0; background:transparent; padding:8px; border-radius:5px; }
+    .view-current.active { background:#74ade811; color:var(--accent); }
+    .view-current svg { color:var(--accent); }
+    .toolbar-spacer { flex:1; }
+    .demo-badge { color:var(--muted); border:1px solid var(--border); border-radius:5px; padding:4px 7px; font-size:10px; white-space:nowrap; }
+    .tool-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; border:1px solid var(--border); background:transparent; border-radius:6px; padding:7px 11px; font-size:12px; }
+    .tool-button:hover { background:var(--raised); }
+    .tool-button.active { color:var(--accent); border-color:#74ade870; background:#74ade811; }
+    .workspace { display:grid; grid-template-columns:minmax(0,1fr) 436px; flex:1; min-height:0; }
+    .workspace.panel-closed { grid-template-columns:minmax(0,1fr); }
+    .board-area { display:flex; flex-direction:column; min-width:0; min-height:0; }
+    .board-toolbar { display:flex; align-items:center; gap:9px; height:54px; padding:0 17px; flex-shrink:0; color:var(--muted); font-size:11px; }
+    .board-toolbar h1 { margin:0 5px 0 0; color:var(--text); font-size:13px; font-weight:600; }
+    .dot { width:6px; height:6px; display:inline-block; background:var(--accent); border-radius:50%; flex-shrink:0; }
+    .dot.warning { background:var(--amber); }
+    .dot.success { background:var(--green); }
+    .board-toolbar .board-count { display:flex; align-items:center; gap:5px; }
+    .board-toolbar .board-count:last-child { margin-left:auto; }
+    .board { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:0 12px 12px; flex:1; min-height:0; overflow:auto; }
+    .column { min-width:0; border:1px solid var(--border); border-radius:7px; background:#2b3038; }
+    .column-header { display:flex; align-items:center; gap:7px; padding:12px 10px; border-bottom:1px solid var(--border); font-size:12px; font-weight:500; }
+    .column-header .count { margin-left:auto; display:flex; align-items:center; justify-content:center; width:21px; height:21px; border:1px solid #464b57; border-radius:50%; color:var(--muted); font-size:10px; }
+    .column[data-column="attention"] .column-header { color:var(--amber); }
+    .column[data-column="running"] .column-header { color:var(--accent); }
+    .column[data-column="idle"] .column-header { color:var(--green); }
+    .cards { padding:8px; display:flex; flex-direction:column; gap:9px; }
+    .session-card { width:100%; text-align:left; display:block; min-width:0; padding:11px 10px 10px; background:var(--surface); border:1px solid var(--border); border-radius:6px; transition:border-color .15s,background .15s; }
+    .session-card:hover { background:#353b46; border-color:#667080; }
+    .session-card[aria-pressed="true"] { border-color:var(--accent); box-shadow:0 0 0 1px #74ade850; background:#303945; }
+    .card-title { display:flex; align-items:flex-start; gap:7px; font-weight:500; line-height:1.45; font-size:12px; }
+    .card-title svg { width:14px; height:14px; margin-top:2px; color:var(--accent); }
+    .card-title .title { min-width:0; overflow-wrap:anywhere; }
+    .card-row { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:9px; font-size:10px; color:var(--muted); }
+    .source-chip { display:inline-flex; align-items:center; gap:4px; padding:2px 4px; border:1px solid var(--border); border-radius:3px; font-size:9px; white-space:nowrap; }
+    .source-chip svg { width:10px; height:10px; }
+    .card-stage { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+    .card-project { display:flex; align-items:center; gap:4px; color:var(--muted); font-size:10px; margin-top:8px; }
+    .card-project svg { width:11px; height:11px; }
+    .card-project .branch { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .context-track { margin-top:10px; height:3px; background:var(--border); border-radius:3px; }
+    .context-track i { height:100%; display:block; border-radius:3px; background:var(--accent); }
+    .card-model { margin-top:5px; color:var(--muted); font-size:9px; }
+    .card-hermes { display:flex; gap:5px; align-items:flex-start; margin-top:10px; padding-top:8px; border-top:1px solid #464b5780; color:#bec8bb; font-size:10px; line-height:1.45; }
+    .card-hermes svg { width:12px; height:12px; color:var(--green); margin-top:1px; }
+    .child-card { margin-top:10px; padding:9px 7px 0 10px; border-top:1px dashed #596171; border-left:1px solid #596171; color:var(--muted); font-size:10px; line-height:1.5; }
+    .child-card .dot { width:5px; height:5px; margin-right:4px; }
+    .board-note { margin:0 17px 15px; display:flex; align-items:center; gap:6px; color:var(--muted); font-size:10px; flex-shrink:0; }
+    .board-note svg { width:12px; height:12px; }
+    .hermes-panel { display:flex; flex-direction:column; border-left:1px solid var(--border); background:#2b3039; min-width:0; min-height:0; }
+    .details-header { display:flex; align-items:center; gap:7px; padding:10px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .details-header>svg { width:14px; height:14px; color:var(--accent); }
+    .details-title { margin:0; font-size:12px; font-weight:500; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .details-header .source-chip { color:var(--muted); font-size:9px; border:0; }
+    .detail-location { display:flex; align-items:center; gap:8px; padding:7px 12px; border-bottom:1px solid var(--border); font-size:10px; color:var(--muted); flex-shrink:0; min-width:0; }
+    .detail-location .directory { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+    .detail-location .branch { display:flex; align-items:center; gap:4px; color:var(--accent); min-width:0; max-width:47%; }
+    .detail-location .branch span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .detail-location svg { width:11px; height:11px; }
+    .detail-tabs { display:flex; flex-wrap:wrap; align-items:center; gap:3px; padding:6px 7px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .detail-tabs button { display:flex; align-items:center; gap:4px; padding:5px; border:0; background:transparent; color:var(--muted); font-size:11px; border-radius:4px; white-space:nowrap; }
+    .detail-tabs button svg { width:12px; height:12px; }
+    .detail-tabs button:hover { color:var(--text); background:var(--raised); }
+    .detail-tabs button[aria-selected="true"] { background:#74ade818; color:var(--accent); }
+    .detail-content { flex:1; min-height:0; overflow:auto; padding:14px 12px; }
+    .detail-card { border:1px solid var(--border); border-radius:6px; background:var(--surface); padding:12px; margin-bottom:10px; }
+    .detail-card-header { display:flex; align-items:center; flex-wrap:wrap; gap:7px; font-size:10px; color:var(--muted); margin-bottom:12px; }
+    .detail-card-header svg { width:13px; height:13px; color:var(--accent); }
+    .detail-card-header strong { font-weight:500; color:var(--text); }
+    .detail-card-header .model-chip { padding:2px 5px; border:1px solid var(--border); border-radius:4px; color:var(--text); }
+    .detail-text { margin:0; white-space:pre-wrap; font-size:13px; line-height:1.75; overflow-wrap:anywhere; }
+    .detail-time { display:block; margin-bottom:12px; font-size:10px; color:var(--muted); }
+    .detail-tool { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--muted); margin-top:14px; }
+    .detail-tool svg { width:12px; height:12px; }
+    .detail-tool .passed { color:var(--green); }
+    .detail-empty { margin:0; padding:12px 4px; color:var(--muted); font-size:12px; line-height:1.6; }
+    .hermes-content { display:flex; flex-direction:column; min-height:0; min-width:0; flex:1; }
+    .hermes-content .panel-header { padding:12px 18px 10px; }
+    .hermes-content .hermes-mark { width:27px; height:27px; border-radius:7px; }
+    .panel-header { display:flex; align-items:center; gap:10px; padding:17px 18px 14px; flex-shrink:0; }
+    .hermes-mark { display:grid; place-items:center; width:32px; height:32px; border-radius:9px; background:#a1c18112; border:1px solid #a1c18138; color:var(--green); }
+    .hermes-mark svg { width:19px; height:19px; }
+    .panel-name { font-size:14px; font-weight:600; }
+    .panel-subtitle { margin-top:3px; color:var(--muted); font-size:10px; }
+    .preview-status { display:flex; align-items:center; gap:5px; color:var(--muted); font-size:10px; margin-left:auto; }
+    .icon-button { border:0; background:transparent; display:inline-flex; align-items:center; justify-content:center; width:26px; height:28px; padding:4px; color:var(--muted); border-radius:4px; }
+    .icon-button:hover { background:var(--raised); color:var(--text); }
+    .scope-row { padding:0 16px 12px; flex-shrink:0; display:flex; align-items:center; gap:7px; min-width:0; }
+    .context-picker { display:flex; gap:7px; align-items:center; min-width:0; flex:1; border:1px solid var(--border); border-radius:5px; padding:6px 8px; background:#252a32; }
+    .context-picker svg { color:var(--muted); width:12px; height:12px; }
+    .context-picker select { font:inherit; font-size:11px; color:var(--text); background:#252a32; border:0; min-width:0; width:100%; padding:0; outline-offset:3px; }
+    .use-selected { padding:7px 8px; font-size:10px; border:1px solid var(--border); border-radius:5px; color:var(--muted); background:transparent; white-space:nowrap; }
+    .use-selected:hover { border-color:var(--accent); color:var(--text); }
+    .assistant-pages { display:flex; flex-direction:column; flex:1; min-height:0; min-width:0; }
+    .assistant-mount { min-height:0; min-width:0; }
+    .assistant-main { display:flex; flex-direction:column; min-width:0; min-height:0; flex:1; }
+    .assistant-mount[data-variant="companion"] { position:absolute; right:454px; bottom:18px; width:420px; height:550px; max-height:calc(100% - 36px); border:1px solid #758174; border-radius:10px; background:#2b3039; box-shadow:0 16px 50px #0006,0 3px 10px #0004; z-index:3; overflow:hidden; display:flex; }
+    .no-details .assistant-mount[data-variant="companion"] { right:18px; }
+    .assistant-mount[data-variant="companion"] .panel-header { cursor:grab; touch-action:none; }
+    .assistant-mount[data-variant="workspace"] { display:grid; grid-template-columns:218px minmax(0,1fr); flex:1; background:#292e36; }
+    .assistant-mount[data-variant="workspace"] .use-selected { display:none; }
+    .assistant-mount[data-variant="workspace"] .panel-header { padding:17px 22px 13px; }
+    .assistant-mount[data-variant="workspace"] .scope-row { padding-left:22px; padding-right:22px; max-width:720px; }
+    .assistant-mount[data-variant="workspace"] .panel-subtitle { display:block; }
+    .assistant-mount[data-variant="workspace"] .chat-scroll { padding:22px; }
+    .assistant-mount[data-variant="workspace"] .composer { margin-left:20px; margin-right:20px; }
+    .assistant-mount.split-mode .assistant-pages { display:grid; grid-template-columns:minmax(0,1fr) 330px; }
+    .assistant-mount.split-mode .tabs { display:none; }
+    .assistant-mount.split-mode .chat-view { grid-column:1; grid-row:1; }
+    .assistant-mount.split-mode .summary-view { grid-column:2; grid-row:1; border-left:1px solid var(--border); background:#2c323c; }
+    .assistant-mount[data-variant="dock"] { display:flex; height:310px; flex-shrink:0; border-top:1px solid #647184; background:#2b3039; position:relative; }
+    .assistant-mount[data-variant="dock"] .panel-header { display:none; }
+    .assistant-mount[data-variant="dock"] .scope-row { padding:8px 14px; max-width:650px; }
+    .assistant-mount[data-variant="dock"] .summary-view { padding:13px 16px; }
+    .assistant-mount[data-variant="dock"] .summary-headline { font-size:16px; }
+    .assistant-mount[data-variant="dock"] .summary-description { margin-bottom:12px; font-size:11px; }
+    .assistant-mount[data-variant="dock"] .summary-metrics { margin-bottom:13px; }
+    .assistant-mount[data-variant="dock"] .chat-scroll { padding:10px 18px; scroll-behavior:auto; }
+    .assistant-mount[data-variant="dock"] .message { margin-bottom:14px; }
+    .assistant-mount[data-variant="dock"] .chat-date { display:none; }
+    .assistant-mount[data-variant="dock"] .composer-hint { display:none; }
+    .assistant-mount[data-variant="dock"] textarea { height:32px; min-height:32px; }
+    .assistant-mount[data-variant="dock"] .quick-prompts { padding-bottom:6px; }
+    .assistant-mount[data-variant="dock"].split-mode .assistant-pages { grid-template-columns:310px minmax(0,1fr); }
+    .assistant-mount[data-variant="dock"].split-mode .summary-view { grid-column:1; border-left:0; border-right:1px solid var(--border); }
+    .assistant-mount[data-variant="dock"].split-mode .chat-view { grid-column:2; }
+    @media (max-width:760px) {
+      .app-content[data-placement="dock"] .workspace { grid-template-rows:minmax(0,1fr); }
+      .app-content[data-placement="dock"] .workspace:not(.panel-closed) .board-area { display:none; }
+      .app-content[data-placement="dock"] .workspace:not(.panel-closed) .hermes-panel { grid-row:1; }
+    }
+    .dock-chrome { display:flex; align-items:center; gap:5px; padding:5px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .dock-chrome>button:not(.icon-button) { padding:5px 10px; display:flex; align-items:center; gap:6px; border:0; border-radius:4px; background:transparent; color:var(--muted); font-size:11px; }
+    .dock-chrome>button[aria-selected="true"] { background:#74ade815; color:var(--accent); }
+    .dock-chrome>button svg { width:12px; height:12px; }
+    .dock-label { margin-left:auto; font-size:9px; color:var(--muted); }
+    .dock-resize { position:absolute; top:-4px; left:0; right:0; height:7px; cursor:row-resize; z-index:4; touch-action:none; }
+    .dock-resize:focus-visible { outline:2px solid var(--accent); }
+    .terminal-demo { padding:16px 20px; flex:1; overflow:auto; background:#242930; font:12px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre-wrap; margin:0; }
+    .conversation-nav { border-right:1px solid var(--border); background:#272c34; padding:18px 10px; overflow:auto; min-width:0; }
+    .conversation-nav h2 { display:flex; align-items:center; gap:8px; font-size:14px; margin:0 8px 24px; font-weight:550; }
+    .conversation-nav h2 svg { color:var(--green); }
+    .conversation-label { font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:20px 9px 10px; }
+    .conversation-item { display:flex; align-items:flex-start; gap:7px; width:100%; min-width:0; text-align:left; padding:10px 9px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--muted); }
+    .conversation-item svg { width:13px; height:13px; margin-top:2px; }
+    .conversation-item strong { display:block; font-size:11px; font-weight:500; line-height:1.5; }
+    .conversation-item small { display:block; margin-top:3px; font-size:9px; color:var(--muted); }
+    .conversation-item[aria-pressed="true"] { color:var(--text); background:#74ade810; border-color:#74ade835; }
+    .conversation-item:hover { background:var(--raised); }
+    @media (min-width:1600px) { .assistant-mount[data-variant="companion"] { right:493px; } }
+    @media (min-width:761px) and (max-width:1100px) { .assistant-mount[data-variant="companion"] { right:408px; width:380px; } }
+    @media (max-width:1100px) { .assistant-mount[data-variant="workspace"] { grid-template-columns:190px minmax(0,1fr); } }
+    @media (max-width:760px) { .variant-review { padding:9px 10px; } .variant-options { gap:6px; } .variant-choice { padding:9px 8px; gap:7px; } .variant-choice strong { font-size:11px; } .mini-layout { display:none; } .variant-choice small { font-size:9px; } .variant-note { font-size:10px; } .recommended { display:none; } .assistant-mount[data-variant="companion"] { width:calc(100% - 24px); left:12px!important; right:12px!important; bottom:12px; top:auto!important; max-height:calc(100% - 24px); height:440px; } .assistant-mount[data-variant="workspace"] { grid-template-columns:minmax(0,1fr); } .assistant-mount[data-variant="workspace"] .conversation-nav { display:none; } .assistant-mount[data-variant="workspace"] .scope-row { padding-left:14px; padding-right:14px; } .assistant-mount[data-variant="dock"] { height:300px; } .assistant-mount[data-variant="dock"] .tabs button { padding:7px 1px; } .assistant-mount[data-variant="dock"] .scope-row { padding:6px 12px; } .assistant-mount[data-variant="dock"] .chat-scroll { padding-top:6px; } .assistant-mount[data-variant="dock"] .quick-prompts { display:none; } .assistant-mount[data-variant="dock"] .composer { padding-top:7px; margin-bottom:8px; } }
+    @media (max-width:450px) { .variant-choice small { display:none; } .variant-choice strong { font-size:10px; line-height:1.5; gap:4px; } .variant-letter { font-size:9px; } .variant-note { min-height:44px; } .use-selected { font-size:9px; padding:7px 6px; } }
+    .tabs { display:flex; padding:0 18px; gap:24px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .tabs button { display:flex; gap:7px; align-items:center; border:0; background:transparent; color:var(--muted); font-size:12px; padding:13px 1px 12px; border-bottom:2px solid transparent; margin-bottom:-1px; }
+    .tabs button svg { width:14px; height:14px; }
+    .tabs button[aria-selected="true"] { border-bottom-color:var(--accent); color:var(--text); }
+    .tabs .tab-note { display:flex; align-items:center; margin-left:auto; font-size:9px; color:var(--muted); }
+    .summary-view { padding:20px 18px; overflow:auto; min-height:0; flex:1; }
+    .eyebrow { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1.1px; font-weight:600; }
+    .summary-headline { margin:10px 0 12px; font-size:20px; line-height:1.35; font-weight:550; letter-spacing:-.45px; text-wrap:balance; }
+    .summary-description { color:var(--muted); font-size:12px; line-height:1.75; margin:0 0 19px; }
+    .summary-metrics { display:flex; border:1px solid var(--border); border-radius:6px; margin:0 0 21px; overflow:hidden; }
+    .summary-metric { flex:1; padding:12px 10px; }
+    .summary-metric+.summary-metric { border-left:1px solid var(--border); }
+    .metric-number { font-size:18px; letter-spacing:-.4px; font-weight:550; display:flex; align-items:center; gap:5px; }
+    .metric-number svg { width:14px; height:14px; color:var(--green); }
+    .metric-label { color:var(--muted); font-size:9px; margin-top:5px; }
+    .section-label { margin:19px 0 11px; display:flex; gap:6px; align-items:center; font-size:11px; font-weight:600; }
+    .section-label svg { width:13px; height:13px; color:var(--muted); }
+    .check-list { margin:0; padding:0; list-style:none; display:grid; gap:11px; }
+    .check-list li { display:grid; grid-template-columns:14px 1fr; gap:8px; font-size:11px; line-height:1.6; }
+    .check-list svg { margin-top:2px; width:13px; height:13px; color:var(--green); }
+    .callout { border:1px solid #74ade838; border-radius:6px; padding:12px; background:#74ade807; margin-top:19px; }
+    .callout.warning { border-color:#dec18445; background:#dec18408; }
+    .callout-title { display:flex; gap:7px; align-items:center; font-size:11px; font-weight:550; color:var(--accent); }
+    .callout.warning .callout-title { color:var(--amber); }
+    .callout-title svg { width:14px; height:14px; }
+    .callout p { margin:7px 0 0 21px; color:var(--muted); font-size:11px; line-height:1.6; }
+    .summary-source { display:flex; align-items:center; gap:5px; color:var(--muted); font-size:9px; margin:17px 0; }
+    .summary-source svg { width:11px; height:11px; }
+    .ask-button { display:flex; width:100%; justify-content:center; gap:8px; align-items:center; padding:10px 12px; border-radius:6px; border:1px solid #74ade85c; background:#74ade815; font-size:12px; color:var(--accent); }
+    .ask-button:hover { background:#74ade825; }
+    .ask-button svg { width:14px; height:14px; }
+    .session-link { display:flex; width:100%; align-items:center; gap:8px; padding:10px; border:1px solid var(--border); border-radius:5px; background:var(--surface); text-align:left; margin-top:8px; }
+    .session-link:hover { border-color:var(--accent); }
+    .session-link .session-link-text { min-width:0; flex:1; }
+    .session-link strong { display:block; font-size:11px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .session-link small { display:block; color:var(--muted); font-size:9px; margin-top:4px; }
+    .session-link>svg { width:13px; height:13px; color:var(--muted); }
+    .chat-view { display:flex; flex-direction:column; min-height:0; flex:1; }
+    .chat-scroll { overflow:auto; flex:1; min-height:0; padding:19px 18px 12px; scroll-behavior:smooth; }
+    .chat-date { text-align:center; font-size:9px; color:var(--muted); margin:0 0 19px; }
+    .message { margin-bottom:22px; font-size:12px; line-height:1.75; }
+    .message-header { display:flex; gap:6px; align-items:center; margin-bottom:7px; font-weight:550; font-size:11px; }
+    .message-header svg { width:13px; height:13px; color:var(--green); }
+    .message-header time { font-weight:400; color:var(--muted); font-size:9px; margin-left:2px; }
+    .message-body { white-space:pre-wrap; overflow-wrap:anywhere; }
+    .message.user { margin-left:28px; border:1px solid var(--border); border-radius:9px 9px 3px 9px; padding:10px 12px; background:#373e49; }
+    .message.user .message-header { margin-bottom:4px; color:#c2cbda; }
+    .message.user .message-body { font-size:12px; line-height:1.6; }
+    .message .session-link { max-width:100%; }
+    .message-source { color:var(--muted); display:flex; align-items:center; gap:4px; font-size:9px; margin-top:8px; }
+    .message-source svg { width:10px; height:10px; }
+    .thinking { display:flex; gap:7px; align-items:center; color:var(--muted); padding-bottom:16px; font-size:11px; }
+    .thinking svg { color:var(--green); width:13px; height:13px; }
+    .quick-prompts { display:flex; gap:6px; padding:0 18px 10px; overflow-x:auto; flex-shrink:0; scrollbar-width:thin; }
+    .quick-prompts button { background:transparent; border:1px solid var(--border); border-radius:5px; padding:6px 8px; font-size:10px; white-space:nowrap; color:var(--muted); }
+    .quick-prompts button:hover { color:var(--text); border-color:#6b7789; background:var(--surface); }
+    .composer { margin:0 14px 10px; padding:10px 10px 7px; background:#252a32; border:1px solid #596373; border-radius:8px; flex-shrink:0; }
+    .composer:focus-within { border-color:var(--accent); }
+    textarea { display:block; resize:none; width:100%; height:47px; max-height:120px; min-height:44px; border:0; outline:0!important; background:transparent; font-size:12px; line-height:1.6; padding:0 2px; }
+    textarea::placeholder { color:#8e98a8; }
+    .composer-bottom { display:flex; gap:6px; align-items:center; margin-top:3px; }
+    .composer-context { display:flex; align-items:center; gap:4px; color:var(--muted); font-size:9px; min-width:0; }
+    .composer-context svg { width:11px; height:11px; }
+    .composer-context span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .send-button { display:flex; align-items:center; justify-content:center; background:var(--accent); color:#202936; width:28px; height:27px; border:0; border-radius:5px; margin-left:auto; flex-shrink:0; }
+    .send-button:disabled { background:var(--raised); color:var(--muted); }
+    .composer-hint { padding:0 18px 12px; color:var(--muted); font-size:9px; text-align:center; flex-shrink:0; }
+    .statusbar { display:flex; align-items:center; gap:14px; padding:0 15px; border-top:1px solid var(--border); background:var(--surface); height:30px; flex-shrink:0; color:var(--muted); font-size:10px; }
+    .statusbar>span { display:flex; align-items:center; gap:5px; white-space:nowrap; }
+    .statusbar svg { width:12px; height:12px; color:var(--accent); }
+    .statusbar .right { margin-left:auto; }
+    .statusbar .right svg { color:var(--green); }
+    @media (min-width:1600px) { .workspace { grid-template-columns:minmax(0,1fr) 475px; } .summary-view { padding:24px; } .summary-headline { font-size:23px; } }
+    @media (max-width:1100px) and (min-width:761px) { .workspace { grid-template-columns:minmax(0,1fr) 390px; } .board { gap:7px; padding:0 8px 10px; } .cards { padding:5px; } .session-card { padding:9px 7px; } .column-header { padding:11px 7px; font-size:10px; gap:4px; } .column-header svg { width:12px; height:12px; } .column-header .count { width:17px; height:17px; font-size:9px; } .card-title { font-size:11px; gap:4px; } .card-hermes { font-size:9px; } .board-toolbar { padding:0 10px; gap:6px; } .board-count:last-child { display:none; } }
+    @media (max-width:760px) { .prototype-bar { padding:0 12px; gap:9px; } .prototype-bar .description { font-size:10px; } .toolbar { height:49px; padding:0 12px; gap:11px; } .brand { font-size:15px; } .demo-badge { display:none; } .workspace { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(180px,32%) minmax(0,1fr); } .workspace.panel-closed { grid-template-rows:minmax(0,1fr); } .board-toolbar { height:36px; padding:0 12px; } .board { padding:0 9px 9px; gap:7px; } .column-header { padding:7px; font-size:10px; gap:4px; } .column-header svg { width:12px; height:12px; } .column-header .count { width:16px; height:16px; font-size:9px; } .cards { padding:5px; gap:6px; } .session-card { padding:7px; } .card-title { font-size:10px; gap:4px; } .card-title svg { width:11px; height:11px; } .card-hermes,.card-model,.child-card,.card-project { display:none; } .card-row { font-size:9px; margin-top:5px; } .source-chip { font-size:8px; } .board-note { display:none; } .hermes-panel { border-left:0; border-top:1px solid #616a7a; } .panel-header { padding:10px 14px; } .hermes-mark { width:27px; height:27px; border-radius:7px; } .panel-subtitle { display:none; } .panel-name { font-size:13px; } .scope-row { padding:0 14px 9px; } .scope-switch button { padding:5px; } .context-header { padding:8px 14px; } .tabs { padding:0 14px; } .tabs button { padding:9px 1px; } .summary-view { padding:15px; } .summary-headline { font-size:19px; } .statusbar { gap:10px; padding:0 12px; font-size:9px; height:26px; } .statusbar .optional { display:none; } .composer-hint { padding-bottom:9px; } }
+    @media (max-width:450px) { .prototype-bar .description { display:none; } .toolbar-divider,.view-current svg { display:none; } .toolbar { gap:9px; } .board-toolbar .board-count:last-child { display:none; } .column-header { font-size:9px; gap:3px; padding:7px 5px; } .column-header svg { display:none; } .cards { padding:4px; } .session-card { padding:6px; } .card-row .card-stage { display:none; } .card-title>svg { display:none; } .card-title { font-size:10px; } .context-track { margin-top:7px; } .preview-status { font-size:9px; } .summary-metric { padding:10px 8px; } .composer-context { max-width:calc(100% - 37px); } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important; scroll-behavior:auto!important; } }
+  </style>
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+    <symbol id="i-kanban" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></symbol>
+    <symbol id="i-hermes" viewBox="0 0 24 24"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4L12 3Z"/><path d="m19 3 .7 2.3L22 6l-2.3.7L19 9l-.7-2.3L16 6l2.3-.7L19 3Z"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 14a3 3 0 0 1-3 3H8l-5 4V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3Z"/></symbol>
+    <symbol id="i-summary" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M17 5a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-3-5.2"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></symbol>
+    <symbol id="i-wait" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></symbol>
+    <symbol id="i-run" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9M21 4v5h-5"/></symbol>
+    <symbol id="i-done" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="4" r="2"/><circle cx="6" cy="20" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 6v12M18 8a10 10 0 0 1-10 8H6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-context" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-test" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4 19a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2L14 9V3M8 15h8"/></symbol>
+  </defs></svg>
+  <div class="prototype-bar">
+    <span class="prototype-label">KLIPRUN × HERMES</span>
+    <span class="description" lang="ru">Три варианта размещения · Данные вымышлены, ответы имитируются</span>
+    <button type="button" id="reset-demo" title="Restore the example conversations">Reset demo</button>
+  </div>
+  <section class="variant-review" lang="ru" aria-label="Три варианта размещения Hermes">
+    <div class="variant-options">
+      <button type="button" class="variant-choice" data-variant="companion" aria-pressed="false"><span class="mini-layout float" aria-hidden="true"><i></i></span><span><strong><span class="variant-letter">A</span>Окно помощника</strong><small>Поверх доски. Можно перемещать и закрывать.</small></span></button>
+      <button type="button" class="variant-choice" data-variant="workspace" aria-pressed="true"><span class="mini-layout focus" aria-hidden="true"><i></i></span><span><strong><span class="variant-letter">B</span>Раздел Hermes <span class="recommended">Рекомендую</span></strong><small>Отдельное место для переписки и сводок.</small></span></button>
+      <button type="button" class="variant-choice" data-variant="dock" aria-pressed="false"><span class="mini-layout dock" aria-hidden="true"><i></i></span><span><strong><span class="variant-letter">C</span>Нижняя панель</strong><small>Рядом с Terminal. Доска и детали сверху.</small></span></button>
+    </div>
+    <p class="variant-note" id="variant-note"></p>
+  </section>
+  <main class="app" aria-label="KlipRun Hermes interface concept">
+    <header class="toolbar">
+      <div class="brand"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="m3 6 8 8-8 8h6l8-8-8-8" fill="#74ade8"/><path d="m12 6 8 8-8 8h5l8-8-8-8" fill="#a1c181"/></svg>KlipRun</div>
+      <span class="toolbar-divider"></span>
+      <button class="view-current" id="show-board" type="button"><svg aria-hidden="true"><use href="#i-kanban"/></svg>Kanban</button>
+      <span class="toolbar-spacer"></span>
+      <span class="demo-badge">Design preview</span>
+      <button class="tool-button" id="toggle-panel" type="button" aria-expanded="true" aria-controls="assistant-mount" title="Open Hermes"><svg aria-hidden="true"><use href="#i-hermes"/></svg>Hermes</button>
+    </header>
+    <div class="app-content" id="app-content">
+    <div class="workspace" id="workspace">
+      <section class="board-area" aria-label="Session board">
+        <div class="board-toolbar"><h1>Sessions</h1><span class="muted">5</span><span class="board-count"><i class="dot"></i>2 running</span><span class="board-count"><i class="dot warning"></i>1 needs you</span></div>
+        <div class="board" id="board"></div>
+        <p class="board-note"><svg aria-hidden="true"><use href="#i-context"/></svg>Select a card for its session details.</p>
+      </section>
+      <aside class="hermes-panel" id="hermes-panel" aria-label="Session details">
+        <header class="details-header">
+          <svg aria-hidden="true"><use href="#i-terminal"/></svg><h2 class="details-title" id="details-title"></h2><span class="source-chip" id="details-source"></span>
+          <button class="icon-button" id="close-panel" type="button" aria-label="Close details"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+        </header>
+        <div class="detail-location" id="detail-location"></div>
+        <div class="detail-tabs" role="tablist" aria-label="Session details">
+          <button type="button" id="detail-tab-user" data-detail-tab="user" role="tab" aria-selected="false" aria-controls="detail-view" tabindex="-1"><svg aria-hidden="true"><use href="#i-users"/></svg>User</button>
+          <button type="button" id="detail-tab-agent-text" data-detail-tab="agent-text" role="tab" aria-selected="true" aria-controls="detail-view"><svg aria-hidden="true"><use href="#i-chat"/></svg>Agents T</button>
+          <button type="button" id="detail-tab-agent" data-detail-tab="agent" role="tab" aria-selected="false" aria-controls="detail-view" tabindex="-1"><svg aria-hidden="true"><use href="#i-terminal"/></svg>Agent</button>
+          <button type="button" id="detail-tab-models" data-detail-tab="models" role="tab" aria-selected="false" aria-controls="detail-view" tabindex="-1"><svg aria-hidden="true"><use href="#i-context"/></svg>Models</button>
+          <button type="button" id="detail-tab-kanban" data-detail-tab="kanban" role="tab" aria-selected="false" aria-controls="detail-view" tabindex="-1"><svg aria-hidden="true"><use href="#i-clock"/></svg>Kanban</button>
+        </div>
+        <section class="detail-content" id="detail-view" role="tabpanel" aria-labelledby="detail-tab-agent-text" tabindex="0"></section>
+      </aside>
+    </div>
+    <section class="assistant-mount" id="assistant-mount" data-variant="workspace" aria-label="Independent Hermes assistant">
+      <nav class="conversation-nav" id="conversation-nav" aria-label="Hermes conversations"></nav>
+      <div class="assistant-main">
+        <div class="dock-resize" id="dock-resize" role="separator" aria-orientation="horizontal" aria-label="Resize Hermes dock" tabindex="0" hidden></div>
+        <div class="dock-chrome" id="dock-chrome" role="tablist" aria-label="Bottom panel" hidden>
+          <button type="button" id="dock-terminal" role="tab" aria-selected="false" aria-controls="terminal-demo"><svg aria-hidden="true"><use href="#i-terminal"/></svg>Terminal</button>
+          <button type="button" id="dock-hermes" role="tab" aria-selected="true" aria-controls="hermes-content"><svg aria-hidden="true"><use href="#i-hermes"/></svg>Hermes</button>
+          <span class="dock-label">Drag the top edge to resize</span>
+          <button class="icon-button" type="button" data-close-hermes aria-label="Close Hermes"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+        </div>
+        <pre class="terminal-demo" id="terminal-demo" role="tabpanel" aria-labelledby="dock-terminal" hidden>demo@atlas ~/Projects/atlas
+$ bun test
+
+ 12 pass
+  0 fail
+
+demo@atlas ~/Projects/atlas $ ▋</pre>
+        <section class="hermes-content" id="hermes-content" aria-label="Hermes conversation and summary">
+        <header class="panel-header" id="assistant-drag" tabindex="0" aria-label="Hermes window header">
+          <div class="hermes-mark"><svg aria-hidden="true"><use href="#i-hermes"/></svg></div>
+          <div style="min-width:0"><div class="panel-name" id="assistant-title">Hermes</div><div class="panel-subtitle" id="assistant-subtitle">Your agents, in context</div></div>
+          <span class="preview-status"><i class="dot success"></i>Preview</span>
+          <button class="icon-button" type="button" data-close-hermes aria-label="Close Hermes"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+        </header>
+        <div class="scope-row"><label class="context-picker"><svg aria-hidden="true"><use href="#i-context"/></svg><select id="context-select" aria-label="Hermes conversation context"></select></label><button type="button" class="use-selected" id="use-selected">Use selected card</button></div>
+        <div class="tabs" role="tablist" aria-label="Hermes views">
+          <button type="button" id="tab-summary" role="tab" aria-selected="true" aria-controls="summary-view" tabindex="0"><svg aria-hidden="true"><use href="#i-summary"/></svg>Summary</button>
+          <button type="button" id="tab-chat" role="tab" aria-selected="false" aria-controls="chat-view" tabindex="-1"><svg aria-hidden="true"><use href="#i-chat"/></svg>Chat</button>
+          <span class="tab-note" id="tab-note">Latest snapshot</span>
+        </div>
+        <div class="assistant-pages">
+        <section class="summary-view" id="summary-view" role="tabpanel" aria-labelledby="tab-summary" tabindex="0"></section>
+        <section class="chat-view" id="chat-view" role="tabpanel" aria-labelledby="tab-chat" hidden>
+          <div class="chat-scroll" id="chat-scroll" role="log" aria-live="polite" aria-label="Conversation messages"></div>
+          <div class="quick-prompts" id="quick-prompts" aria-label="Suggested questions"></div>
+          <form class="composer" id="composer">
+            <textarea id="message-input" aria-label="Message Hermes" placeholder="Ask about this session…" rows="2" maxlength="3000"></textarea>
+            <div class="composer-bottom"><div class="composer-context"><svg aria-hidden="true"><use href="#i-context"/></svg><span id="composer-context"></span></div><button class="send-button" id="send-button" type="submit" aria-label="Send message" disabled><svg aria-hidden="true"><use href="#i-up"/></svg></button></div>
+          </form>
+          <div class="composer-hint">Enter to send · Shift + Enter for a new line</div>
+        </section>
+        </div>
+        </section>
+      </div>
+    </section>
+    </div>
+    <footer class="statusbar"><span><svg aria-hidden="true"><use href="#i-terminal"/></svg>5 sessions</span><span><svg aria-hidden="true"><use href="#i-folder"/></svg>2 projects</span><span class="optional"><i class="dot"></i>2 agents · 1 subagent</span><span class="right"><svg aria-hidden="true"><use href="#i-hermes"/></svg>Hermes concept<span class="optional"> · Graphite</span></span></footer>
+  </main>
+  <script>
+    'use strict';
+    // Identities and board metadata come only from docs/screenshots/mock-api.json.
+    // Hermes summaries, checks and conversations below are fictional design examples.
+    const sessions = [
+      { id:'ses_demo_review', title:'Review database migration', source:'OpenCode', project:'aurora', column:'attention', stage:'Waiting for approval', model:'gpt-6.1-sol', context:18, branch:'feature/demo-ui', age:'6m', note:'Waiting for your review decision', headline:'Your review is the only blocker.', description:'The migration is prepared. The agent is waiting for your decision before moving on.', done:['Prepared the database migration and rollback steps.','Recorded validation checks for the migration.','Paused at the review checkpoint.'], metrics:[['6','Checks passed'],['2','Files changed'],['1','Decision needed']], next:'Review the migration and rollback plan in the agent session, then give your decision.', callout:'Needs your input', calloutType:'warning', time:'2 minutes ago', ru:'Миграция подготовлена. Агент ждёт твоего решения по ревью — дальше пока не идёт. Следующий шаг: посмотреть миграцию и план отката в его сессии.', en:'The migration is prepared. This agent is waiting for your review decision. Review the migration and rollback plan in its session to move it forward.' },
+      { id:'ses_demo_search', title:'Implement search API', source:'OpenCode', project:'atlas', column:'running', stage:'Generating response', model:'glm-5.3', context:42, branch:'feature/demo-api', age:'42m', note:'Endpoint ready · checking edge cases', headline:'Search is implemented. Final checks are in progress.', description:'The endpoint is ready. The agent is checking pagination and error handling with one integration-test helper.', done:['Implemented the example search endpoint.','Added pagination and input validation.','Handed integration checks to a helper agent.'], metrics:[['12','Checks passed'],['4','Files changed'],['1','Active helper']], next:'Finish the integration checks and report the result. No input is needed from you right now.', callout:'What happens next', calloutType:'info', time:'1 minute ago', ru:'По последней сводке endpoint поиска уже готов. Сейчас агент проверяет пагинацию и обработку ошибок; интеграционные проверки выполняет помощник. В этом примере записано 12 успешных проверок. От тебя пока ничего не требуется.', en:'The search endpoint is ready. The agent is checking pagination and error handling, while a helper runs integration checks. This example snapshot records 12 passing checks. No input is needed from you right now.' },
+      { id:'codex:00000000-0000-4000-8000-000000000001', title:'Refine onboarding UI', source:'Codex CLI', project:'aurora', column:'running', stage:'Working', model:'gpt-6.1-sol', context:42, branch:'feature/demo-ui', age:'24m', note:'Refining the flow and small layouts', headline:'The onboarding flow is taking shape.', description:'Codex has updated the first-run screens and is reviewing the experience at smaller window sizes.', done:['Refined the first-run screen layout.','Updated the onboarding copy and navigation.','Started checking compact window sizes.'], metrics:[['8','Checks passed'],['3','Files changed'],['0','Blockers noted']], next:'Finish the compact-layout review, then share the updated flow.', callout:'What happens next', calloutType:'info', time:'3 minutes ago', ru:'Codex обновляет onboarding: экраны и навигация уже поправлены, сейчас он смотрит небольшие размеры окна. В последней сводке блокеров нет. Дальше — завершить проверку и показать результат.', en:'Codex has refined the onboarding screens and navigation, and is now reviewing small window sizes. The latest snapshot records no blockers. Next: finish the review and share the updated flow.' },
+      { id:'ses_demo_release', title:'Draft release notes', source:'OpenCode', project:'aurora', column:'idle', stage:'Finished', model:'glm-5.3', context:18, branch:'feature/demo-ui', age:'18m', note:'Draft ready for you to read', headline:'The release-note draft is ready.', description:'The agent has finished its response. A draft is available for your review.', done:['Collected the changes into a release-note draft.','Grouped the user-facing changes.','Listed the relevant verification notes.'], metrics:[['Ready','Draft status'],['1','File changed'],['—','Checks not recorded']], next:'Read the draft in the agent session and decide whether it needs another editing pass.', callout:'Ready to review', calloutType:'info', time:'6 minutes ago', ru:'Черновик release notes готов. Агент собрал изменения и завершил ответ. Можно прочитать результат и попросить правки. Записанных тестов для этой текстовой задачи в сводке нет.', en:'The release-note draft is ready. The agent has collected the changes and finished its response. You can read the draft and ask for edits. This writing task has no recorded test results.' },
+      { id:'codex:00000000-0000-4000-8000-000000000002', title:'Fix cache keys', source:'Codex CLI', project:'atlas', column:'idle', stage:'Finished', model:'gpt-6.1-sol', context:18, branch:'feature/demo-api', age:'31m', note:'Fix complete · checks passed', headline:'The cache-key fix is complete.', description:'Codex has finished the fix and reported its recorded checks.', done:['Corrected the cache-key construction.','Added coverage for distinct search parameters.','Completed the recorded checks.'], metrics:[['9','Checks passed'],['2','Files changed'],['0','Failures recorded']], next:'Review the final response and changes in the agent session.', callout:'Ready to review', calloutType:'info', time:'9 minutes ago', ru:'Исправление ключей кеша готово. Codex завершил ответ; в демонстрационной сводке записано 9 успешных проверок. Следующий шаг — посмотреть итог и изменения в его сессии.', en:'The cache-key fix is complete. Codex has finished its response; this demo snapshot records 9 passing checks. Next: review the final response and changes in its session.' }
+    ];
+    const $ = id => document.getElementById(id);
+    // The search transcript mirrors the existing screenshot fixture. Other transcripts are examples.
+    const detailMessages = {
+      ses_demo_search: { user:'Please implement the example search endpoint.', agent:'The endpoint is ready. I am checking pagination and error handling.', role:'build', duration:'5m', tool:{name:'bash',status:'completed',duration:'1m'} },
+      ses_demo_review: { user:'Please review the example database migration.', agent:'The migration and rollback plan are prepared. I am waiting for your review decision.', role:'review', duration:'6m' },
+      'codex:00000000-0000-4000-8000-000000000001': { user:'Please refine the example onboarding flow.', agent:'The first-run screens are updated. I am checking the compact layout.', role:'assistant', duration:'24m' },
+      ses_demo_release: { user:'Please draft the example release notes.', agent:'The release-note draft is ready for review.', role:'plan', duration:'18m' },
+      'codex:00000000-0000-4000-8000-000000000002': { user:'Please fix the example cache keys.', agent:'The cache-key fix is complete. The recorded checks passed.', role:'assistant', duration:'31m' }
+    };
+    const variants = {
+      companion: '<strong>A · Окно помощника.</strong> Быстрый вопрос поверх доски. Детали карточки открываются отдельно справа; окно Hermes можно перетащить. Компромисс — часть доски перекрыта.',
+      workspace: '<strong>B · Раздел Hermes.</strong> Отдельный раздел в навигации: разговоры слева, чат и сводка рядом. Удобнее для регулярной переписки. К доске возвращает кнопка Kanban.',
+      dock: '<strong>C · Нижняя панель.</strong> Hermes рядом с Terminal, доска и обычные детали сверху. Всё видно одновременно, но доске остаётся меньше высоты. Верхний край панели можно тянуть.'
+    };
+    const state = { selected:'ses_demo_search', detailTab:'agent-text', target:'ses_demo_search', scope:'all', tab:'chat', panel:true, variant:'workspace', page:'hermes', hermesOpen:true, dockTab:'hermes', dockHeight:310, floating:null, chats:new Map(), timers:new Set() };
+    const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
+    const selected = () => sessions.find(s => s.id === state.selected);
+    const subject = () => sessions.find(s => s.id === state.target);
+    const chatKey = () => state.scope === 'all' ? 'all' : state.target;
+    const statusName = column => ({attention:'Needs attention',running:'Running',idle:'Finished'}[column]);
+    const statusIcon = column => ({attention:'wait',running:'run',idle:'done'}[column]);
+    function sessionLink(session) {
+      return `<button type="button" class="session-link" data-session-link="${escape(session.id)}">${icon(statusIcon(session.column))}<span class="session-link-text"><strong>${escape(session.title)}</strong><small>${escape(session.project)} · ${escape(session.source)} · ${statusName(session.column)}</small></span>${icon('arrow')}</button>`;
+    }
+    function renderBoard() {
+      $('board').innerHTML = ['attention','running','idle'].map(column => {
+        const cards = sessions.filter(s => s.column === column);
+        return `<section class="column" data-column="${column}" aria-label="${statusName(column)} sessions"><header class="column-header">${icon(statusIcon(column))}${column === 'idle' ? 'IDLE' : statusName(column)}<span class="count">${cards.length}</span></header><div class="cards">${cards.map(s => `<button class="session-card" type="button" data-session="${escape(s.id)}" aria-label="Select ${escape(s.title)}" aria-pressed="${state.selected === s.id}"><div class="card-title">${icon(statusIcon(column))}<span class="title">${escape(s.title)}</span></div><div class="card-row"><span class="source-chip">${icon('terminal')}${escape(s.source)}</span><span class="card-stage">${escape(s.stage)}</span></div><div class="card-project">${icon('clock')}<span>${s.age}</span>${icon('folder')}<span>${s.project}</span></div><div class="card-project">${icon('branch')}<span class="branch">${escape(s.branch)}</span></div><div class="context-track"><i style="width:${s.context}%"></i></div><div class="card-model">${escape(s.model)} · ${s.context}% context</div>${s.id === 'ses_demo_search' ? '<div class="child-card"><i class="dot"></i>Run integration checks<br><span class="muted">helper · Testing</span></div>' : ''}</button>`).join('')}</div></section>`;
+      }).join('');
+    }
+    function renderContext() {
+      const s = selected();
+      const context = subject();
+      $('details-title').textContent = s.title;
+      $('details-title').title = s.title;
+      $('details-source').textContent = s.source;
+      $('detail-location').innerHTML = `<span class="directory" title="/Users/demo/Projects/${s.project}">/Users/demo/Projects/${s.project}</span><span class="branch">${icon('branch')}<span>${escape(s.branch)}</span></span>`;
+      $('context-select').value = chatKey();
+      $('composer-context').textContent = state.scope === 'all' ? 'All agents · 5 sessions' : `${context.project} / ${context.title}`;
+      $('message-input').placeholder = state.scope === 'all' ? 'Ask about all your agents…' : 'Ask about this session…';
+      $('tab-note').textContent = state.tab === 'summary' ? 'Latest snapshot' : 'Separate conversation';
+      $('assistant-title').textContent = state.variant === 'workspace' ? state.scope === 'all' ? 'All agents' : context.title : 'Hermes';
+      $('assistant-subtitle').textContent = state.scope === 'all' ? 'Workspace conversation · 5 sessions' : `${context.project} · ${context.source} · Pinned conversation`;
+      $('use-selected').title = `Use selected card: ${s.title}`;
+    }
+    function renderConversations() {
+      $('conversation-nav').innerHTML = `<h2>${icon('hermes')}Hermes</h2><button type="button" class="conversation-item" data-target="all" aria-pressed="${state.scope === 'all'}">${icon('users')}<span><strong>All agents</strong><small>Workspace overview</small></span></button><div class="conversation-label">Session conversations</div>${sessions.map(s => `<button type="button" class="conversation-item" data-target="${escape(s.id)}" aria-pressed="${chatKey() === s.id}">${icon(statusIcon(s.column))}<span><strong>${escape(s.title)}</strong><small>${escape(s.project)} · ${escape(s.source)}</small></span></button>`).join('')}`;
+    }
+    function renderDetails() {
+      const s = selected(); const message = detailMessages[s.id];
+      const tab = state.detailTab;
+      $('detail-view').setAttribute('aria-labelledby',`detail-tab-${tab}`);
+      if (tab === 'agent-text') {
+        $('detail-view').innerHTML = `<article class="detail-card"><time class="detail-time">1m ago</time><p class="detail-text">${escape(message.agent)}</p></article>`;
+      } else if (tab === 'user') {
+        $('detail-view').innerHTML = `<article class="detail-card"><div class="detail-card-header">${icon('users')}<strong>user</strong><span>6m ago</span></div><p class="detail-text">${escape(message.user)}</p></article>`;
+      } else if (tab === 'agent') {
+        $('detail-view').innerHTML = `<article class="detail-card"><div class="detail-card-header">${icon('terminal')}<strong>${escape(message.role)}</strong><span class="model-chip">${escape(s.model)}</span>${icon('clock')}<span>${escape(message.duration)}</span></div><p class="detail-text">${escape(message.agent)}</p>${message.tool ? `<div class="detail-tool">${icon('terminal')}<span>${escape(message.tool.name)}</span><span class="passed">${escape(message.tool.status)}</span><span>${escape(message.tool.duration)}</span></div>` : ''}</article>`;
+      } else if (tab === 'models') {
+        $('detail-view').innerHTML = '<p class="detail-empty">No model usage recorded.</p>';
+      } else if (tab === 'kanban') {
+        $('detail-view').innerHTML = '<p class="detail-empty">Status history and time spent in each state.</p><p class="detail-empty">No recorded transitions yet.</p>';
+      }
+    }
+    function setDetailTab(tab) {
+      state.detailTab = tab; renderPanel();
+    }
+    function metrics(items) {
+      return `<div class="summary-metrics">${items.map(([value,label]) => `<div class="summary-metric"><div class="metric-number">${escape(value)}</div><div class="metric-label">${escape(label)}</div></div>`).join('')}</div>`;
+    }
+    function renderSummary() {
+      const s = subject();
+      if (state.scope === 'all') {
+        $('summary-view').innerHTML = `<div class="eyebrow">Across your workspace</div><h2 class="summary-headline">Two agents are working.<br>One needs your decision.</h2><p class="summary-description">The migration review is the only recorded blocker. Search and onboarding work are moving forward.</p>${metrics([['2','Working now'],['1','Needs your input'],['2','Finished responses']])}<div class="section-label">${icon('wait')}Needs your attention</div>${sessionLink(sessions[0])}<div class="section-label">${icon('done')}Recently finished</div>${sessionLink(sessions[3])}${sessionLink(sessions[4])}<div class="summary-source">${icon('clock')}Latest saved watcher snapshots</div><button class="ask-button" type="button" data-ask>${icon('chat')}Ask Hermes about all agents${icon('arrow')}</button>`;
+      } else {
+        $('summary-view').innerHTML = `<div class="eyebrow">Latest session brief</div><h2 class="summary-headline">${escape(s.headline)}</h2><p class="summary-description">${escape(s.description)}</p>${metrics(s.metrics)}<div class="section-label">${icon('summary')}What happened</div><ul class="check-list">${s.done.map(text => `<li>${icon('check')}<span>${escape(text)}</span></li>`).join('')}</ul><div class="callout ${s.calloutType === 'warning' ? 'warning' : ''}"><div class="callout-title">${icon(s.calloutType === 'warning' ? 'wait' : 'arrow')}${escape(s.callout)}</div><p>${escape(s.next)}</p></div><div class="summary-source">${icon('clock')}Saved ${escape(s.time)} · Hermes watcher</div><button class="ask-button" type="button" data-ask>${icon('chat')}Ask Hermes about this session${icon('arrow')}</button>`;
+      }
+    }
+    function conversation(key = chatKey()) {
+      if (!state.chats.has(key)) {
+        const s = sessions.find(item => item.id === key);
+        state.chats.set(key, { draft:'', pending:false, messages:key === 'all'
+          ? [{role:'user', text:'Who needs my attention?',time:'14:32'},{role:'assistant',text:'One agent needs your decision: the database migration review in aurora. The other two active agents are working without a recorded blocker.\n\nRelease notes and the cache-key fix have finished responses, ready for you to review.',time:'14:32',links:[sessions[0].id]}]
+          : [{role:'user',text:'Как дела у этого агента?',time:'14:32'},{role:'assistant',text:s.ru,time:'14:32',links:[]}]
+        });
+      }
+      return state.chats.get(key);
+    }
+    function renderChat() {
+      const chat = conversation();
+      $('chat-scroll').innerHTML = `<p class="chat-date">Today · ${state.scope === 'all' ? 'Workspace conversation' : 'Conversation for this session'}</p>${chat.messages.map(message => `<article class="message ${message.role}"><div class="message-header">${message.role === 'assistant' ? icon('hermes') : ''}${message.role === 'assistant' ? 'Hermes' : 'You'}<time>${escape(message.time)}</time></div><div class="message-body">${escape(message.text)}</div>${(message.links || []).map(id => sessionLink(sessions.find(s => s.id === id))).join('')}${message.role === 'assistant' ? `<div class="message-source">${icon('context')}Based on the latest saved ${state.scope === 'all' ? 'session snapshots' : 'session snapshot'}</div>` : ''}</article>`).join('')}${chat.pending ? `<div class="thinking" role="status">${icon('hermes')}Reading the session context…</div>` : ''}`;
+      const prompts = state.scope === 'all' ? ['Who needs me?','What finished?','Give me an overview'] : ['What’s left?','Any blockers?','What changed?'];
+      $('quick-prompts').innerHTML = prompts.map(prompt => `<button type="button" data-prompt="${escape(prompt)}"${chat.pending ? ' disabled' : ''}>${escape(prompt)}</button>`).join('');
+      $('message-input').value = chat.draft;
+      $('send-button').disabled = chat.pending || !chat.draft.trim();
+      $('chat-scroll').scrollTop = $('chat-scroll').scrollHeight;
+    }
+    function renderPanel() {
+      const dedicated = state.variant === 'workspace';
+      const open = state.hermesOpen && (!dedicated || state.page === 'hermes');
+      const dock = state.variant === 'dock';
+      const split = (dedicated && innerWidth >= 1100) || (dock && innerWidth >= 900);
+      $('hermes-panel').hidden = !state.panel;
+      $('workspace').classList.toggle('panel-closed',!state.panel);
+      $('workspace').hidden = dedicated && state.page === 'hermes';
+      $('app-content').classList.toggle('no-details',!state.panel);
+      $('app-content').dataset.placement = state.variant;
+      $('assistant-mount').dataset.variant = state.variant;
+      $('assistant-mount').hidden = !open;
+      $('assistant-mount').classList.toggle('split-mode',split);
+      $('conversation-nav').hidden = !dedicated;
+      $('dock-chrome').hidden = !dock;
+      $('dock-resize').hidden = !dock;
+      $('terminal-demo').hidden = !dock || state.dockTab !== 'terminal';
+      $('hermes-content').hidden = dock && state.dockTab === 'terminal';
+      $('dock-terminal').setAttribute('aria-selected',String(state.dockTab === 'terminal'));
+      $('dock-hermes').setAttribute('aria-selected',String(state.dockTab === 'hermes'));
+      $('toggle-panel').classList.toggle('active',open);
+      $('toggle-panel').setAttribute('aria-expanded',String(open));
+      $('show-board').classList.toggle('active',!dedicated || state.page === 'kanban');
+      $('show-board').setAttribute('aria-pressed',String(!dedicated || state.page === 'kanban'));
+      $('variant-note').innerHTML = variants[state.variant];
+      document.querySelectorAll('.variant-choice').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.variant === state.variant)));
+      $('detail-view').hidden = false;
+      $('assistant-mount').style.height = dock ? `${dockHeight()}px` : '';
+      positionCompanion();
+      document.querySelectorAll('[data-detail-tab]').forEach(button => {
+        const active = button.dataset.detailTab === state.detailTab;
+        button.setAttribute('aria-selected',String(active)); button.tabIndex = active ? 0 : -1;
+      });
+      for (const tab of ['summary','chat']) {
+        $(`tab-${tab}`).setAttribute('aria-selected',String(state.tab === tab));
+        $(`tab-${tab}`).tabIndex = state.tab === tab ? 0 : -1;
+        $(`${tab}-view`).hidden = !split && state.tab !== tab;
+      }
+      renderContext(); renderDetails(); renderConversations(); renderSummary(); renderChat();
+    }
+    function selectSession(id) {
+      if (!sessions.some(s => s.id === id)) return;
+      state.selected = id; state.detailTab = 'agent-text'; state.panel = true; state.page = 'kanban';
+      renderBoard(); renderPanel();
+    }
+    function setContext(target) {
+      if (target !== 'all' && !sessions.some(s => s.id === target)) return;
+      state.scope = target === 'all' ? 'all' : 'session';
+      if (target !== 'all') state.target = target;
+      renderPanel();
+    }
+    function chooseVariant(variant) {
+      if (!Object.hasOwn(variants,variant)) return;
+      state.variant=variant; state.page=variant === 'workspace' ? 'hermes' : 'kanban';
+      state.hermesOpen=true; state.dockTab='hermes'; state.floating=null;
+      renderPanel();
+    }
+    function closeHermes() {
+      state.hermesOpen=false;
+      if (state.variant === 'workspace') state.page='kanban';
+      renderPanel(); $('toggle-panel').focus();
+    }
+    function dockHeight() {
+      return Math.max(240,Math.min(state.dockHeight,Math.max(240,$('app-content').clientHeight-150)));
+    }
+    function positionCompanion() {
+      const pane=$('assistant-mount');
+      if (state.variant !== 'companion' || !state.floating || innerWidth<=760) {
+        pane.style.left=''; pane.style.top=''; pane.style.right=''; pane.style.bottom=''; return;
+      }
+      const area=$('app-content');
+      state.floating.x=Math.max(8,Math.min(state.floating.x,area.clientWidth-pane.offsetWidth-8));
+      state.floating.y=Math.max(8,Math.min(state.floating.y,area.clientHeight-pane.offsetHeight-8));
+      pane.style.left=`${state.floating.x}px`; pane.style.top=`${state.floating.y}px`; pane.style.right='auto'; pane.style.bottom='auto';
+    }
+    function demoReply(text,key) {
+      const ru = /[а-яё]/i.test(text);
+      const s = sessions.find(item => item.id === key);
+      const lower = text.toLowerCase();
+      if (key === 'all') {
+        if (/finish|done|готов|закон|заверш/.test(lower)) return {text:ru ? 'Готовы два ответа: черновик release notes в aurora и исправление ключей кеша в atlas. Оба результата доступны для ревью. Завершённый ответ ещё не означает, что ты принял всю задачу.' : 'Two agents have finished their responses: the release-note draft in aurora and the cache-key fix in atlas. Both results are ready for review; a finished response does not by itself mean the entire task is accepted.',links:[sessions[3].id,sessions[4].id]};
+        if (/need|block|wait|жд|помо|вниман|блок|решени/.test(lower)) return {text:ru ? 'Твоё решение нужно агенту Review database migration в aurora: он остановился на ревью. У двух работающих агентов записанных блокеров нет. Открой карточку миграции, чтобы посмотреть её сводку.' : 'Review database migration in aurora is waiting for your review decision. The other two working agents have no recorded blockers. Open the migration card to see its brief.',links:[sessions[0].id]};
+        return {text:ru ? 'По последним сводкам:\n• Search API в atlas — endpoint готов, идут интеграционные проверки.\n• Onboarding в aurora — проверка компактных размеров окна.\n• Миграция в aurora — ждёт твоего ревью.\n• Release notes и ключи кеша — ответы готовы.\n\nСейчас самое полезное действие — посмотреть миграцию.' : 'Here is the latest snapshot across your agents:\n• Search API in atlas: endpoint ready, integration checks in progress.\n• Onboarding in aurora: reviewing compact window sizes.\n• Database migration in aurora: waiting for your review.\n• Release notes and cache keys: responses finished.\n\nThe migration review is the next thing that needs you.',links:[sessions[0].id]};
+      }
+      if (/test|check|тест|проверк/.test(lower)) return {text:ru ? `В последней демонстрационной сводке: ${s.metrics[0][0]} — ${s.metrics[0][1]}. Это сохранённый результат; проверки сейчас заново не запускаются.\n\n${s.ru}` : `The latest example snapshot records: ${s.metrics[0][0]} — ${s.metrics[0][1]}. These are recorded observations; no checks are being run again.\n\n${s.en}`,links:[]};
+      if (/left|next|остал|дальше|следую/.test(lower)) return {text:ru ? s.ru : `${s.next}\n\n${s.en}`,links:[]};
+      if (/block|wait|застр|блок|жд|нуж/.test(lower)) return {text:ru ? (s.column === 'attention' ? s.ru : `В последней сохранённой сводке блокеров нет. ${s.ru}`) : (s.column === 'attention' ? s.en : `The latest saved snapshot records no blocker. ${s.en}`),links:[]};
+      if (/chang|сделал|измен|успел/.test(lower)) return {text:ru ? s.ru : `The latest recorded progress:\n${s.done.map(item => `• ${item}`).join('\n')}\n\n${s.next}`,links:[]};
+      return {text:ru ? `Смотрю сессию «${s.title}» в проекте ${s.project}.\n\n${s.ru}` : `For ${s.title} in ${s.project}:\n\n${s.en}`,links:[]};
+    }
+    function sendMessage(text) {
+      const key = chatKey(); const chat = conversation(key); const clean = text.trim().slice(0,3000);
+      if (!clean || chat.pending) return;
+      const time = () => new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      chat.messages.push({role:'user',text:clean,time:time()}); chat.draft=''; chat.pending=true;
+      renderChat();
+      const timer = setTimeout(() => {
+        state.timers.delete(timer);
+        const reply = demoReply(clean,key);
+        chat.messages.push({role:'assistant',...reply,time:time()}); chat.pending=false;
+        if (chatKey() === key) renderChat();
+      },700);
+      state.timers.add(timer);
+    }
+    document.addEventListener('click',event => {
+      const card = event.target.closest('[data-session]');
+      const link = event.target.closest('[data-session-link]');
+      const target = event.target.closest('[data-target]');
+      const variant = event.target.closest('.variant-choice');
+      const prompt = event.target.closest('[data-prompt]');
+      const detailTab = event.target.closest('[data-detail-tab]');
+      if (card) selectSession(card.dataset.session);
+      if (link) selectSession(link.dataset.sessionLink);
+      if (target) setContext(target.dataset.target);
+      if (variant) chooseVariant(variant.dataset.variant);
+      if (prompt) sendMessage(prompt.dataset.prompt);
+      if (detailTab) setDetailTab(detailTab.dataset.detailTab);
+      if (event.target.closest('[data-close-hermes]')) closeHermes();
+      if (event.target.closest('[data-ask]')) { state.tab='chat'; renderPanel(); $('message-input').focus(); }
+    });
+    document.querySelectorAll('[data-detail-tab]').forEach(button => {
+      button.addEventListener('keydown',event => {
+        if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+        event.preventDefault();
+        const buttons = [...document.querySelectorAll('[data-detail-tab]')];
+        const step = event.key === 'ArrowLeft' ? -1 : 1;
+        const index = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length-1 : (buttons.indexOf(button)+step+buttons.length)%buttons.length;
+        setDetailTab(buttons[index].dataset.detailTab); buttons[index].focus();
+      });
+    });
+    for (const tab of ['summary','chat']) {
+      $(`tab-${tab}`).addEventListener('click',() => {state.tab=tab;renderPanel();});
+      $(`tab-${tab}`).addEventListener('keydown',event => {
+        if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+        event.preventDefault();
+        state.tab=event.key === 'Home' ? 'summary' : event.key === 'End' ? 'chat' : state.tab === 'summary' ? 'chat' : 'summary';
+        renderPanel(); $(`tab-${state.tab}`).focus();
+      });
+    }
+    $('message-input').addEventListener('input',event => {const chat=conversation();chat.draft=event.target.value;$('send-button').disabled=chat.pending || !chat.draft.trim();});
+    $('message-input').addEventListener('keydown',event => {if(event.key === 'Enter' && !event.shiftKey && !event.isComposing){event.preventDefault();sendMessage(event.target.value);}});
+    $('composer').addEventListener('submit',event => {event.preventDefault();sendMessage($('message-input').value);});
+    $('toggle-panel').addEventListener('click',() => {state.hermesOpen=true;state.page=state.variant === 'workspace' ? 'hermes' : 'kanban';state.dockTab='hermes';renderPanel();});
+    $('show-board').addEventListener('click',() => {state.page='kanban';renderPanel();});
+    $('close-panel').addEventListener('click',() => {state.panel=false;renderPanel();$('show-board').focus();});
+    $('context-select').innerHTML = '<option value="all">All agents · 5 sessions</option>'+sessions.map(s=>`<option value="${escape(s.id)}">${escape(s.project)} / ${escape(s.title)}</option>`).join('');
+    $('context-select').addEventListener('change',event => setContext(event.target.value));
+    $('use-selected').addEventListener('click',() => setContext(state.selected));
+    for (const tab of ['terminal','hermes']) $('dock-'+tab).addEventListener('click',()=>{state.dockTab=tab;renderPanel();});
+    $('reset-demo').addEventListener('click',() => {state.timers.forEach(clearTimeout);state.timers.clear();state.chats.clear();state.selected='ses_demo_search';state.detailTab='agent-text';state.target='ses_demo_search';state.scope='all';state.tab='chat';state.panel=true;state.hermesOpen=true;state.page=state.variant === 'workspace' ? 'hermes' : 'kanban';state.dockTab='hermes';state.dockHeight=310;state.floating=null;renderBoard();renderPanel();});
+    let moving=null;
+    $('assistant-drag').addEventListener('pointerdown',event=>{
+      if(state.variant!=='companion'||innerWidth<=760||event.button!==0||event.target.closest('button'))return;
+      const pane=$('assistant-mount').getBoundingClientRect(); const area=$('app-content').getBoundingClientRect();
+      moving={x:event.clientX,y:event.clientY,left:pane.left-area.left,top:pane.top-area.top};
+      event.currentTarget.setPointerCapture(event.pointerId);event.preventDefault();
+    });
+    $('assistant-drag').addEventListener('pointermove',event=>{
+      if(!moving)return;
+      state.floating={x:moving.left+event.clientX-moving.x,y:moving.top+event.clientY-moving.y};positionCompanion();
+    });
+    $('assistant-drag').addEventListener('pointerup',()=>{moving=null;});
+    $('assistant-drag').addEventListener('pointercancel',()=>{moving=null;});
+    $('assistant-drag').addEventListener('keydown',event=>{
+      if(event.key==='Escape'){closeHermes();return;}
+      if(state.variant!=='companion'||innerWidth<=760||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
+      event.preventDefault();
+      const pane=$('assistant-mount').getBoundingClientRect();const area=$('app-content').getBoundingClientRect();
+      state.floating={x:pane.left-area.left+(event.key==='ArrowLeft'?-20:event.key==='ArrowRight'?20:0),y:pane.top-area.top+(event.key==='ArrowUp'?-20:event.key==='ArrowDown'?20:0)};positionCompanion();
+    });
+    let resizing=null;
+    $('dock-resize').addEventListener('pointerdown',event=>{if(event.button!==0)return;resizing={y:event.clientY,height:$('assistant-mount').offsetHeight};event.currentTarget.setPointerCapture(event.pointerId);event.preventDefault();});
+    $('dock-resize').addEventListener('pointermove',event=>{if(!resizing)return;state.dockHeight=resizing.height+resizing.y-event.clientY;$('assistant-mount').style.height=dockHeight()+'px';});
+    $('dock-resize').addEventListener('pointerup',()=>{resizing=null;});
+    $('dock-resize').addEventListener('pointercancel',()=>{resizing=null;});
+    $('dock-resize').addEventListener('keydown',event=>{if(!['ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();state.dockHeight=dockHeight()+(event.key==='ArrowUp'?20:-20);renderPanel();});
+    window.addEventListener('resize',()=>requestAnimationFrame(renderPanel));
+    renderBoard(); renderPanel();
+  </script>
+</body>
+</html>
