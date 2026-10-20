@@ -4920,7 +4920,9 @@ struct WheelReportBudget {
     /// Classic events remain one notch unless the host explicitly requests a wheel multiplier.
     static func requestedReports(lineCount: Int, isPrecise: Bool, wheelMultiplier: Int = 1) -> Int {
         guard lineCount != 0 else { return 0 }
-        return isPrecise ? requestedKeys(lineCount: lineCount) : max(1, min(10, wheelMultiplier))
+        return isPrecise
+            ? Int(min(lineCount.magnitude, UInt(max(burst, min(10, wheelMultiplier)))))
+            : max(1, min(10, wheelMultiplier))
     }
 
     /// A cursor key carries its own distance, so an accelerated event keeps its line count up to

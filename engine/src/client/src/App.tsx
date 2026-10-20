@@ -166,7 +166,7 @@ export default function App() {
   useEffect(() => {
     const navigate = (event: KeyboardEvent) => {
       if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || document.querySelector("dialog[open]")) return;
-      const action = [openSessions, backToBoard, openOffice, openGit, openUsage, openStatistics, openWorkflow][Number(event.key) - 1];
+      const action = [openSessions, backToBoard, openOffice, openGit, openWorkflow, openUsage, openStatistics][Number(event.key) - 1];
       if (action) { event.preventDefault(); action(); }
     };
     window.addEventListener("keydown", navigate);
@@ -268,9 +268,9 @@ export default function App() {
               { id: "kanban", label: "Kanban", page: "board", icon: Columns3, shortcut: 2, onClick: backToBoard },
               { id: "office", label: "Office", page: "office", icon: Building2, shortcut: 3, onClick: page === "office" ? backToBoard : openOffice },
               { id: "git", label: "Git", page: "git", icon: GitBranch, shortcut: 4, onClick: openGit },
-              { id: "workflow", label: "Workflow", page: "workflow", icon: WorkflowIcon, shortcut: 7, onClick: openWorkflow },
-              { id: "usage", label: "Usage", page: "usage", icon: Gauge, shortcut: 5, onClick: page === "usage" ? backToBoard : openUsage },
-              { id: "statistics", label: "Statistics", page: "stats", icon: BarChart3, shortcut: 6, onClick: showStatistics ? backToBoard : openStatistics },
+              { id: "workflow", label: "Workflow", page: "workflow", icon: WorkflowIcon, shortcut: 5, onClick: openWorkflow },
+              { id: "usage", label: "Usage", page: "usage", icon: Gauge, shortcut: 6, onClick: page === "usage" ? backToBoard : openUsage },
+              { id: "statistics", label: "Statistics", page: "stats", icon: BarChart3, shortcut: 7, onClick: showStatistics ? backToBoard : openStatistics },
             ].map(item => <button key={item.id} type="button" onClick={item.onClick} aria-label={item.label}
               aria-pressed={page === item.page} data-testid={`${item.id}-button`} title={`${item.label} (Control+${item.shortcut})`}
               className={`${HEADER_BUTTON} text-text-primary hover:bg-white/10 ${page === item.page ? "border-accent/40 bg-accent/10" : "border-border"}`}>

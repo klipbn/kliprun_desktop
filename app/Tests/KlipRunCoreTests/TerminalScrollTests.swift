@@ -75,3 +75,44 @@ import Testing
         }
     }
 }
+
+@MainActor @Test func alternateScreenWheelHonorsEverySpeedWithoutEarlySaturation() async throws {
+    let view = TerminalView(frame: CGRect(x: 0, y: 0, width: 400, height: 200))
+    let output = ScrollOutput()
+    view.terminalDelegate = output
+    view.feed(text: "\u{1b}[?1049h")
+    for speed in [1, 5, 10] {
+        view.scrollSensitivity = CGFloat(speed)
+        for direction: Int32 in [1, -1] {
+            try await Task.sleep(for: .milliseconds(120))
+            output.writes = []
+            let cg = try #require(CGEvent(scrollWheelEvent2Source: nil, units: .line,
+                                         wheelCount: 1, wheel1: direction * 3, wheel2: 0, wheel3: 0))
+            view.scrollWheel(with: try #require(NSEvent(cgEvent: cg)))
+            await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
+            #expect(output.writes.count == speed)
+            #expect(output.writes.allSatisfy { $0 == (direction > 0 ? [27, 91, 65] : [27, 91, 66]) })
+        }
+    }
+}
+
+@MainActor @Test func smoothSpeedReachesMouseAndAlternateScreenAgentsIndependently() async throws {
+    for mode in ["\u{1b}[?1000h", "\u{1b}[?1049h"] {
+        let view = TerminalView(frame: CGRect(x: 0, y: 0, width: 400, height: 200))
+        let output = ScrollOutput()
+        view.terminalDelegate = output
+        view.feed(text: mode)
+        view.scrollSensitivity = 1
+        let height = try #require(view.cellDimension?.height)
+        for speed in [1, 5, 10] {
+            view.preciseScrollSensitivity = CGFloat(speed)
+            output.writes = []
+            let cg = try #require(CGEvent(scrollWheelEvent2Source: nil, units: .pixel,
+                                         wheelCount: 1, wheel1: Int32(ceil(height)), wheel2: 0, wheel3: 0))
+            cg.location = CGPoint(x: 10, y: 10)
+            view.scrollWheel(with: try #require(NSEvent(cgEvent: cg)))
+            await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
+            #expect(output.writes.count == speed)
+        }
+    }
+}
