@@ -316,9 +316,8 @@ final class DesktopStore: ObservableObject {
             return
         }
         guard let terminal = TerminalSession(id: nextTerminalID, source: source, directory: directory, resumeSessionID: resumeSessionID,
-                                              agentSettings: settings,
+                                              agentSettings: settings, preferences: preferences,
                                               onExit: { [weak self] id in self?.closeTerminal(id) }) else { return }
-        terminal.applyPreferences(preferences)
         nextTerminalID += 1
         terminals.append(terminal)
         selectedID = nil

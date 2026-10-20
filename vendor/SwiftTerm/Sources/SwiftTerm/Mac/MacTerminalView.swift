@@ -4275,17 +4275,22 @@ open class TerminalView: NSView, NSUserInterfaceValidations, TerminalDelegate {
     public var scrollSensitivity: CGFloat = 1.0 {
         didSet {
             scrollSensitivity = max(0.05, scrollSensitivity)
-            wheelReportBudget = WheelReportBudget(maximumBurst: wheelReportMultiplier)
+            wheelReportBudget = WheelReportBudget(maximumBurst: wheelReportBurst)
             scrollAccumulator.reset()
         }
     }
 
     /// Optional independent sensitivity for trackpads and other pixel-scrolling devices.
     public var preciseScrollSensitivity: CGFloat? {
-        didSet { scrollAccumulator.reset() }
+        didSet {
+            wheelReportBudget = WheelReportBudget(maximumBurst: wheelReportBurst)
+            scrollAccumulator.reset()
+        }
     }
 
-    private var wheelReportMultiplier: Int { Int(min(10, max(1, scrollSensitivity.rounded()))) }
+    private var wheelReportBurst: Int {
+        Int(min(10, max(1, max(scrollSensitivity, preciseScrollSensitivity ?? scrollSensitivity).rounded())))
+    }
 
     private static let logsMouseInput =
         ProcessInfo.processInfo.environment["SWIFTTERM_MOUSE_LOG"] == "1"
@@ -4385,7 +4390,7 @@ open class TerminalView: NSView, NSUserInterfaceValidations, TerminalDelegate {
                 let wantedReports = WheelReportBudget.requestedReports(
                     lineCount: lines,
                     isPrecise: event.hasPreciseScrollingDeltas,
-                    wheelMultiplier: wheelReportMultiplier)
+                    wheelMultiplier: Int(sensitivity.rounded()))
                 let reports = wheelReportBudget.grant(wantedReports)
                 for _ in 0..<reports {
                     terminal.sendEvent(buttonFlags: buttonFlags, x: hit.grid.col, y: screenRow,
@@ -4403,7 +4408,8 @@ open class TerminalView: NSView, NSUserInterfaceValidations, TerminalDelegate {
             // A full-screen application executes each arrow key on its own, so a flick that
             // banked a hundred lines must not become a hundred keystrokes in one event.
             let keys = wheelReportBudget.grant(
-                WheelReportBudget.requestedKeys(lineCount: lines))
+                WheelReportBudget.requestedReports(lineCount: lines,
+                    isPrecise: event.hasPreciseScrollingDeltas, wheelMultiplier: Int(sensitivity.rounded())))
             for _ in 0..<keys {
                 if scrollingUp {
                     sendKeyUp()

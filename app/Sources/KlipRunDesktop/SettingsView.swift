@@ -100,6 +100,20 @@ struct SettingsView: View {
 
     private var terminal: some View {
         VStack(alignment: .leading, spacing: 16) {
+            SettingsCard(title: "Terminal theme", subtitle: "Choose a palette independently of the interface. Applies immediately to every open terminal.") {
+                Picker("Terminal theme", selection: binding(\.terminalTheme)) {
+                    Text("Follow app theme").tag("app")
+                    ForEach(TerminalPalette.themes, id: \.id) { theme in
+                        Text(theme.name).tag(theme.id)
+                    }
+                }
+                .accessibilityIdentifier("terminal-theme-picker")
+                TerminalAppearancePreview(theme: store.preferences.resolvedTerminalTheme, fontSize: store.preferences.terminalFontSize)
+                    .frame(height: 120).clipShape(RoundedRectangle(cornerRadius: 6))
+                    .allowsHitTesting(false)
+                    .accessibilityLabel("Terminal theme preview")
+                Text("Applications can override palette colors.").font(.system(size: 11)).foregroundStyle(.secondary)
+            }
             SettingsCard(title: "Scrolling", subtitle: "Applies immediately to every open terminal. Trackpads and Magic Mouse have their own speed.") {
                 speedControl("Mouse wheel", key: \.wheelSensitivity, defaultValue: 5)
                 Divider()
@@ -115,13 +129,9 @@ struct SettingsView: View {
                     Button { store.updatePreferences { $0.terminalFontSize += 1 } } label: { Image(systemName: "plus") }
                         .disabled(store.preferences.terminalFontSize >= 24).accessibilityLabel("Increase terminal font size")
                 }
-                Text("$ kliprun\nReady for your next idea_")
-                    .font(.system(size: CGFloat(store.preferences.terminalFontSize), design: .monospaced))
-                    .foregroundStyle(SettingsStyle.accent).frame(maxWidth: .infinity, alignment: .leading).padding(12)
-                    .background(SettingsStyle.background, in: RoundedRectangle(cornerRadius: 6))
                 choices("Terminal position", key: \.terminalPosition, values: [("Left", "left"), ("Bottom", "bottom")])
                 Button("Reset terminal settings") {
-                    store.updatePreferences { $0.wheelSensitivity = 5; $0.smoothSensitivity = 1; $0.terminalFontSize = 13; $0.terminalPosition = "left" }
+                    store.updatePreferences { $0.terminalTheme = "app"; $0.wheelSensitivity = 5; $0.smoothSensitivity = 1; $0.terminalFontSize = 13; $0.terminalPosition = "left" }
                 }
             }
             SettingsCard(title: "Keyboard shortcuts", subtitle: "Keep your hands on the keyboard.") {

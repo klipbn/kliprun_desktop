@@ -10,6 +10,7 @@ public struct AppPreferences: Equatable {
     public var startupPage: String
     public var detailTab: String
     public var theme: String
+    public var terminalTheme: String
     public var klopikSkin: String
     public var reduceMotion: Bool
     public var toolbarExpanded: Bool
@@ -24,6 +25,7 @@ public struct AppPreferences: Equatable {
         terminalPosition = defaults.string(forKey: "terminal.position") ?? "left"
         startupPage = defaults.string(forKey: "appearance.startupPage") ?? "/sessions"
         detailTab = defaults.string(forKey: "appearance.detailTab") ?? "agent-text"
+        terminalTheme = defaults.string(forKey: "terminal.theme") ?? "app"
         theme = defaults.string(forKey: "appearance.theme") ?? "graphite"
         klopikSkin = defaults.string(forKey: "appearance.klopikSkin") ?? "default"
         reduceMotion = defaults.bool(forKey: "appearance.reduceMotion")
@@ -46,6 +48,7 @@ public struct AppPreferences: Equatable {
         if !["/sessions", "/", "/git", "/office", "/stats", "/usage"].contains(startupPage) { value.startupPage = "/" }
         if !["user", "agent-text", "agent", "models", "kanban"].contains(detailTab) { value.detailTab = "agent-text" }
         if !["default", "ember", "dusk", "graphite", "daybreak", "paper"].contains(theme) { value.theme = "graphite" }
+        if terminalTheme != "app", !TerminalPalette.themes.contains(where: { $0.id == terminalTheme }) { value.terminalTheme = "app" }
         if KlopikSkin(rawValue: klopikSkin) == nil { value.klopikSkin = "default" }
         var seen = Set<String>()
         value.usageProviderOrder = (usageProviderOrder + Self.usageProviders).filter {
@@ -64,6 +67,7 @@ public struct AppPreferences: Equatable {
         defaults.set(value.terminalPosition, forKey: "terminal.position")
         defaults.set(value.startupPage, forKey: "appearance.startupPage")
         defaults.set(value.detailTab, forKey: "appearance.detailTab")
+        defaults.set(value.terminalTheme, forKey: "terminal.theme")
         defaults.set(value.theme, forKey: "appearance.theme")
         defaults.set(value.klopikSkin, forKey: "appearance.klopikSkin")
         defaults.set(value.reduceMotion, forKey: "appearance.reduceMotion")
@@ -71,6 +75,8 @@ public struct AppPreferences: Equatable {
         defaults.set(value.usageProviderOrder, forKey: "usage.providerOrder")
         defaults.set(value.usageEnabledProviders, forKey: "usage.enabledProviders")
     }
+
+    public var resolvedTerminalTheme: String { terminalTheme == "app" ? theme : terminalTheme }
 
     public var webScript: String {
         // Only validated enum values and booleans cross into the web view.

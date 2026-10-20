@@ -69,23 +69,24 @@ import SwiftUI
         }
         try await Task.sleep(for: .milliseconds(30))
     }
-    try await click(495, 650)
-    #expect(store.preferences.terminalPosition == "bottom")
-    try await click(50, 650)
-    #expect(store.preferences.terminalPosition == "left")
-    window.setContentSize(NSSize(width: 560, height: 660))
-    host.layoutSubtreeIfNeeded()
     func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
     let scroll = try #require(descendants(host).compactMap { $0 as? NSScrollView }.first)
-    scroll.contentView.scroll(to: NSPoint(x: 0, y: 160))
-    scroll.reflectScrolledClipView(scroll.contentView)
-    try await Task.sleep(for: .milliseconds(30))
-    host.layoutSubtreeIfNeeded()
-    let positionY = 650 - scroll.contentView.bounds.origin.y
-    try await click(495, positionY)
-    #expect(store.preferences.terminalPosition == "bottom")
-    try await click(50, positionY)
-    #expect(store.preferences.terminalPosition == "left")
+    for (height, offset) in [(850.0, 300.0), (660.0, 460.0)] {
+        window.setContentSize(NSSize(width: 560, height: height))
+        host.layoutSubtreeIfNeeded()
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: offset))
+        scroll.reflectScrolledClipView(scroll.contentView)
+        try await Task.sleep(for: .milliseconds(40))
+        host.layoutSubtreeIfNeeded()
+        let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: bitmap)
+        try #require(bitmap.representation(using: .png, properties: [:])).write(to: URL(fileURLWithPath: "/private/tmp/kliprun-terminal-controls-\(Int(height)).png"))
+        let positionY = 877 - scroll.contentView.bounds.origin.y
+        try await click(495, positionY)
+        #expect(store.preferences.terminalPosition == "bottom")
+        try await click(50, positionY)
+        #expect(store.preferences.terminalPosition == "left")
+    }
     window.setContentSize(NSSize(width: 560, height: 850))
     try await click(128, 110) // Appearance
     try await click(145, 332)
