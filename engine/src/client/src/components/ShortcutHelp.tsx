@@ -3,8 +3,8 @@ import { CircleHelp, X } from "lucide-react";
 
 const groups = [
   { title: "Navigate", shortcuts: [
-    ["Sessions", "⌃ 1"], ["Kanban board", "⌃ 2"], ["Office", "⌃ 3"], ["Git", "⌃ 4"], ["Usage", "⌃ 5"], ["Statistics", "⌃ 6"],
-    ["Workflow", "⌃ 7"], ["Find session", "⌘ ⇧ F"], ["Settings", "⌘ ,"],
+    ["Sessions", "⌃ 1"], ["Kanban board", "⌃ 2"], ["Office", "⌃ 3"], ["Git", "⌃ 4"], ["Workflow", "⌃ 5"], ["Usage", "⌃ 6"], ["Statistics", "⌃ 7"],
+    ["Find session", "⌘ ⇧ F"], ["Settings", "⌘ ,"],
   ] },
   { title: "Files & editing", shortcuts: [
     ["Open repository", "⌘ O"], ["New project", "⌘ ⇧ N"], ["Save file", "⌘ S"],

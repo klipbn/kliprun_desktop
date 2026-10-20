@@ -21,16 +21,23 @@ export function WorkflowCanvas({ flow, run, runs, now, locked, historical, issue
     const next = Math.max(.2, Math.min(2, f.viewport.zoom * factor)), ratio = next / f.viewport.zoom;
     f.viewport = { x: cx - (cx - f.viewport.x) * ratio, y: cy - (cy - f.viewport.y) * ratio, zoom: next };
   });
+  useEffect(() => {
+    const canvas = surface.current;
+    if (!canvas) return;
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault();
+      if (event.deltaY !== 0) zoom(event.deltaY < 0 ? 1.08 : 1 / 1.08);
+    };
+    canvas.addEventListener('wheel', wheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', wheel);
+  }, [zoom]);
   const connect = (to: string) => {
     if (!connecting || locked || connecting.from === to) return;
     edit(f => { f.edges = f.edges.filter(e => !(e.from === connecting.from && e.port === connecting.port)); f.edges.push({ id: crypto.randomUUID(), ...connecting, to, ...(connecting.port === 'changes_requested' ? { maxReturns: 3 } : {}) }); });
     setConnecting(null);
   };
   return <div className="workflow-canvas-wrap">
-    <div className="workflow-canvas" ref={surface} data-testid="workflow-canvas" onWheel={e => {
-      if (e.ctrlKey || e.metaKey) zoom(e.deltaY < 0 ? 1.08 : 1 / 1.08);
-      else edit(f => { f.viewport.x -= e.deltaX; f.viewport.y -= e.deltaY; });
-    }} onPointerDown={e => {
+    <div className="workflow-canvas" ref={surface} data-testid="workflow-canvas" onPointerDown={e => {
       if (e.target !== e.currentTarget && !(e.target instanceof SVGElement && e.target.tagName === 'svg')) return;
       if (e.button !== 0) return; setConnecting(null);
       drag.current = { x: e.clientX, y: e.clientY, fromX: flow.viewport.x, fromY: flow.viewport.y };
@@ -76,7 +83,7 @@ export function WorkflowCanvas({ flow, run, runs, now, locked, historical, issue
       </div>
       {!flow.nodes.length && <div className="workflow-canvas-empty"><WorkflowIcon /><h2>Build your workflow</h2><p>Add an agent card, write its task and connect its output to the next card.</p></div>}
     </div>
-    <div className="workflow-canvas-tools"><span><Hand size={14} />{connecting ? 'Choose an input dot or card to connect · Esc to cancel' : 'Drag cards or canvas · Scroll to pan'}</span>
+    <div className="workflow-canvas-tools"><span><Hand size={14} />{connecting ? 'Choose an input dot or card to connect · Esc to cancel' : 'Drag cards or canvas · Scroll to zoom'}</span>
       {connecting && <button onClick={() => setConnecting(null)}>Cancel connection</button>}
       <button aria-label="Zoom out" onClick={() => zoom(1 / 1.2)}><Minus /></button><span>{Math.round(flow.viewport.zoom * 100)}%</span><button aria-label="Zoom in" onClick={() => zoom(1.2)}><Plus /></button>
       <button onClick={() => edit(f => { f.viewport = fitWorkflow(f.nodes, surface.current?.clientWidth ?? 800, surface.current?.clientHeight ?? 500); })}><Maximize2 />Fit view</button>
