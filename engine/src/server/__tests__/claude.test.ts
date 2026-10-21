@@ -40,6 +40,9 @@ test("Claude cards expose prompts, tools, waiting, completion and exclusive toke
   expect(adapter.cards(at + 3000)[0]).toMatchObject({ column: "idle", finished_at: at + 3000, tokens_total: 215 });
   const detail = adapter.detail(`claude:${id}`, at + 3000);
   expect(detail.models[0].tokens).toEqual({ input: 110, output: 20, reasoning: 5, cache_read: 50, cache_write: 30, total: 215 });
+  // Newest first, as for OpenCode and Codex.
+  expect(detail.messages.map(message => message.role)).toEqual(["assistant", "assistant", "user"]);
+  expect(detail.messages[0].text).toContain("Done.");
   expect(JSON.stringify(detail)).not.toContain("never shown");
   expect(JSON.stringify(detail)).not.toContain("private-value");
   expect(adapter.terminalLinks()).toEqual([{ session_id: `claude:${id}`, pid: 42 }]);

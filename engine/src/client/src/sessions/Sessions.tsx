@@ -5,6 +5,7 @@ import type { CardPayload } from "@shared/types";
 import { HarnessIcon } from "../components/HarnessIcon";
 import { duration as formatDuration, sourceName } from "../statistics/format";
 import { createGroup, createProject, groupFor, loadWorkspace, moveSessions, projectFor, saveWorkspace, sortSessions, type SessionWorkspace } from "./model";
+import { SessionMoveMenu } from "./SessionMoveMenu";
 import "./sessions.css";
 
 interface Props {
@@ -20,7 +21,7 @@ interface Props {
   onResume?: (id: string, directory: string) => void;
 }
 type View = { kind: "all" | "favorites" } | { kind: "project"; id: string };
-type Dialog = { kind: "project" } | { kind: "group"; projectId: string } | { kind: "move"; ids: string[] };
+type Dialog = { kind: "project" } | { kind: "group"; projectId: string };
 interface Section { id: string; name: string; rows: CatalogSession[]; projectId?: string | null; groupId?: string | null }
 const PAGE_SIZE = 100;
 const duration = (value: number | null) => value === null ? "—" : formatDuration(value);
@@ -53,6 +54,8 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [moveMenu, setMoveMenu] = useState<{ ids: string[]; anchor: HTMLElement; batch: boolean } | null>(null);
+  const toggleMoveMenu = (ids: string[], anchor: HTMLElement, batch = false) => setMoveMenu(open => open?.anchor === anchor ? null : { ids, anchor, batch });
   const [failure, setFailure] = useState<string | null>(null);
   const [undo, setUndo] = useState<SessionWorkspace["assignments"] | null>(null);
   const [notice, setNotice] = useState("");
@@ -167,7 +170,7 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
       </header>
       {(error || failure) && <div className="sw-error" role="alert">{failure ?? "Unable to refresh sessions. Your saved organization is unchanged."}<button onClick={() => { setFailure(null); onRetry(); }}>Retry</button></div>}
       {notice && <div className="sw-notice" role="status">{notice}{undo && <button onClick={() => { if (change({ ...state, assignments: undo })) { setUndo(null); setNotice("Move undone"); } }}>Undo</button>}<button className="sw-icon" aria-label="Dismiss notice" onClick={() => { setNotice(""); setUndo(null); }}><X /></button></div>}
-      {!!selected.length && <div className="sw-batch"><strong>{selected.length} selected</strong><button onClick={() => setDialog({ kind: "move", ids: selected })}><Folder /> Move to…</button><button onClick={() => { if (change({ ...state, favorites: [...new Set([...state.favorites, ...selected])] })) setSelected([]); }}><Star /> Favorite</button><button className="sw-icon" aria-label="Clear selection" onClick={() => setSelected([])}><X /></button></div>}
+      {!!selected.length && <div className="sw-batch"><strong>{selected.length} selected</strong><button aria-haspopup="menu" aria-expanded={moveMenu?.batch ?? false} onClick={event => toggleMoveMenu(selected, event.currentTarget, true)}><Folder /> Move to…</button><button onClick={() => { if (change({ ...state, favorites: [...new Set([...state.favorites, ...selected])] })) setSelected([]); }}><Star /> Favorite</button><button className="sw-icon" aria-label="Clear selection" onClick={() => setSelected([])}><X /></button></div>}
       <div className="sw-column-labels" aria-hidden="true"><span>Session</span><div><span>Worked</span></div><span>Updated</span><i /></div>
       <div className="sw-list" aria-busy={pending && !sessions.length}>
         {visibleSections.map(section => <section className="sw-section" key={section.id}>
@@ -189,7 +192,8 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
                   <span className="sw-metrics"><span title="Observed running time; excludes idle time and subagents"><Clock3 />{duration(session.running_ms)}</span></span></span>
                 </button>
                 <time className="sw-updated" title={new Date(session.updated_at).toLocaleString("en-US")}>{updated(session.updated_at)}</time>
-                <button className="sw-icon sw-move" aria-label={`Move ${session.title}`} title="Move to project or group" onClick={() => setDialog({ kind: "move", ids: [session.id] })}><Folder /></button>
+                <button className={`sw-icon sw-move${moveMenu?.ids[0] === session.id && !moveMenu.batch ? " is-open" : ""}`} aria-label={`Move ${session.title}`} title="Move to project or group" aria-haspopup="menu"
+                  aria-expanded={moveMenu?.ids[0] === session.id && !moveMenu.batch} onClick={event => toggleMoveMenu([session.id], event.currentTarget)}><Folder /></button>
                 <button className={`sw-icon sw-star ${favorite ? "is-favorite" : ""}`} aria-label={`Favorite ${session.title}`} aria-pressed={favorite} title={favorite ? "Remove favorite" : "Add favorite"} onClick={() => change({ ...state, favorites: favorite ? state.favorites.filter(id => id !== session.id) : [...state.favorites, session.id] })}><Star /></button>
                 {onResume && <button className="sw-icon sw-resume" aria-label={`Resume ${session.title}`} title={`Resume in ${sourceName(session.source)}`} onClick={() => onResume(session.id, session.directory)}><SquareTerminal /></button>}
               </div>;
@@ -200,7 +204,10 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
       </div>
       <footer className="sw-footer"><span>{total} sessions{pending && sessions.length ? " · Updating…" : ""}</span>{lastPage > 0 && <div><button aria-label="Previous sessions" disabled={activePage === 0} onClick={() => setPage(activePage - 1)}>‹</button><span>{activePage + 1} / {lastPage + 1}</span><button aria-label="Next sessions" disabled={activePage === lastPage} onClick={() => setPage(activePage + 1)}>›</button></div>}<span className="sw-footer-hint">{currentProject ? "Drag to a group to organize" : "Drag to a project to move"}</span></footer>
     </div>
-    {dialog && <WorkspaceDialog dialog={dialog} state={state} onClose={() => setDialog(null)} onMove={move} onCreate={(name) => {
+    {moveMenu && <SessionMoveMenu state={state} ids={moveMenu.ids} anchor={moveMenu.anchor}
+      onMove={target => move(moveMenu.ids, target.projectId, target.groupId)} onNewProject={() => setDialog({ kind: "project" })}
+      onClose={restoreFocus => { if (restoreFocus) moveMenu.anchor.focus({ preventScroll: true }); setMoveMenu(null); }} />}
+    {dialog && <WorkspaceDialog dialog={dialog} onClose={() => setDialog(null)} onCreate={(name) => {
       const id = crypto.randomUUID();
       const next = dialog.kind === "group" ? createGroup(state, dialog.projectId, id, name) : createProject(state, id, name);
       if (!change(next)) return false;
@@ -211,23 +218,20 @@ export default function Sessions({ menuRequest, onMenuRequestHandled, sessions, 
   </section>;
 }
 
-function WorkspaceDialog({ dialog, state, onClose, onCreate, onMove }: { dialog: Dialog; state: SessionWorkspace; onClose: () => void; onCreate: (name: string) => boolean; onMove: (ids: string[], project: string | null, group: string | null) => boolean }) {
+function WorkspaceDialog({ dialog, onClose, onCreate }: { dialog: Dialog; onClose: () => void; onCreate: (name: string) => boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const first = dialog.kind === "move" ? state.assignments[dialog.ids[0]] : undefined;
   const [name, setName] = useState("");
-  const [projectId, setProjectId] = useState(first?.projectId ?? "");
-  const [groupId, setGroupId] = useState(dialog.kind === "move" && dialog.ids.every(id => state.assignments[id]?.projectId === first?.projectId && state.assignments[id]?.groupId === first?.groupId) ? first?.groupId ?? "" : "");
   const [error, setError] = useState("");
   useEffect(() => { ref.current?.showModal(); }, []);
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    try { if (dialog.kind === "move" ? onMove(dialog.ids, projectId || null, projectId ? groupId || null : null) : onCreate(name)) onClose(); }
+    try { if (onCreate(name)) onClose(); }
     catch (err) { setError(err instanceof Error ? err.message : "Unable to save changes."); }
   };
   return <dialog className="sw-dialog" ref={ref} onClose={onClose} aria-labelledby="sw-dialog-title"><form onSubmit={submit}>
-    <h2 id="sw-dialog-title">{dialog.kind === "move" ? "Move sessions" : dialog.kind === "group" ? "New group" : "New project"}</h2>
-    {dialog.kind === "move" ? <><label htmlFor="sw-destination">Project</label><select id="sw-destination" value={projectId} onChange={e => { setProjectId(e.target.value); setGroupId(""); }}><option value="">No project</option>{state.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>{projectId && <><label htmlFor="sw-destination-group">Group</label><select id="sw-destination-group" value={groupId} onChange={e => setGroupId(e.target.value)}><option value="">Uncategorized</option>{state.projects.find(p => p.id === projectId)?.groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select></>}<p>Organization in KlipRun only. Original folders stay the same.</p></> : <><label htmlFor="sw-name">{dialog.kind === "group" ? "Group name" : "Project name"}</label><input autoFocus id="sw-name" required maxLength={60} autoComplete="off" value={name} onChange={e => { setName(e.target.value); setError(""); }} /></>}
+    <h2 id="sw-dialog-title">{dialog.kind === "group" ? "New group" : "New project"}</h2>
+    <label htmlFor="sw-name">{dialog.kind === "group" ? "Group name" : "Project name"}</label><input autoFocus id="sw-name" required maxLength={60} autoComplete="off" value={name} onChange={e => { setName(e.target.value); setError(""); }} />
     {error && <p role="alert" className="sw-dialog-error">{error}</p>}
-    <footer><button type="button" onClick={onClose}>Cancel</button><button type="submit" className="sw-primary">{dialog.kind === "move" ? "Move sessions" : dialog.kind === "group" ? "Create group" : "Create project"}</button></footer>
+    <footer><button type="button" onClick={onClose}>Cancel</button><button type="submit" className="sw-primary">{dialog.kind === "group" ? "Create group" : "Create project"}</button></footer>
   </form></dialog>;
 }

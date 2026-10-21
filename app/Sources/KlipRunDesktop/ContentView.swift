@@ -193,6 +193,7 @@ struct ContentView: View {
             if selected { RoundedRectangle(cornerRadius: 1).fill(Color.accentColor.opacity(0.8)).frame(height: 2).padding(.horizontal, 5).allowsHitTesting(false) }
         }
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(dropTargetID == terminal.id ? Color.accentColor : .clear, lineWidth: 2))
+        .background(TerminalTabMiddleClick { store.closeTerminal(terminal.id) })
         .contentShape(Rectangle())
         .onTapGesture { store.selectTerminalTab(terminal.id) }
         .accessibilityElement(children: .contain)

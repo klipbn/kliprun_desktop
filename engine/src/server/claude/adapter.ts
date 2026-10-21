@@ -68,7 +68,8 @@ export class ClaudeAdapter {
     const state = sessionId.startsWith("claude:") ? this.read(sessionId.slice(7), now) : null;
     const repository = repositoryOf(state?.session.directory ?? "");
     return { source: "claude", session_id: sessionId, title: state?.session.title ?? "", directory: state?.session.directory ?? "", branch: scrub(repository.branch), repository_url: repository.url,
-      mrs: [], messages: state?.messages ?? [], models: state?.models ?? [], kanban_history: [], exists: !!state };
+      // The journal is chronological; details list the newest messages first, like OpenCode and Codex.
+      mrs: [], messages: [...state?.messages ?? []].reverse(), models: state?.models ?? [], kanban_history: [], exists: !!state };
   }
   watchPaths(): string[] { return [...this.processes.flatMap(p => p.sessionId && this.paths.has(p.sessionId) ? [this.paths.get(p.sessionId)!] : [])]; }
   close(): void { this.processes = []; this.paths.clear(); this.cache.clear(); this.current = []; this.links = []; }
