@@ -38,3 +38,44 @@
 .repository-markdown-preview ul,.repository-markdown-preview ol{padding-left:24px;margin:10px 0}.repository-markdown-preview ul{list-style:disc}.repository-markdown-preview ol{list-style:decimal}.repository-markdown-preview code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--theme-surface);padding:2px 4px;border-radius:3px}.repository-markdown-preview pre{padding:14px;overflow:auto;background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:5px}.repository-markdown-preview pre code{padding:0;background:none}.repository-markdown-preview blockquote{border-left:3px solid var(--theme-border);padding-left:14px;color:var(--theme-muted)}
 .repository-markdown-preview table{border-collapse:collapse;display:block;overflow:auto}.repository-markdown-preview th,.repository-markdown-preview td{border:1px solid var(--theme-border);padding:6px 10px}.repository-markdown-preview th{font-weight:600}.repository-markdown-preview hr{border:0;border-top:1px solid var(--theme-border);margin:18px 0}.repository-markdown-link{color:var(--theme-accent);text-decoration:underline}.repository-markdown-image{color:var(--theme-muted);font-style:italic}
 @media(max-width:600px){.repository-editor-toolbar{padding:3px 7px;gap:5px}.repository-markdown-preview{padding:16px}.repository-editor-statusbar{gap:10px;padding:3px 8px;font-size:9px}.repository-editor-breadcrumbs>span:not(.repository-breadcrumb-current){display:none}.repository-editor-breadcrumbs>svg{display:none}}
+.repository-visual-editor{display:flex;flex:1;flex-direction:column;min-height:0;min-width:0}
+.repository-visual-toolbar{display:flex;align-items:center;gap:4px;padding:4px 10px;border-bottom:1px solid var(--theme-border);font-size:11px;color:var(--theme-muted)}
+.repository-visual-hint{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.repository-visual-hint code{color:var(--theme-text)}
+.repository-file-editor{container-type:size}
+.repository-editor-body{position:relative;display:flex;flex:1;flex-direction:column;min-height:0;min-width:0}
+.repository-editor-body.is-split{flex-direction:row}
+.repository-editor-body.is-split>.repository-visual-editor,.repository-editor-body.is-split>.repository-html-preview-pane{order:0;flex:0 0 var(--repository-split,50%);width:auto}
+.repository-editor-body.is-split>.repository-split-handle{order:1}
+.repository-editor-body.is-split>.repository-code-editor{order:2;flex:1 1 0;border-left:1px solid var(--theme-border)}
+.repository-split-handle{flex:0 0 5px;margin:0 -2px 0 -3px;cursor:col-resize;z-index:1;background:transparent}
+.repository-split-handle:hover,.repository-split-handle:focus-visible,.is-resizing>.repository-split-handle{background:color-mix(in srgb,var(--theme-accent) 55%,transparent);outline:0}
+.repository-editor-body.is-resizing iframe{pointer-events:none}
+@container (max-width:720px){
+  .repository-editor-body.is-split{flex-direction:column}
+  .repository-editor-body.is-split>.repository-visual-editor,.repository-editor-body.is-split>.repository-html-preview-pane{flex:1 1 50%}
+  .repository-editor-body.is-split>.repository-split-handle{display:none}
+  .repository-editor-body.is-split>.repository-code-editor{flex:1 1 50%;border-left:0;border-top:1px solid var(--theme-border)}
+}
+/* Too small to share: the page keeps the space and the source returns when the editor grows. */
+@container (max-width:720px) and (max-height:520px){
+  .repository-editor-body.is-split>.repository-code-editor{display:none}
+  .repository-editor-body.is-split>.repository-visual-editor,.repository-editor-body.is-split>.repository-html-preview-pane{flex:1 1 auto}
+}
+.repository-visual-toolbar{flex-wrap:wrap;row-gap:2px}
+.repository-visual-toolbar .git-icon-button{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex-shrink:0;padding:4px;color:var(--theme-muted);border:0;background:none;border-radius:4px;cursor:pointer}
+.repository-visual-toolbar .git-icon-button:hover:not(:disabled):not(.is-disabled){color:var(--theme-text);background:var(--theme-surface)}
+.repository-visual-toolbar .git-icon-button:disabled,.repository-visual-toolbar .git-icon-button.is-disabled{opacity:.35;cursor:default}
+.repository-visual-separator{width:1px;height:16px;margin:0 3px;background:var(--theme-border);flex-shrink:0}
+.repository-code-editor .cm-linked-element{background:color-mix(in srgb,var(--theme-accent) 34%,transparent)}
+.repository-visual-toolbar .repository-visual-block{height:24px;max-width:130px;padding:0 4px;line-height:normal;font-size:11px;color:var(--theme-text);background:var(--theme-background);border:1px solid var(--theme-border);border-radius:4px}
+.repository-visual-toolbar .repository-visual-block:disabled{opacity:.45}
+.repository-visual-color{position:relative;overflow:hidden}.repository-visual-color input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0}
+.repository-visual-color.is-disabled input{cursor:default}
+.repository-visual-hint{margin-left:6px}
+.repository-visual-link{display:flex;align-items:center;gap:6px;padding:4px 10px;border-bottom:1px solid var(--theme-border)}
+.repository-visual-link input{flex:1;min-width:0;height:24px;padding:0 7px;font-size:12px;color:var(--theme-text);background:var(--theme-background);border:1px solid var(--theme-border);border-radius:4px}
+.repository-visual-error{display:flex;align-items:center;gap:8px;margin:0;padding:5px 10px}.repository-visual-error button{margin-left:auto}
+.repository-html-preview-pane,.repository-visual-frame{position:relative;display:flex;flex:1;flex-direction:column;min-height:0;min-width:0}
+.repository-visual-blocker{position:absolute;inset:0;background:color-mix(in srgb,var(--theme-background) 35%,transparent);cursor:not-allowed}
+.repository-preview-stale{display:flex;align-items:center;gap:10px;padding:5px 10px;font-size:11px;color:var(--theme-text);background:color-mix(in srgb,var(--theme-warning,#e5bb71) 16%,var(--theme-surface));border-bottom:1px solid var(--theme-border)}
+.repository-preview-stale span{flex:1;min-width:0}.repository-preview-stale .git-button{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}

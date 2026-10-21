@@ -145,6 +145,18 @@ test("notebooks with saved outputs above the text limit open and save, with a bo
   expect((await save({ path, content: "x".repeat(10 * 1024 * 1024 + 1), revision: file.revision })).status).toBe(413);
 });
 
+test("HTML reports open and save up to 40 MB", async () => {
+  const { root, get, save } = fixture();
+  const path = "report.html", big = "<p>" + "x".repeat(30 * 1024 * 1024) + "</p>";
+  writeFileSync(join(root, path), big);
+  const response = await get("file", path);
+  expect(response.status).toBe(200);
+  const file = await response.json() as GitFileContent;
+  expect((await save({ path, content: big + "\n", revision: file.revision })).status).toBe(200);
+  writeFileSync(join(root, path), "x".repeat(40 * 1024 * 1024 + 1));
+  expect((await get("file", path)).status).toBe(413);
+});
+
 test("ignored text files can be opened and saved while nested repositories stay isolated", async () => {
   const { root, get, save } = fixture();
   writeFileSync(join(root, ".gitignore"), "private.txt\n"); writeFileSync(join(root, "private.txt"), "private");

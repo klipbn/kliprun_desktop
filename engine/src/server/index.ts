@@ -95,6 +95,8 @@ const server = Bun.serve({
   port,
   // SSE heartbeat is every 30 s; Bun's 10 s default closes quiet streams.
   idleTimeout: 60,
+  // Saving a 40 MB HTML report sends JSON-escaped text, above Bun's 128 MiB default.
+  maxRequestBodySize: 192 * 1024 * 1024,
   fetch: app.fetch,
 });
 

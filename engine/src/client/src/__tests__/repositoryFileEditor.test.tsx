@@ -92,6 +92,8 @@ test("HTML files offer an explicit preview while opening as highlighted source w
     const markup = renderToStaticMarkup(<RepositoryFileEditor {...defaults} path={path} content={source} savedContent={source} />);
     expect(repositoryFileLanguage(path)).toBe("HTML");
     expect(markup).toContain('aria-label="Preview HTML"');
+    expect(markup).toContain('aria-label="Edit page visually"');
+    expect(markup).not.toContain('aria-label="Hide source"');
     expect(markup).not.toContain("<iframe");
     expect(markup).not.toContain("<script");
     const state = createRepositoryEditorState(path, source);
@@ -188,4 +190,12 @@ test("large and interactive notebook HTML uses a bounded text fallback while oth
   expect(html).toContain("<h1>Still readable</h1>");
   expect(html).not.toContain("plotly bundle");
   expect(html.length).toBeLessThan(10000);
+});
+
+test("large HTML reports open as a page without loading the code editor", () => {
+  const source = "<!doctype html><p>" + "x".repeat(2 * 1024 * 1024 + 1) + "</p>";
+  const markup = renderToStaticMarkup(<RepositoryFileEditor {...defaults} path="big.html" content={source} savedContent={source} />);
+  expect(markup).toContain('aria-label="Edit HTML"');
+  expect(markup).toContain('aria-label="Show source beside preview"');
+  expect(markup).toContain('class="repository-code-editor" hidden=""');
 });
