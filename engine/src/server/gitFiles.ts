@@ -7,9 +7,10 @@ import { gitPath, gitRoot } from "./git";
 import { GitError, runGit } from "./gitProcess";
 
 const FILE_LIMIT = 512 * 1024;
-const fileLimit = (path: string) => /\.ipynb$/i.test(path) ? 10 * 1024 * 1024 : FILE_LIMIT;
+const MB = 1024 * 1024;
+const fileLimit = (path: string) => /\.html?$/i.test(path) ? 40 * MB : /\.ipynb$/i.test(path) ? 10 * MB : FILE_LIMIT;
 function checkFileSize(path: string, size: number) {
-  if (size > fileLimit(path)) throw new GitError(`File exceeds the ${/\.ipynb$/i.test(path) ? "10 MB notebook" : "512 KB editor"} limit.`, 413);
+  if (size > fileLimit(path)) throw new GitError(`File exceeds the ${/\.html?$/i.test(path) ? "40 MB HTML" : /\.ipynb$/i.test(path) ? "10 MB notebook" : "512 KB editor"} limit.`, 413);
 }
 const saves = new Set<string>();
 const fileActions = new Set<string>();
@@ -54,8 +55,10 @@ export async function gitFile(root: string, path: string): Promise<GitFileConten
     const info = await handle.stat();
     if (!info.isFile()) throw new GitError("Only regular text files can be opened.", 400);
     checkFileSize(path, info.size);
-    const buffer = Buffer.alloc(fileLimit(path) + 1), { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    // One byte past the reported size detects growth while reading without allocating the whole limit.
+    const buffer = Buffer.allocUnsafe(Math.min(fileLimit(path), info.size) + 1), { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
     checkFileSize(path, bytesRead);
+    if (bytesRead > info.size) throw new GitError("File changed while it was being read. Try again.", 409);
     const bytes = buffer.subarray(0, bytesRead);
     let content: string;
     try {

@@ -10,6 +10,8 @@ import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
 import { html } from "@codemirror/lang-html";
 import { tags } from "@lezer/highlight";
+import { longLineFolding } from "./repositoryLongLines";
+import { detach } from "./htmlSourceMap";
 
 export function repositoryFileLanguage(path: string): string {
   const extension = path.split(".").pop()?.toLowerCase();
@@ -105,6 +107,18 @@ export function createRepositoryEditorState(path: string, content: string, exten
       indentUnit.of(repositoryIndentUnit(path, content)), EditorState.tabSize.of(4),
       EditorState.lineSeparator.of(content.includes("\r\n") ? "\r\n" : "\n"),
       EditorView.clipboardInputFilter.of((text, state) => text.replace(/\r\n?|\n/g, state.lineBreak)),
-      syntaxHighlighting(repositoryHighlightStyle), indentGuides, theme],
+      syntaxHighlighting(repositoryHighlightStyle), indentGuides, longLineFolding, theme],
   });
+}
+
+/** The smallest single replacement that turns `before` into `after`, or null when they are equal. */
+export function minimalChange(before: string, after: string): { from: number; to: number; insert: string } | null {
+  if (before === after) return null;
+  const limit = Math.min(before.length, after.length);
+  let start = 0;
+  while (start < limit && before.charCodeAt(start) === after.charCodeAt(start)) start++;
+  let end = 0;
+  while (end < limit - start && before.charCodeAt(before.length - 1 - end) === after.charCodeAt(after.length - 1 - end)) end++;
+  // The editor keeps inserted text; a slice would keep all of `after` alive with it.
+  return { from: start, to: before.length - end, insert: detach(after.slice(start, after.length - end)) };
 }

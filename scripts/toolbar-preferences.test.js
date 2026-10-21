@@ -38,7 +38,7 @@ async (page) => {
     await page.getByRole("button", { name: "Keyboard shortcuts", exact: true }).click();
     const help = page.locator("dialog[open]"); await help.waitFor();
     const shortcuts = await help.locator("li").allTextContents();
-    for (const [label, number] of [["Sessions", 1], ["Kanban board", 2], ["Office", 3], ["Git", 4], ["Usage", 5], ["Statistics", 6]]) assert(shortcuts.some(text => text.includes(label) && text.includes(`⌃ ${number}`)), `Wrong shortcut for ${label}`);
+    for (const [label, number] of [["Sessions", 1], ["Kanban board", 2], ["Office", 3], ["Git", 4], ["Workflow", 5], ["Usage", 6], ["Statistics", 7]]) assert(shortcuts.some(text => text.includes(label) && text.includes(`⌃ ${number}`)), `Wrong shortcut for ${label}`);
     await help.getByRole("button", { name: "Close keyboard shortcuts", exact: true }).click();
     for (const tab of ["user", "agent-text", "agent", "models", "kanban"]) {
       await page.evaluate(detailTab => { window.kliprunPreferences = { detailTab, reduceMotion: true }; window.dispatchEvent(new Event("kliprun:preferences")); }, tab);

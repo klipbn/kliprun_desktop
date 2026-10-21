@@ -308,7 +308,10 @@ export default function Git({ directories, sessionId, sessionDirectory }: { dire
     <div className="git-layout" data-resizing={resizing} style={panelWidth === null ? undefined : { "--git-sidebar-width": `${panelWidth}px` } as CSSProperties}>
       <section className="git-diff-pane" aria-label={tab === "files" ? "File editor" : "Diff viewer"}>
         {tab === "files" && documents.tabs.length > 0 && <div ref={documentTabs} className="git-document-tabs" role="tablist" aria-label="Open files">
-          {documents.tabs.map((document, index) => <div key={document.id} className={`git-document-tab ${document.id === documents.activeId ? "is-active" : ""} ${document.pinned ? "" : "is-preview"}`}>
+          {documents.tabs.map((document, index) => <div key={document.id} className={`git-document-tab ${document.id === documents.activeId ? "is-active" : ""} ${document.pinned ? "" : "is-preview"}`}
+            // A middle click closes the tab, asking about unsaved changes like the close button.
+            onMouseDown={event => { if (event.button === 1) event.preventDefault(); }}
+            onAuxClick={event => { if (event.button === 1 && !document.saving) { event.preventDefault(); closeFile(document.id); } }}>
             <button type="button" role="tab" id={`git-document-tab-${document.id}`} aria-controls={`git-document-panel-${document.id}`} aria-selected={document.id === documents.activeId} aria-label={document.path} title={`${document.path}${document.pinned ? "" : " · Preview — double-click to keep open"}`} tabIndex={document.id === documents.activeId ? 0 : -1} onClick={() => documents.activate(document.id)} onDoubleClick={() => documents.pin(document.id)} onKeyDown={event => {
               const next = event.key === "Home" ? 0 : event.key === "End" ? documents.tabs.length - 1 : event.key === "ArrowRight" ? (index + 1) % documents.tabs.length : event.key === "ArrowLeft" ? (index - 1 + documents.tabs.length) % documents.tabs.length : null;
               if (next === null) return;

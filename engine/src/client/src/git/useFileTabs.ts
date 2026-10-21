@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { GitFileContent } from "@shared/git";
-import { closeFileTab, editFileTab, isFileDirty, openFileTab, refreshFileTab, type FileDraft, type FileTab, type FileTabs } from "./fileTabs";
+import { closeFileTab, editFileTab, isFileDirty, openFileTab, refreshFileTab, savedFileTab, type FileDraft, type FileTab, type FileTabs } from "./fileTabs";
 import { gitRequest } from "./useGitRequest";
 import { loadRepositoryWorkspace, saveRepositoryWorkspace } from "./workspaceState";
 
@@ -102,9 +102,14 @@ export function useFileTabs(directory: string, onSaved: () => void) {
     try {
       const data = await gitRequest<GitFileContent>("/api/git/file", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ directory: target, path: tab.path, content: snapshot.draft, revision: snapshot.revision }) });
       const key = keyFor(target, tab.path);
-      if (drafts.get(key) === snapshot) drafts.delete(key);
+      if (mounted.current && currentDirectory.current === target) {
+        update(previous => savedFileTab(previous, id, snapshot, data, Math.max(Date.now(), tab.savedAt + 1)));
+        // Edits made during the save stay a draft against the new revision.
+        const saved = stateRef.current.tabs.find(tab => tab.id === id);
+        if (saved?.file && isFileDirty(saved)) drafts.set(key, saved.file); else drafts.delete(key);
+        onSaved();
+      } else if (drafts.get(key) === snapshot) drafts.delete(key);
       notifyDrafts();
-      if (mounted.current && currentDirectory.current === target) { patch(id, { file: { ...data, draft: data.content }, saving: false, savedAt: Math.max(Date.now(), tab.savedAt + 1) }); onSaved(); }
       return true;
     } catch (error) {
       if (mounted.current && currentDirectory.current === target) patch(id, { saving: false, error: error instanceof Error ? error.message : "Unable to save file." });

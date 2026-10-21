@@ -24,10 +24,13 @@ async (page, base = "http://127.0.0.1:19876") => {
     check(await p.getByRole('alert').count() === 1, 'Duplicate group rejected'); await click('Cancel');
     await view('All sessions');
     for (const title of ['Review database migration', 'Investigate flaky tests', 'Refine onboarding UI', 'Draft release notes']) await p.getByRole('checkbox', { name: `Select ${title}`, exact: true }).check();
-    await click('Move to…'); await p.locator('#sw-destination').selectOption({label:'aurora'}); await click('Move sessions');
+    await click('Move to…'); check(await p.getByRole('dialog').count() === 0, 'Move opens a menu, not a window');
+    check(await p.getByRole('menu', { name: 'Move 4 sessions to' }).isVisible(), 'Batch move menu');
+    await p.getByRole('menuitemradio', { name: 'aurora', exact: true }).click();
     await view('aurora'); check(await section('Uncategorized').locator('.sw-row').count() === 4, 'Project assignment');
     for (const title of ['Review database migration', 'Investigate flaky tests']) await p.getByRole('checkbox', { name: `Select ${title}`, exact: true }).check();
-    await click('Move to…'); await p.locator('#sw-destination-group').selectOption({ label: 'Research' }); await click('Move sessions');
+    await click('Move to…'); check(await p.getByRole('menuitemradio', { name: 'aurora', exact: true }).getAttribute('aria-checked') === 'true', 'Current project marked');
+    await p.getByRole('menuitemradio', { name: 'Research', exact: true }).click();
     await row('Refine onboarding UI').dragTo(section('Work').locator('.sw-section-heading'));
     check(await section('Research').locator('.sw-row').count() === 2, 'Two research sessions');
     check(await section('Work').locator('.sw-row').count() === 1, 'One work session');
@@ -40,12 +43,14 @@ async (page, base = "http://127.0.0.1:19876") => {
     await p.reload(); await p.getByRole('button', { name: 'New project', exact: true }).waitFor();
     await view('aurora'); check(await section('Research').locator('.sw-row').count() === 2, 'Groups persist');
     await create('project', 'atlas'); await view('All sessions');
-    await click('Move Implement search API'); await p.locator('#sw-destination').selectOption({label:'atlas'}); await click('Move sessions'); await click('Dismiss notice');
+    await click('Move Implement search API'); await p.keyboard.press('Escape'); check(await p.getByRole('menu').count() === 0, 'Escape closes the move menu');
+    check(await p.evaluate(() => document.activeElement?.getAttribute('aria-label')) === 'Move Implement search API', 'Focus returns to the folder button');
+    await click('Move Implement search API'); await p.getByRole('menuitemradio', { name: 'atlas', exact: true }).click(); await click('Dismiss notice');
     check(await section('No project').locator('.sw-row').count() === 2, 'No project retained');
     check((await p.locator('.sw-section').last().innerText()).includes('No project'), 'No project last');
     await p.getByLabel('Search sessions', { exact: true }).fill('cache'); check(await p.locator('.sw-row').count() === 1, 'Search');
     await p.getByLabel('Session agent', { exact: true }).selectOption('opencode'); check(await p.getByText('No matching sessions', {exact:true}).isVisible(), 'Empty filter'); await click('Clear filters');
-    for (const [i,path] of ['/sessions','/','/office','/git','/usage','/stats'].entries()) {
+    for (const [i,path] of ['/sessions','/','/office','/git','/workflow','/usage','/stats'].entries()) {
       await p.keyboard.press(`Control+${i+1}`); await p.waitForFunction(expected=>location.pathname===expected,path);
     }
     await p.keyboard.press('Control+2'); check(await p.locator('aside[aria-label="Recent sessions"]').count() === 0, 'Kanban sidebar removed');
@@ -59,7 +64,10 @@ async (page, base = "http://127.0.0.1:19876") => {
       check(await row('Review database migration').locator('.sw-updated').isVisible(), `Updated visible at ${width}`);
       await click('Open session: Review database migration');
       check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), `Details width ${width}`);
-      await click('Close details'); await click('New group');
+      await click('Close details');
+      await click('Move Review database migration');
+      check(await p.getByRole('menu').evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; }), `Move menu fits ${width}`);
+      await p.keyboard.press('Escape'); await click('New group');
       check(await p.getByRole('dialog').evaluate(el=>el.getBoundingClientRect().right<=innerWidth), `Dialog width ${width}`); await click('Cancel');
     }
     await p.screenshot({path:'/private/tmp/kliprun-sessions-small.png'}); await p.setViewportSize({width:1440,height:900});
@@ -72,6 +80,6 @@ async (page, base = "http://127.0.0.1:19876") => {
     await click('Favorite Fictional archive 204'); await p.getByLabel('Search sessions',{exact:true}).fill(''); await view('Favorites'); check(await row('Fictional archive 204').isVisible(),'Favorite beyond first page');
     await p.unroute('**/api/session-catalog'); await p.route('**/api/session-catalog',route=>route.fulfill({status:503,json:{error:'Unavailable'}}));
     await p.reload(); await p.getByRole('button',{name:'Retry',exact:true}).waitFor(); check((await p.locator('.sw-sidebar').innerText()).includes('aurora'),'Failure preserves organization');
-    check(!errors.length,errors.join('\n')); return {passed:true,checks:'Groups 2/1/1, bulk move, drag, undo, collapse, persistence, favorites, metrics, filters, Control+1–6, details, four sizes, pagination, catalog failure',errors};
+    check(!errors.length,errors.join('\n')); return {passed:true,checks:'Groups 2/1/1, bulk move, drag, undo, collapse, persistence, favorites, metrics, filters, Control+1–7, details, four sizes, pagination, catalog failure',errors};
   } finally {await context.close();}
 }

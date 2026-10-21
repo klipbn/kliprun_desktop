@@ -39,7 +39,7 @@ async (page) => {
     await page.setViewportSize({ width: 1440, height: 900 }); await page.goto(`${base}/git`);
     await page.locator('.git-file-select[title="src/api/search.ts"]').waitFor();
     const tabs = await page.locator('header [data-testid$="-button"]').evaluateAll(elements => elements.filter(element => ["kanban-button", "git-button", "statistics-button", "office-button", "usage-button"].includes(element.dataset.testid)).map(element => element.getAttribute("aria-label")));
-    assert(tabs.join("|") === "Kanban|Git|Office|Usage|Statistics", "Navigation order is incorrect");
+    assert(tabs.join("|") === "Kanban|Office|Git|Usage|Statistics", "Navigation order is incorrect");
     await page.locator('.git-file-select[title="src/api/search.ts"]').click();
     await page.locator(".git-diff").waitFor();
     assert((await page.locator(".git-diff").innerText()).includes("query.trim()"), "Working diff did not render");

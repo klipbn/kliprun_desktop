@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { currentTarget } from "../sessions/SessionMoveMenu";
 import { emptyWorkspace, createProject, createGroup, moveSessions, projectFor, groupFor, validateWorkspace, loadWorkspace, saveWorkspace, sortSessions } from "../sessions/model";
 
 test("workspace restores sidebar width without changing projects and rejects unusable widths", () => {
@@ -40,4 +41,14 @@ test("native workspace survives origin changes and malformed saved state is reje
 test("all sessions put assigned projects before newer unassigned sessions", () => {
   const state = moveSessions(createProject(emptyWorkspace(), "p", "Project"), ["old"], "p", null);
   expect(sortSessions([{ id: "new", updated_at: 20 }, { id: "old", updated_at: 1 }], state).map(s => s.id)).toEqual(["old", "new"]);
+});
+
+test("the move menu marks the destination shared by all chosen sessions", () => {
+  let state = createProject(createProject(emptyWorkspace(), "p1", "Reports"), "p2", "Infra");
+  state = createGroup(state, "p1", "g1", "Weekly");
+  state = moveSessions(state, ["a", "b"], "p1", "g1");
+  expect(currentTarget(state, ["a"])).toEqual({ projectId: "p1", groupId: "g1" });
+  expect(currentTarget(state, ["a", "b"])).toEqual({ projectId: "p1", groupId: "g1" });
+  expect(currentTarget(state, ["c"])).toEqual({ projectId: null, groupId: null });
+  expect(currentTarget(state, ["a", "c"])).toBeUndefined();
 });

@@ -43,8 +43,8 @@ export function registerGitRoutes(parent: Hono) {
     if ((origin && origin !== new URL(c.req.url).origin) || site === "cross-site") return c.json({ error: "Cross-origin file saves are not allowed." }, 403);
     if (!c.req.header("Content-Type")?.startsWith("application/json")) return c.json({ error: "Expected JSON." }, 400);
     const raw = await c.req.text();
-    // A 10 MiB notebook can expand sixfold when JSON escapes its contents.
-    if (raw.length > 64 * 1024 * 1024) return c.json({ error: "File request is too large." }, 413);
+    // A 40 MiB HTML report can expand when JSON escapes its contents.
+    if (raw.length > 160 * 1024 * 1024) return c.json({ error: "File request is too large." }, 413);
     let body;
     try { body = JSON.parse(raw); } catch { return c.json({ error: "Invalid JSON." }, 400); }
     if (!body || typeof body !== "object") return c.json({ error: "Invalid file request." }, 400);

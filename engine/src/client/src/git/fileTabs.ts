@@ -20,6 +20,11 @@ export function refreshFileTab(state: FileTabs, id: number, snapshot: FileDraft,
   if (data.revision === snapshot.revision && !tab.error) return state;
   return { ...state, tabs: state.tabs.map(tab => tab.id === id ? { ...tab, file: { ...data, draft: data.content }, error: null } : tab) };
 }
+/** Applies a finished save, keeping edits made while it was in flight as a new draft. */
+export function savedFileTab(state: FileTabs, id: number, snapshot: FileDraft, data: GitFileContent, savedAt: number): FileTabs {
+  return { ...state, tabs: state.tabs.map(tab => tab.id === id ? { ...tab, saving: false, savedAt,
+    file: { ...data, draft: tab.file && tab.file.draft !== snapshot.draft ? tab.file.draft : data.content } } : tab) };
+}
 export function closeFileTab(state: FileTabs, id: number): FileTabs {
   const index = state.tabs.findIndex(tab => tab.id === id), tabs = state.tabs.filter(tab => tab.id !== id);
   return { ...state, tabs, activeId: state.activeId === id ? tabs[Math.max(0, index - 1)]?.id ?? null : state.activeId };

@@ -4,6 +4,24 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.32] - 2026-10-21
+
+### Added
+
+- Edit HTML pages visually in Git → Files: select elements, type into them, change block types, apply bold, italic, underline, strikethrough, lists, links and colors, and duplicate or delete blocks. Edits splice only the affected source and are saved with ⌘S, with undo and redo.
+- Show the HTML source beside the preview with a resizable split; the element selected in the page is highlighted in the code, including while typing.
+- Open and save HTML files up to 40 MB; files above 2 MB start in the rendered view.
+- Close Git → Files tabs and terminal tabs with a middle click. Unsaved files ask to save or discard first, and running agents ask before their session ends.
+- Move sessions from a drop-down beside the folder button (or **Move to…**) that lists projects and groups and moves with one click, replacing the Move sessions window.
+
+### Fixed
+
+- List Claude Code messages in session details newest first, as for OpenCode and Codex, so the Agent tab also shows the latest 42 messages.
+- Keep the code editor responsive after visual edits by applying only the changed text instead of replacing the document, and collapse the middle of lines longer than 20,000 characters.
+- Keep edits made while a save is in flight as an unsaved draft instead of discarding them.
+- Stop memory growth while editing large HTML: undo history and code-editor updates no longer keep whole earlier versions of the file alive, pages above 2 MB refresh their preview on request instead of after every pause in typing, and large files report code edits after a pause.
+- Read files with a buffer sized to the file instead of the 40 MB limit.
+
 ## [0.0.31] - 2026-10-20
 
 ### Added

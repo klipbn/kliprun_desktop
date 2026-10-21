@@ -25,6 +25,8 @@ async (page, base = "http://127.0.0.1:18796") => {
       await page.setViewportSize({ width, height: 900 }); await page.goto(`${base}/git`);
       await page.getByRole("button", { name: "Repository", exact: true }).click();
       await page.getByRole("option").filter({ hasText: "atlas" }).click();
+      // Git opens on Files by default; the wrapped diff is under Changes.
+      await page.getByRole("tab", { name: /^Changes/ }).click();
       await page.locator(".git-file-select").first().click();
       await checkDiff(`Changes at ${width}`);
       await page.getByRole("tab", { name: "History", exact: true }).click();
