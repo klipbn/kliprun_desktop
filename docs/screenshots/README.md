@@ -1,6 +1,6 @@
 # Demo screenshots
 
-All twenty-one current screenshots were captured from **KlipRun Desktop 0.0.31** on **2026-10-20**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All twenty-one current screenshots were captured from **KlipRun Desktop 0.0.32** on **2026-10-21**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -50,7 +50,7 @@ Usage now also reads the existing statistics endpoints against that same fixture
 
 [`../../scripts/git-file-actions.test.js`](../../scripts/git-file-actions.test.js) checks file and folder context menus, native clipboard/Finder/default-app requests, folder drag and drop, rename, ignore, cancellation and saving of affected drafts, destination conflicts, Collapse all folders in Changes, and menu placement in three window sizes. Filesystem mutations and file saves stay in memory.
 
-The Sessions catalog combines `recent_sessions.sessions` with observed runtime/model durations calculated from `statistics_dataset`; context uses `board`. `capture-all.js` assigns fictional projects and groups using these existing session IDs only. [`../../scripts/session-workspace.test.js`](../../scripts/session-workspace.test.js) checks groups, favorites, bulk moves, drag/drop, undo, persistence, metrics, filtering, Control+1–6, pagination across 212 fictional sessions, failure recovery, and normal/small layouts. The former sidebar tests have been replaced by this workspace coverage. The legacy `/api/recent-sessions` preview remains available for read-only API tests.
+The Sessions catalog combines `recent_sessions.sessions` with observed runtime/model durations calculated from `statistics_dataset`; context uses `board`. `capture-all.js` assigns fictional projects and groups using these existing session IDs only. [`../../scripts/session-workspace.test.js`](../../scripts/session-workspace.test.js) checks groups, favorites, bulk moves, drag/drop, undo, persistence, metrics, filtering, Control+1–7, pagination across 212 fictional sessions, failure recovery, and normal/small layouts. The former sidebar tests have been replaced by this workspace coverage. The legacy `/api/recent-sessions` preview remains available for read-only API tests.
 
 [`../../scripts/git-repository-discovery.test.js`](../../scripts/git-repository-discovery.test.js) adds a synthetic long project history to the fixture response and checks discovery against Bun's real HTTP header limit. It verifies bounded request URLs, successful batches, merged roots, and a Git view without an error; it does not read real repositories.
 
@@ -131,3 +131,15 @@ The 0.0.31 refresh recaptures all 21 gallery images using only `mock-api.json`,
 including the corrected navigation shortcuts. Native terminal themes and controls
 are checked separately at normal and small Settings sizes with disposable defaults;
 review images remain in `/private/tmp`. All gallery captures made zero external requests.
+
+The 0.0.32 refresh recaptures all 21 gallery images with `capture-all.js`, `capture-git.js`,
+`capture-files.js` and `capture-workflow.js`, using only `mock-api.json`; all captures made
+zero external requests. `scripts/session-workspace.test.js` now moves sessions through the
+folder drop-down and checks that it fits at 1440, 980, 700 and 600 pixels.
+`scripts/html-preview.test.js` covers the source shown beside the HTML preview at 1440, 900
+and 500 pixels. Five checks that no longer matched the app were updated: Control+5–7
+shortcuts in `session-workspace` and `toolbar-preferences`, the Kanban → Office → Git order
+in `git-workspace`, lazily loaded folders in `git-notebook`, and the default Files tab in
+`git-wrapping`. Visual HTML editing, the memory checks for 40 MB reports and middle-click
+closing were verified in Chromium and WebKit against disposable repositories; review images
+stay in `/private/tmp`.

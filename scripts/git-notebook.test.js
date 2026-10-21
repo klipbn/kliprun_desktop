@@ -27,6 +27,8 @@ async (page, base = "http://127.0.0.1:18796") => {
     await page.getByRole("button", { name: "Repository", exact: true }).click();
     await page.getByRole("option").filter({ hasText: "atlas" }).click();
     await page.getByRole("tab", { name: "Files", exact: true }).click();
+    // Folders load lazily, so open the notebooks folder before choosing the file.
+    if (!await notebook().count()) await page.getByRole("treeitem", { name: "notebooks", exact: true }).click();
     await notebook().click(); await preview().waitFor();
     await preview().getByRole("heading", { name: "Atlas project activity", exact: true }).waitFor();
     check(await preview().locator("table").count() === 2, "Markdown or saved HTML table is missing");
