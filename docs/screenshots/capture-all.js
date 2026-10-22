@@ -10,7 +10,7 @@ async (page, directory = "docs/screenshots", base = "http://127.0.0.1:18796") =>
     await page.goto(`${base}${path}`);
     if (!path.startsWith("/__demo/")) {
       await page.locator('[data-testid="version"]').waitFor();
-      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.32") throw new Error("Build the 0.0.32 client before capturing.");
+      if ((await page.locator('[data-testid="version"]').innerText()) !== "v0.0.33") throw new Error("Build the 0.0.33 client before capturing.");
     }
   }
   async function save(name) {

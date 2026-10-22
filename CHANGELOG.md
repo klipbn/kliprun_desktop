@@ -4,6 +4,13 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.33] - 2026-10-22
+
+### Added
+
+- Hide the Kanban session details panel to the right and reopen it for the current selection without clearing the selected session. Remove the decorative chevron before the session title.
+- Replace native Kanban priority selects with a themed menu. Keep Critical, Medium and Low, and add Question, Warning, Urgent and Blocked markers; persist selections in the desktop app.
+
 ## [0.0.32] - 2026-10-21
 
 ### Added
