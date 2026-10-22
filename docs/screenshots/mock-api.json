@@ -4125,8 +4125,10 @@
     ]
   },
   "card_priorities": {
-    "ses_demo_review": "critical",
-    "ses_demo_search": "medium",
+    "ses_demo_review": "question",
+    "ses_demo_search": "urgent",
+    "ses_demo_checks": "warning",
+    "ses_demo_release": "blocked",
     "codex:00000000-0000-4000-8000-000000000001": "low"
   },
   "git": {

@@ -34,13 +34,23 @@ async (page) => {
       await panel.getByTestId("tab-kanban").click();
       await panel.getByText("Status history and time spent in each state.", { exact: true }).waitFor();
       await page.screenshot({ path: `/tmp/kliprun-session-details-${width}.png` });
+      await panel.getByRole("button", { name: "Hide details", exact: true }).click();
+      await panel.waitFor({ state: "detached" });
+      const showDetails = page.getByRole("button", { name: "Show details", exact: true });
+      await showDetails.waitFor();
+      await page.getByTestId("card-ses_demo_checks").click();
+      await showDetails.waitFor();
+      if (await panel.count()) throw new Error("Selecting another session reopened hidden details");
+      await showDetails.click();
+      await panel.locator("h2").getByText("Run integration checks", { exact: true }).waitFor();
       remote = false;
       await panel.getByRole("button", { name: "Close details" }).click();
+      await panel.waitFor({ state: "detached" });
       await page.getByRole("button", { name: "Implement search API", exact: true }).click();
       await panel.getByText("feature/details", { exact: true }).waitFor();
       if (await panel.getByTestId("repository-link").count()) throw new Error("A repository without a remote must not get a link");
     }
-    return "Details verified at 1440px and 900px: branch link and no-remote fallback, tab order, User/Agent content, Kanban caption, both harness icons, no All or iTerm2.";
+    return "Details verified at 1440px and 900px: branch link and no-remote fallback, tab order, User/Agent content, Kanban caption, collapse/reopen and hidden selection, both harness icons, no All or iTerm2.";
   } finally {
     await page.unroute(`${base}/api/session/*`);
   }

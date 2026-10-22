@@ -3,7 +3,7 @@ import Foundation
 public struct SessionPriorities {
     private let defaults: UserDefaults
     private let key = "session.priorities"
-    private static let allowed: Set<String> = ["critical", "medium", "low"]
+    private static let allowed: Set<String> = ["critical", "medium", "low", "question", "warning", "urgent", "blocked"]
 
     public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 

@@ -21,9 +21,17 @@ test("card priorities persist by session ID and can be cleared", () => {
 
 test("stored priorities ignore malformed values", () => {
   const storage = new MemoryStorage();
-  storage.setItem("kliprun.cardPriorities", JSON.stringify({ valid: "low", invalid: "urgent" }));
+  storage.setItem("kliprun.cardPriorities", JSON.stringify({ valid: "low", invalid: "mystery" }));
 
   expect(loadCardPriorities(storage)).toEqual({ valid: "low" });
+});
+
+test("new Kanban markers survive browser storage", () => {
+  const storage = new MemoryStorage();
+  const markers = { question: "question", warning: "warning", urgent: "urgent", blocked: "blocked" } as const;
+  storage.setItem("kliprun.cardPriorities", JSON.stringify(markers));
+
+  expect(loadCardPriorities(storage)).toEqual(markers);
 });
 
 test("desktop priorities survive a new web origin and clearing a flag", () => {

@@ -15,3 +15,14 @@ import Testing
     #expect(preferences.set([:]))
     #expect(SessionPriorities(defaults: defaults).values.isEmpty)
 }
+
+@Test func sessionPrioritiesAcceptKanbanMarkers() {
+    let suite = "KlipRun-priority-markers-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let preferences = SessionPriorities(defaults: defaults)
+    let markers = ["question": "question", "warning": "warning", "urgent": "urgent", "blocked": "blocked"]
+
+    #expect(preferences.set(markers))
+    #expect(SessionPriorities(defaults: defaults).values == markers)
+}

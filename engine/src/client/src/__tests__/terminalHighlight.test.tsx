@@ -19,15 +19,15 @@ test("active terminal card stands out even when its details are closed", () => {
   expect(html).toContain("ring-2 ring-accent");
 });
 
-test("session card exposes the selected priority and all priority choices", () => {
+test("session priority uses an accessible custom menu trigger", () => {
   const priorityProps = { priorities: { [card.session_id]: "critical" }, onPriorityChange: () => {} } as unknown as React.ComponentProps<typeof SessionCard>;
   const html = renderToStaticMarkup(<SessionCard {...priorityProps} card={card} depth={0} selectedId={null}
     activeTerminalId={null} now={0} isRead={() => false} onSelect={() => {}} />);
 
   expect(html).toContain('data-testid="card-priority"');
-  expect(html).toContain("Critical");
-  expect(html).toContain("Medium");
-  expect(html).toContain("Low");
+  expect(html).toContain('aria-label="Priority for Codex session"');
+  expect(html).toContain('aria-haspopup="menu"');
+  expect(html).not.toContain("<select");
 });
 
 test("unresolved terminal waits for automatic linking without a chat selector", () => {

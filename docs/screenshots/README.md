@@ -1,10 +1,10 @@
 # Demo screenshots
 
-All twenty-one current screenshots were captured from **KlipRun Desktop 0.0.32** on **2026-10-21**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority flags, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+All twenty-one current screenshots were captured from **KlipRun Desktop 0.0.33** on **2026-10-22**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority markers, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
-| [`kanban.png`](kanban.png) | 1440 × 900 | Kanban columns, nested subagent, and synthetic Critical/Medium/Low flags |
+| [`kanban.png`](kanban.png) | 1440 × 900 | Kanban columns, nested subagent, and synthetic Question, Urgent, Warning, Blocked and Low markers |
 | [`kanban-details.png`](kanban-details.png) | 1440 × 900 | Selected Implement search API session and the default Agents T details tab |
 | [`sessions.png`](sessions.png) | 1440 × 900 | All sessions with project assignments, favorites, metrics, and No project |
 | [`session-groups.png`](session-groups.png) | 1440 × 900 | Aurora with Research (2), Work (1), and Uncategorized (1) |
@@ -143,3 +143,8 @@ in `git-workspace`, lazily loaded folders in `git-notebook`, and the default Fil
 `git-wrapping`. Visual HTML editing, the memory checks for 40 MB reports and middle-click
 closing were verified in Chromium and WebKit against disposable repositories; review images
 stay in `/private/tmp`.
+
+The 0.0.33 refresh recaptures all 21 gallery images with the same fixture-only callbacks.
+The Kanban screenshot shows the new per-card Question, Urgent, Warning and Blocked markers;
+all captures use only `mock-api.json` and make zero external requests. `scripts/priority-menu.test.js`
+checks the custom marker menu, selection, clearing and all available options.

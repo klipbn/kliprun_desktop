@@ -1,4 +1,5 @@
-export type CardPriority = "critical" | "medium" | "low";
+export const CARD_PRIORITY_VALUES = ["critical", "medium", "low", "question", "warning", "urgent", "blocked"] as const;
+export type CardPriority = typeof CARD_PRIORITY_VALUES[number];
 export type CardPriorities = Record<string, CardPriority>;
 
 export const CARD_PRIORITIES_STORAGE_KEY = "kliprun.cardPriorities";
@@ -13,7 +14,7 @@ function browserHost(): PriorityHost { return typeof window === "undefined" ? {}
 function validated(value: unknown): CardPriorities {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, CardPriority] =>
-    entry[1] === "critical" || entry[1] === "medium" || entry[1] === "low"));
+    CARD_PRIORITY_VALUES.includes(entry[1] as CardPriority)));
 }
 
 type PriorityStorage = Pick<Storage, "getItem" | "setItem">;

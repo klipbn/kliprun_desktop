@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownToLine, BarChart3, Building2, Columns3, Folder, Gauge, GitBranch, PanelTopClose, PanelTopOpen, Settings2, SquareTerminal, Workflow as WorkflowIcon } from "lucide-react";
+import { ArrowDownToLine, BarChart3, Building2, Columns3, Folder, Gauge, GitBranch, PanelRightOpen, PanelTopClose, PanelTopOpen, Settings2, SquareTerminal, Workflow as WorkflowIcon } from "lucide-react";
 import type { CardPayload, ColumnKey } from "@shared/types";
 import { sessionCards } from "@shared/readTracker";
 import { linkedSessionId } from "@shared/sessionLink";
@@ -67,6 +67,7 @@ export default function App() {
   const quotaState = useQuotas(preferences.usageProviders);
   const { isRead, counts, markRead } = useReadTracker(board);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [boardDetailsHidden, setBoardDetailsHidden] = useState(false);
   const [recentSelection, setRecentSelection] = useState<{ id: string; directory: string } | null>(null);
   const [priorities, setPriorities] = useState(loadCardPriorities);
   const [cardOrder, setCardOrder] = useState(loadCardOrder);
@@ -217,6 +218,7 @@ export default function App() {
 
   const closeDetails = useCallback(() => {
     setSelectedId(null);
+    setBoardDetailsHidden(false);
     notifyNativeSelection(null);
   }, []);
 
@@ -347,7 +349,7 @@ export default function App() {
           </div>
         ) : (
           <>
-            <div className={`flex-1 min-w-0 grid gap-3 p-3 ${selectedId ? "grid-cols-1 xl:grid-cols-3" : "grid-cols-1 md:grid-cols-3"}`}>
+            <div className={`flex-1 min-w-0 grid gap-3 p-3 ${selectedId && !boardDetailsHidden ? "grid-cols-1 xl:grid-cols-3" : "grid-cols-1 md:grid-cols-3"}`}>
               {(["attention", "running", "idle"] as ColumnKey[]).map((key) => (
                 <BoardColumn
                   key={key}
@@ -365,9 +367,14 @@ export default function App() {
                 />
               ))}
             </div>
-            {page === "board" && selectedId && (
-              <DetailsPanel sessionId={selectedId} onClose={closeDetails} />
-            )}
+            {page === "board" && selectedId && (boardDetailsHidden ? (
+              <button type="button" onClick={() => setBoardDetailsHidden(false)} aria-label="Show details" title="Show details"
+                className="z-10 flex w-9 shrink-0 items-center justify-center border-l border-border bg-surface text-text-secondary hover:bg-background hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent">
+                <PanelRightOpen className="w-4 h-4" />
+              </button>
+            ) : (
+              <DetailsPanel sessionId={selectedId} onClose={closeDetails} onHide={() => setBoardDetailsHidden(true)} />
+            ))}
           </>
         )}
       </main>

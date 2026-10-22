@@ -9,7 +9,12 @@ A macOS app for OpenCode, Codex, and Claude Code sessions: a Kanban board, embed
 ![Kanban with the embedded terminal on the left and session details on the right](docs/screenshots/desktop-terminal.png)
 
 Show or hide the embedded terminal with **⌘J**; click a session card to open its details.
+On Kanban, **Hide details** tucks the panel to the right without changing the
+selected session, and **Show details** brings it back. **Close details** clears
+the selection.
 Kanban cards use neutral outlines; column headings and card icons show their status.
+Choose Critical, Medium, Low, Question (?), Warning (!), Urgent (⚡) or Blocked (⛔)
+from a themed per-card priority menu. **No priority** clears the marker.
 
 Click **Show labels** at the right edge of the top toolbar to expand it: agent
 and utility buttons show their names on the first row, and workspace views move
@@ -35,7 +40,7 @@ use **Kanban** in this toolbar to return to the board.
 
 Requires **Apple Silicon and macOS 13+**.
 
-1. Download `KlipRun-0.0.32-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
+1. Download `KlipRun-0.0.33-macos-arm64.zip` from the [latest release](https://github.com/klipbn/kliprun_desktop/releases/latest).
 2. Unzip and move `KlipRun.app` to **Applications**. Quit KlipRun before replacing an older version.
 3. Open the app. If macOS blocks it, use **System Settings → Privacy & Security → Open Anyway**. The build is locally signed and not notarized.
 
