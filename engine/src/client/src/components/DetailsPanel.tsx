@@ -3,7 +3,6 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   AlertCircle,
-  ChevronRight,
   Clock,
   Coins,
   Cpu,
@@ -12,6 +11,7 @@ import {
   History,
   Loader2,
   MessageSquare,
+  PanelRightClose,
   Terminal,
   User,
   Wrench,
@@ -226,9 +226,10 @@ function ModelsView({ detail }: { detail: SessionDetailPayload }) {
 interface Props {
   sessionId: string;
   onClose: () => void;
+  onHide?: () => void;
 }
 
-export function DetailsPanel({ sessionId, onClose }: Props) {
+export function DetailsPanel({ sessionId, onClose, onHide }: Props) {
   const preferences = useDesktopPreferences();
   const [detail, setDetail] = useState<SessionDetailPayload | null>(null);
   const [tab, setTab] = useState<TabKey>(preferences.detailTab);
@@ -316,13 +317,21 @@ export function DetailsPanel({ sessionId, onClose }: Props) {
           setPanelWidth(resizedDetailsWidth(panelWidth, 0, event.key === "ArrowLeft" ? -20 : 20, window.innerWidth));
         }} />}
       <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-border">
-        <ChevronRight className="w-4 h-4 text-accent shrink-0" />
         <h2 className="text-sm font-medium truncate flex-1 text-white" title={detail?.title ?? sessionId}>
           {detail?.title ?? sessionId}
         </h2>
         {detail && <span className="inline-flex items-center gap-1 text-[10px] text-text-secondary shrink-0">
           <HarnessIcon source={detail.source} />{SESSION_SOURCE_NAMES[detail.source]}
         </span>}
+        {onHide && <button
+          type="button"
+          onClick={onHide}
+          className="p-1 rounded hover:bg-background text-white"
+          aria-label="Hide details"
+          title="Hide details"
+        >
+          <PanelRightClose className="w-4 h-4" />
+        </button>}
         <button
           type="button"
           onClick={onClose}

@@ -4,7 +4,6 @@ import {
   CircleAlert,
   CircleHelp,
   Folder,
-  Flag,
   GitBranch,
   GitMerge,
   Loader2,
@@ -19,12 +18,7 @@ import type { TrackedCard } from "@shared/readTracker";
 import { formatDuration, formatRelativeTimeVerbose, formatTokens } from "@shared/format";
 import type { CardPriorities, CardPriority } from "../cardPriorities";
 import { HarnessIcon } from "./HarnessIcon";
-
-const PRIORITY_STYLES: Record<CardPriority, string> = {
-  critical: "text-error",
-  medium: "text-warning",
-  low: "text-success",
-};
+import { PriorityPicker } from "./PriorityPicker";
 
 function StatusIcon({ card, read }: { card: CardPayload; read: boolean }) {
   if (card.stage === "Status unknown") {
@@ -109,22 +103,8 @@ export const SessionCard = memo(function SessionCard({ card, depth, selectedId, 
           </button>
         </h3>
         {activeTerminal && <span className="inline-flex items-center gap-1 rounded border border-accent/60 bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent shrink-0" data-testid="active-terminal-badge"><SquareTerminal className="w-3 h-3" />Terminal</span>}
-        <span className={`relative flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-border/50 focus-within:ring-1 focus-within:ring-accent ${priority ? PRIORITY_STYLES[priority] : "text-text-secondary/60 hover:text-text-primary"}`} title={`Priority: ${priority ? priority[0].toUpperCase() + priority.slice(1) : "Not set"}. Click to change.`}>
-          <Flag className="h-3.5 w-3.5" fill={priority ? "currentColor" : "none"} aria-hidden="true" />
-          <select
-            aria-label={`Priority for ${card.title || "Untitled Session"}`}
-            data-testid="card-priority"
-            value={priority ?? ""}
-            onClick={(event) => event.stopPropagation()}
-            onChange={(event) => onPriorityChange(card.session_id, (event.target.value || null) as CardPriority | null)}
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-          >
-            <option value="">No priority</option>
-            <option value="critical">Critical</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </span>
+        <PriorityPicker title={card.title || "Untitled Session"} priority={priority ?? null}
+          onChange={value => onPriorityChange(card.session_id, value)} />
         <span className="text-xs text-text-secondary shrink-0">
           {formatRelativeTimeVerbose(card.last_event_at || null)}
         </span>
