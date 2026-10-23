@@ -80,7 +80,7 @@ async (page, base = 'http://127.0.0.1:18856') => {
         await preview.getByLabel('Close workflow list', { exact: true }).click();
         check(await preview.locator('.workflow-sidebar').count() === 0, 'Narrow workflow list did not close');
         await preview.getByLabel('Show workflow list', { exact: true }).click();
-        await preview.locator('.workflow-sidebar .workflow-list-item').first().click();
+        await preview.locator(`.workflow-sidebar [data-workflow-id="${id}"] .workflow-list-item`).click();
         await preview.locator('.workflow-sidebar').waitFor({ state: 'detached' });
         await preview.locator('.workflow-run-order button').first().click();
       }
