@@ -4,7 +4,7 @@
 
 KlipRun is a macOS app for observing OpenCode and Codex sessions and starting new agents in embedded terminal tabs. Preserve the existing dark Kanban, Office, Statistics, and details design. Keep fixed UI copy in English; display user-provided session titles and project names as received.
 
-The bundled engine reads the agents' existing stores. Its API must stay on loopback and require the app-generated token. A selected card may switch an already visible terminal to its matching agent; selecting a card must not open a hidden terminal dock. Match terminal tabs to sessions using process evidence, and keep ambiguous Codex matches unresolved.
+The bundled engine reads the agents' existing stores. Its API must stay on loopback and require the app-generated token. A selected card may switch an already visible terminal to its matching agent; selecting a card must not open a hidden terminal dock. Match terminal tabs to sessions using process evidence, and keep ambiguous Codex matches unresolved. Workflow Claude and Codex cards are the one case where the app opens a terminal tab by itself (engine `launches` → `DesktopStore.openWorkflowTerminal`); their completion comes from the CLI's own turn-complete hook, never from terminal silence.
 
 ## Where to work
 

@@ -5,10 +5,11 @@ import { activeRun, parseWorkflow } from '@shared/workflow';
 import { gitRoot, gitStatus } from '../git';
 import { availableModels, parseAgentSettings, readAttemptResponses } from './agents';
 import type { WorkflowRunner } from './runner';
+import type { VisibleAgents } from './visible';
 import type { WorkflowStore } from './store';
 import type { WorkflowManagementAction } from '@shared/workflowPresentation';
 
-export function registerWorkflowRoutes(parent: Hono, runner: WorkflowRunner, store: WorkflowStore, stateDirectory: string) {
+export function registerWorkflowRoutes(parent: Hono, runner: WorkflowRunner, store: WorkflowStore, stateDirectory: string, visible?: VisibleAgents) {
   const app = new Hono();
   let settings = parseAgentSettings(JSON.parse(process.env.KLIPRUN_AGENT_SETTINGS ?? '{}'));
   let catalog: Awaited<ReturnType<typeof availableModels>> | undefined;
@@ -26,7 +27,20 @@ export function registerWorkflowRoutes(parent: Hono, runner: WorkflowRunner, sto
     await next();
   });
   app.get('/', c => c.json({ workflows: runner.list(), selection: store.ui() }));
-  app.get('/status', c => c.json({ ...runner.status(), selection: store.ui() }));
+  app.get('/status', c => {
+    if (c.req.query('host') === 'desktop') visible?.heartbeat();
+    return c.json({ ...runner.status(), launches: visible?.list() ?? [], selection: store.ui() });
+  });
+  app.post('/visible/reject', async c => {
+    const body = await c.req.json();
+    if (typeof body.attemptId !== 'string' || typeof body.reason !== 'string') return c.json({ error: 'Invalid terminal rejection.' }, 400);
+    return visible?.reject(body.attemptId, body.reason.slice(0, 300)) ? c.json({ ok: true }) : c.json({ error: 'This agent request is no longer waiting for a terminal.' }, 409);
+  });
+  app.post('/visible/claim', async c => {
+    const body = await c.req.json();
+    if (typeof body.attemptId !== 'string' || !Number.isSafeInteger(body.pid)) return c.json({ error: 'Invalid terminal claim.' }, 400);
+    return visible?.claim(body.attemptId, body.pid) ? c.json({ ok: true }) : c.json({ error: 'This agent request is no longer waiting for a terminal.' }, 409);
+  });
   app.get('/document', c => c.json(runner.get(c.req.query('id') ?? '')));
   app.post('/manage', async c => {
     const body = await c.req.json();

@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, FileText, GitBranch, Trash2, X } from 'lucide-react';
-import { currentResult, workflowOrder } from '@shared/workflow';
+import { currentResult, publicationCommitMessage, workflowOrder } from '@shared/workflow';
 import type { WorkflowAgent, WorkflowDefinition, WorkflowEdge, WorkflowNode, WorkflowRun } from '@shared/workflow';
 import { notifyNativeFileAction } from '../nativeBridge';
 import { workflowAPI } from './useWorkflows';
 import { statusLabel } from './WorkflowCanvas';
 import { AgentResponse } from './AgentResponse';
 import { TASK_PRESETS, taskPreset, formatWorkflowTimestamp, type TaskPreset } from '@shared/workflowPresentation';
+import { WorkflowPicker } from './WorkflowPicker';
 
 type Props = { flow: WorkflowDefinition; node?: WorkflowNode; edge?: WorkflowEdge; run?: WorkflowRun; locked: boolean; models: Record<WorkflowAgent, string[]>;
+  branches?: string[]; remotes?: string[];
   edit: (change: (flow: WorkflowDefinition) => void) => void; onSelect:(id:string)=>void; onClose: () => void; onGit: () => void };
-export function WorkflowInspector({ flow, node, edge, run, locked, models, edit, onSelect, onClose, onGit }: Props) {
+export function WorkflowInspector({ flow, node, edge, run, locked, models, branches = [], remotes = [], edit, onSelect, onClose, onGit }: Props) {
   const [tab, setTab] = useState('settings'), [historyId, setHistoryId] = useState(''), [responses, setResponses] = useState<{messages:string[];truncated:boolean}>({messages:[],truncated:false}), [responseError,setResponseError]=useState('');
   const attempts = run?.attempts.filter(a => a.nodeId === node?.id) ?? [];
   const current = run && node ? currentResult(run, node.id) : undefined;
@@ -43,24 +45,40 @@ export function WorkflowInspector({ flow, node, edge, run, locked, models, edit,
     <nav className="workflow-tabs" aria-label="Task details">{[['settings', 'Settings'], ['input', 'Inputs'], ['result', 'Result'], ['history', 'History'], ['responses', 'Responses']].map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>)}</nav>
     <div className="workflow-inspector-content">
       {tab === 'settings' && <><fieldset disabled={locked}>
-        {node.kind!=='human'&&<label>Task preset<select aria-label="Task preset" value="" onChange={e=>{const preset=taskPreset(e.target.value as TaskPreset);edit(f=>{const n=f.nodes.find(n=>n.id===node.id)!;Object.assign(n,preset);});}}><option value="">Choose a preset…</option>{TASK_PRESETS.filter(p=>p.kind===node.kind).map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select><small>Replaces the task text or publication mode. Agent, model and branches stay as selected.</small></label>}
-        <label>Title<input value={node.title} onChange={e => update('title', e.target.value)} /></label>
+        {node.kind==='agent'&&<label>Task preset<WorkflowPicker label="Task preset" value="" disabled={locked}
+          options={[{value:'',label:'Choose a preset…'},...TASK_PRESETS.filter(p=>p.kind===node.kind).map(p=>({value:p.id,label:p.label}))]}
+          onChange={value=>{if(!value)return;const preset=taskPreset(value as TaskPreset);edit(f=>{const n=f.nodes.find(n=>n.id===node.id)!;Object.assign(n,preset);});}} /><small>Replaces the task text or publication mode. Agent, model and branches stay as selected.</small></label>}
+        {node.kind!=='publication'&&<label>Title<input value={node.title} onChange={e => update('title', e.target.value)} /></label>}
         {node.kind === 'agent' ? <>
-          <div className="workflow-field-row"><label>Agent<select aria-label="Agent" value={node.agent} onChange={e => { update('agent', e.target.value); update('model', ''); }}><option value="opencode">OpenCode</option><option value="codex">Codex</option><option value="claude">Claude Code</option></select></label>
-            <label>Model<input list={`workflow-models-${node.agent}`} value={node.model} placeholder="Agent default" onChange={e => update('model', e.target.value)} /><datalist id={`workflow-models-${node.agent}`}>{models[node.agent].map(m => <option key={m} value={m} />)}</datalist></label></div>
+          <div className="workflow-agent-fields"><label>Agent<WorkflowPicker label="Agent" value={node.agent} disabled={locked}
+            options={[{value:'opencode',label:'OpenCode'},{value:'codex',label:'Codex'},{value:'claude',label:'Claude Code'}]}
+            onChange={value => { update('agent', value); update('model', ''); }} /></label>
+            <label>Model<WorkflowPicker key={`${node.id}:${node.agent}`} label="Model" value={node.model} disabled={locked} allowCustom
+              options={[{value:'',label:'Agent default'},...models[node.agent].map(value=>({value,label:value}))]}
+              onChange={value => update('model', value)} /></label></div>
           <label>Task<textarea aria-label="Task" rows={8} value={node.task} onChange={e => update('task', e.target.value)} placeholder="Describe what this card must do…" /></label>
-          <label>Expected result<select aria-label="Expected result" value={node.resultKind} onChange={e => update('resultKind', e.target.value)}><option value="text">Text</option><option value="files">Files</option><option value="code">Code changes</option><option value="review">Review verdict</option></select></label>
+          <label>Expected result<WorkflowPicker label="Expected result" value={node.resultKind} disabled={locked}
+            options={[{value:'text',label:'Text'},{value:'files',label:'Files'},{value:'code',label:'Code changes'},{value:'review',label:'Review verdict'}]}
+            onChange={value => update('resultKind', value)} /></label>
           <label>Output files <small>One path per line, relative to the working folder</small><textarea aria-label="Output files" rows={3} value={node.outputFiles.join('\n')} onChange={e => update('outputFiles', e.target.value.split('\n'))} /></label>
           <label>Completion condition<textarea aria-label="Completion condition" rows={3} value={node.completion} onChange={e => update('completion', e.target.value)} placeholder="What must be ready before moving on?" /></label>
           {node.resultKind === 'review' && <p>A review returns an explicit verdict. Connect Approved to the next step and Changes requested to an earlier agent.</p>}
         </> : node.kind === 'publication' ? <>
-          <label>Mode<select aria-label="Publication mode" value={node.mode} onChange={e => update('mode', e.target.value)}><option value="push">Commit & Push</option><option value="request">Create / Update MR or PR</option></select></label>
-          <label>Remote<input value={node.remote} onChange={e => update('remote', e.target.value)} /></label>
-          <label>Working / source branch<input readOnly value={flow.branch} placeholder="Select above the canvas" /></label>
-          {node.mode === 'request' && <><label>Hosting provider<select aria-label="Hosting provider" value={node.provider} onChange={e => update('provider', e.target.value)}><option value="auto">Detect from remote</option><option value="github">GitHub</option><option value="gitlab">GitLab</option></select></label><label>Target branch<input value={node.targetBranch} onChange={e => update('targetBranch', e.target.value)} placeholder="Choose explicitly, e.g. develop" /></label></>}
-          <label>{node.mode === 'push' ? 'Commit title' : 'Commit / MR / PR title'}<input value={node.requestTitle} onChange={e => update('requestTitle', e.target.value)} /></label>
-          {node.mode === 'request' && <label>Description<textarea aria-label="Description" rows={8} value={node.description} onChange={e => update('description', e.target.value)} /><small>Use {'{{results}}'} to include current results from earlier cards.</small></label>}
-        </> : <p>This card pauses the run for a person. Accept completes this run locally; merging remains in GitHub or GitLab.</p>}
+          <p>Commit changed files and push the workflow branch.</p>
+          <label>Branch<WorkflowPicker label="Branch" value={flow.branch} disabled={locked} allowCustom customValueName="branch"
+            options={[{value:'',label:'Choose a branch…'},...branches.map(value=>({value,label:value}))]}
+            onChange={value=>edit(f=>{f.branch=value;})} />
+            <small>Used by all tasks. A missing local branch is created from the current HEAD at Start.</small></label>
+          <p className="workflow-publication-destination">Push to <strong>{node.remote}/{flow.branch||'choose a branch'}</strong>. Create the MR/PR yourself after the push.</p>
+          <details className="workflow-publish-options"><summary>Options · {node.remote}</summary>
+            <label>Remote<WorkflowPicker label="Remote" value={node.remote} disabled={locked}
+              options={[...new Set([node.remote,...remotes])].filter(Boolean).map(value=>({value,label:value}))}
+              onChange={value=>update('remote',value)} /></label>
+            <label>Commit message (optional)<input aria-label="Commit message (optional)" maxLength={200} value={node.requestTitle}
+              placeholder={publicationCommitMessage(flow,{...node,requestTitle:''})} onChange={e=>update('requestTitle',e.target.value)} /></label>
+            <label>Card title<input value={node.title} onChange={e=>update('title',e.target.value)} /></label>
+          </details>
+        </> : <p>Review the pushed branch and create the MR/PR in your Git hosting service. Accept completes this run locally.</p>}
       </fieldset>
       {locked && <p className="workflow-notice">Execution settings are fixed for this run. Card positions can still be changed.</p>}
       <button className="danger" disabled={locked} onClick={() => { edit(f => { f.nodes = f.nodes.filter(n => n.id !== node.id); f.edges = f.edges.filter(e => e.from !== node.id && e.to !== node.id); }); onClose(); }}><Trash2 />Delete card</button></>}

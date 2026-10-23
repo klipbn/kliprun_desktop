@@ -22,6 +22,7 @@ import { WorkflowRunner } from './workflow/runner';
 import { createAgentAdapter, ownedProcessAlive, recoverAgentResult } from './workflow/agents';
 import { prepareWorkspace, inspectWorkspace, publishWorkflow, validateOutputFiles } from './workflow/git';
 import { registerWorkflowRoutes } from './workflow/routes';
+import { VisibleAgents } from './workflow/visible';
 
 function resolvePort(args: string[]): number {
   const flagIndex = args.indexOf("--port");
@@ -69,11 +70,13 @@ registerQuotaRoutes(app, new QuotaService());
 registerGitRoutes(app);
 const workflowState = process.env.KLIPRUN_BUN_HOME ?? join(homedir(), '.kliprun_bun');
 const workflowStore = new WorkflowStore(join(workflowState, 'workflows.sqlite3'));
+// Only the desktop app can show terminal tabs; without it, agents run headless.
+const visibleAgents = process.env.KLIPRUN_VISIBLE_AGENTS === '1' ? new VisibleAgents() : undefined;
 const workflows = new WorkflowRunner(workflowStore, {
   prepare: prepareWorkspace, inspect: inspectWorkspace, validateFiles: validateOutputFiles,
-  agent: createAgentAdapter(workflowState), publish: publishWorkflow, isAlive: ownedProcessAlive, recover: recoverAgentResult,
+  agent: createAgentAdapter(workflowState, visibleAgents), publish: publishWorkflow, isAlive: ownedProcessAlive, recover: recoverAgentResult,
 });
-registerWorkflowRoutes(app, workflows, workflowStore, workflowState);
+registerWorkflowRoutes(app, workflows, workflowStore, workflowState, visibleAgents);
 
 app.all("/api/*", c => {
   c.header("Cache-Control", "no-store");

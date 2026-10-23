@@ -37,6 +37,7 @@ final class EngineRuntime: ObservableObject {
         if let data = AgentSettings.workflowJSON(agentSettings) {
             child.environment?["KLIPRUN_AGENT_SETTINGS"] = String(decoding: data, as: UTF8.self)
         }
+        child.environment?["KLIPRUN_VISIBLE_AGENTS"] = "1"
         let stdout = Pipe()
         child.standardOutput = stdout
         let logURL = support.appendingPathComponent("engine.log")

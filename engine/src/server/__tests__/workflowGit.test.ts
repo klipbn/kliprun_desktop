@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { runGit } from '../gitProcess';
-import { prepareWorkspace, inspectWorkspace, publishWorkflow, requestRepository, upsertRequest, validateOutputFiles } from '../workflow/git';
+import { prepareWorkspace, inspectWorkspace, publishWorkflow, validateOutputFiles } from '../workflow/git';
 import { workflowTemplate, newAgentNode, type WorkflowRun, type PublicationNode } from '../../shared/workflow';
 import { WorkflowStore } from '../workflow/store';
 import { WorkflowRunner } from '../workflow/runner';
@@ -51,33 +51,44 @@ test('changed branch and remote cannot silently change the publication destinati
   await runGit(directory, ['switch', 'feature/work']); await runGit(directory, ['remote', 'set-url', 'origin', '/tmp/another-remote']);
   await expect(publishWorkflow(run, node, new AbortController().signal, () => {})).rejects.toThrow(/remote/i);
 });
-test('hosting selection supports corporate servers without guessing the provider', () => {
-  expect(requestRepository('git@gitlab.example.test:team/repo.git', 'auto')).toEqual({ provider: 'gitlab', host: 'gitlab.example.test', project: 'team/repo' });
-  expect(requestRepository('ssh://git@code.example.test/team/repo.git', 'github').provider).toBe('github');
-  expect(() => requestRepository('git@code.example.test:team/repo.git', 'auto')).toThrow(/provider/i);
+test('saved request cards commit with a default message and push without any hosting setup', async () => {
+  const { directory, remote, run, node } = await fixture();
+  node.mode = 'request'; node.targetBranch = ''; node.requestTitle = '';
+  run.workspace = await prepareWorkspace(run.snapshot, () => {});
+  await writeFile(join(directory, 'app.txt'), 'push-only result\n');
+  run.reviewed = (await inspectWorkspace(run))!;
+  const first = await publishWorkflow(run, node, new AbortController().signal, () => {});
+  const retry = await publishWorkflow(run, node, new AbortController().signal, () => {});
+  expect(first.publication?.url).toBeUndefined();
+  expect(retry.publication?.sha).toBe(first.publication?.sha);
+  expect((await runGit(directory, ['log', '-1', '--format=%s'])).out.trim()).toBe('Workflow: Example');
+  expect((await runGit(remote, ['rev-parse', 'refs/heads/feature/work'])).out.trim()).toBe(first.publication?.sha!);
 });
-test('lost create response is reconciled by source AND target and updates the existing request', async () => {
-  for (const provider of ['github', 'gitlab'] as const) {
-    let requests: Record<string, unknown>[] = [], creates = 0;
-    const repository = { provider, host: `${provider}.example.test`, project: 'team/repo' };
-    const api = async (_repo: unknown, method: string, path: string, body?: Record<string, unknown>) => {
-      if (method === 'GET') { expect(path).toContain(provider === 'github' ? 'base=develop' : 'target_branch=develop'); return requests; }
-      if (method === 'POST') {
-        creates++;
-        expect(body?.[provider === 'github' ? 'head' : 'source_branch']).toBe('feature/work');
-        requests = [provider === 'github' ? { number: 4, html_url: 'https://github.example.test/team/repo/pull/4', state: 'open', head: { ref: 'feature/work' }, base: { ref: 'develop' } }
-          : { iid: 4, web_url: 'https://gitlab.example.test/team/repo/-/merge_requests/4', state: 'opened', source_branch: 'feature/work', target_branch: 'develop' }];
-        throw Error('Response lost');
-      }
-      return requests[0];
-    };
-    const node: PublicationNode = { id: 'pub', kind: 'publication', title: 'Publish', x: 0, y: 0, mode: 'request', remote: 'origin', provider, targetBranch: 'develop', requestTitle: 'Fix', description: 'Result' };
-    await expect(upsertRequest(repository, 'feature/work', node, 'Result', api)).rejects.toThrow('Response lost');
-    expect(await upsertRequest(repository, 'feature/work', node, 'Updated', api)).toContain('/4');
-    expect(creates).toBe(1);
-  }
+test('publication switches to an existing branch and automatically creates a missing one', async () => {
+  const { directory, run } = await fixture();
+  run.snapshot.branch = 'feature/new-work'; run.snapshot.createBranch = false;
+  expect((await prepareWorkspace(run.snapshot, () => {})).branch).toBe('feature/new-work');
+  await runGit(directory, ['switch', 'feature/work']);
+  run.snapshot.createBranch = true;
+  expect((await prepareWorkspace(run.snapshot, () => {})).branch).toBe('feature/new-work');
 });
-
+test('a push-only workflow can publish an existing clean branch without an artificial review card', async () => {
+  const { directory, remote, run, node } = await fixture();
+  run.snapshot.nodes = [node]; run.snapshot.edges = [];
+  const result = await publishWorkflow(run, node, new AbortController().signal, () => {});
+  expect((await runGit(remote, ['rev-parse', 'refs/heads/feature/work'])).out.trim()).toBe(result.publication?.sha!);
+  expect((await runGit(directory, ['rev-list', '--count', 'HEAD'])).out.trim()).toBe('1');
+});
+test('Start checks only selected remotes and validates them before changing branches', async () => {
+  const { directory, run, node } = await fixture();
+  await runGit(directory, ['remote', 'add', 'unused', '/tmp/unused-remote']);
+  await runGit(directory, ['remote', 'set-url', '--add', '--push', 'unused', '/tmp/unused-one']);
+  await runGit(directory, ['remote', 'set-url', '--add', '--push', 'unused', '/tmp/unused-two']);
+  expect((await prepareWorkspace(run.snapshot, () => {})).branch).toBe('feature/work');
+  run.snapshot.branch = 'feature/not-created'; node.remote = 'missing';
+  await expect(prepareWorkspace(run.snapshot, () => {})).rejects.toThrow(/remote.*missing/i);
+  expect((await runGit(directory, ['branch', '--show-current'])).out.trim()).toBe('feature/work');
+});
 test('a file chain outside Git hands an existing output file to the next agent', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'kliprun-workflow-files-')); folders.push(directory);
   const flow = workflowTemplate('File chain', directory, false);

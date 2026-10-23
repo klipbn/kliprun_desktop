@@ -30,15 +30,18 @@ describe('workflow graph', () => {
     flow.edges.push({ id: 'cycle', from: 'human', to: 'plan', port: 'done' });
     expect(validateWorkflow(flow).length).toBeGreaterThan(0);
   });
-  test('source and target branches are independent and push does not need a target', () => {
+  test('publication needs only a source branch and valid remote, with an optional commit message', () => {
     const flow = workflowTemplate('Example', '/tmp/example', true);
     flow.branch = 'feature/example';
     const node = flow.nodes.find(n => n.kind === 'publication')!;
     if (node.kind !== 'publication') throw Error('fixture');
-    node.mode = 'push'; node.targetBranch = '';
+    expect(node.mode).toBe('push');
+    node.targetBranch = ''; node.requestTitle = '';
     expect(validateWorkflow(flow)).toEqual([]);
     node.mode = 'request';
-    expect(validateWorkflow(flow).some(e => /target branch/i.test(e.message))).toBe(true);
+    expect(validateWorkflow(flow)).toEqual([]);
+    flow.branch = '';
+    expect(validateWorkflow(flow).some(e => /branch/i.test(e.message))).toBe(true);
   });
 });
 

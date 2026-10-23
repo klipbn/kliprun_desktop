@@ -22,9 +22,13 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
     var reportedCodexObservation: String?
     var pid: Int32 { view.process?.shellPid ?? 0 }
 
-    init?(id: Int, source: String, directory: String, resumeSessionID: String? = nil, agentSettings: AgentSettings = AgentSettings(), preferences: AppPreferences = AppPreferences(), onExit: @escaping (Int) -> Void = { _ in }) {
+    convenience init?(id: Int, source: String, directory: String, resumeSessionID: String? = nil, agentSettings: AgentSettings = AgentSettings(), preferences: AppPreferences = AppPreferences(), onExit: @escaping (Int) -> Void = { _ in }) {
         guard let launch = AgentLaunch.make(source: source, home: FileManager.default.homeDirectoryForCurrentUser.path,
                                             inherited: ProcessInfo.processInfo.environment, sessionID: resumeSessionID, settings: agentSettings) else { return nil }
+        self.init(id: id, source: source, directory: directory, resumeSessionID: resumeSessionID, launch: launch, preferences: preferences, onExit: onExit)
+    }
+
+    init(id: Int, source: String, directory: String, resumeSessionID: String? = nil, launch: AgentLaunch, name: String? = nil, preferences: AppPreferences = AppPreferences(), onExit: @escaping (Int) -> Void = { _ in }) {
         self.id = id; self.source = source; self.directory = directory
         self.resumeSessionID = resumeSessionID
         self.explicitSessionID = resumeSessionID
@@ -34,6 +38,7 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable, LocalProc
         title = initialTitle
         titleState = TerminalTitle(automatic: initialTitle)
         super.init()
+        if let name { rename(name) }
         applyPreferences(preferences)
         view.minimumContrastRatio = 4.5
         view.processDelegate = self
