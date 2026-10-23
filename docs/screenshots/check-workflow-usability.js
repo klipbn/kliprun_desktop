@@ -15,7 +15,7 @@ async (page, base = 'http://127.0.0.1:18799') => {
   assert(await right.getAttribute('aria-valuenow')===r,'Details width was not restored');
   if(await page.getByRole('button',{name:'Accept result',exact:true}).count()){await page.getByRole('button',{name:'Accept result',exact:true}).click();await page.getByRole('button',{name:'Start',exact:true}).waitFor();}
   await page.getByRole('button',{name:'Start',exact:true}).click();
-  const dialog=page.getByRole('dialog');await dialog.getByRole('checkbox').check();await dialog.getByRole('button',{name:'Authorize & Start'}).click();
+  const dialog=page.getByRole('dialog');await dialog.getByRole('checkbox').check();await dialog.getByRole('button',{name:'Start workflow'}).click();
   await page.locator('.workflow-agents button').first().waitFor();
   await page.getByRole('button',{name:'Accept result',exact:true}).waitFor({timeout:15000});
   await page.getByRole('button',{name:'Fit view',exact:true}).click();
@@ -25,17 +25,17 @@ async (page, base = 'http://127.0.0.1:18799') => {
   assert((await page.locator('.workflow-readable-review').innerText()).includes('Approved'),'Review verdict is unreadable');
   assert(await page.getByRole('button',{name:'Log',exact:true}).count()===0,'Raw Log remains');
   assert((await page.locator('[data-testid=workflow-card-build] .workflow-card-footer').innerText()).includes('total'),'Total duration missing');
-  await page.setViewportSize({width:620,height:800});await page.getByRole('button',{name:'Hide workflow list'}).click();
+  await page.setViewportSize({width:620,height:800});await page.locator('.workflow-layout.is-narrow').waitFor();if(await page.getByRole('button',{name:'Hide workflow list',exact:true}).count())await page.getByRole('button',{name:'Hide workflow list',exact:true}).click();
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Narrow window overflows');
   await page.getByRole('button',{name:'Accept result',exact:true}).click();await page.getByRole('button',{name:'Start',exact:true}).waitFor();
   await page.setViewportSize({width:1440,height:1000});
-  await page.getByLabel('Add preset task',{exact:true}).selectOption('review-text');
+  await page.getByLabel('Add preset task',{exact:true}).click();await page.getByRole('listbox',{name:'Add preset task choices'}).getByRole('option',{name:'Review text',exact:true}).click();
   await page.getByRole('button',{name:'Settings',exact:true}).last().click();
   assert((await page.getByLabel('Task',{exact:true}).inputValue()).includes('unsupported claims'),'Text review preset is missing');
   await page.getByRole('button',{name:'Delete card',exact:true}).click();
-  await page.getByLabel('Add preset task',{exact:true}).selectOption('git-request');
+  await page.getByLabel('Add preset task',{exact:true}).click();await page.getByRole('listbox',{name:'Add preset task choices'}).getByRole('option',{name:'Commit & Push',exact:true}).click();
   await page.getByRole('button',{name:'Settings',exact:true}).last().click();
-  assert(await page.getByLabel('Target branch',{exact:true}).inputValue()==='','Git preset guessed a target branch');
+  assert(await page.getByLabel('Target branch',{exact:true}).count()===0 && await page.getByLabel('Branch',{exact:true}).count()===1,'Commit & Push settings are not simplified');
   await page.getByRole('button',{name:'Delete card',exact:true}).click();
   await page.getByRole('button',{name:'Save workflow',exact:true}).click();
   const target=await page.evaluate(async()=>{const doc=await(await fetch('/api/workflows/document?id=demo-workflow')).json();return {workflowId:'demo-workflow',runId:doc.runs[0].id,nodeId:'review'};});

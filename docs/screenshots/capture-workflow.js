@@ -10,7 +10,7 @@ async (page, directory='docs/screenshots', base='http://127.0.0.1:18796') => {
     await page.locator('[data-testid=workflow-card-review] .workflow-card-title').click();
     await page.getByRole('button',{name:'Settings',exact:true}).last().click();
     await page.screenshot({path:`${directory}/workflow.png`,animations:'disabled'});
-    await page.getByRole('button',{name:'Start',exact:true}).click();const dialog=page.getByRole('dialog');await dialog.getByRole('checkbox').check();await dialog.getByRole('button',{name:'Authorize & Start'}).click();
+    await page.getByRole('button',{name:'Start',exact:true}).click();const dialog=page.getByRole('dialog');await dialog.getByRole('checkbox').check();await dialog.getByRole('button',{name:'Start workflow'}).click();
     await page.getByRole('button',{name:'Accept result',exact:true}).waitFor({timeout:15000});
     await page.setViewportSize({width:1600,height:1100});
     await page.getByRole('button',{name:'Fit view',exact:true}).click();

@@ -1,6 +1,17 @@
 # Demo screenshots
 
-All twenty-one current screenshots were captured from **KlipRun Desktop 0.0.33** on **2026-10-22**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority markers, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
+`scripts/workflow-push.test.js` verifies the simplified Commit & Push settings with
+a saved request-mode fixture: editable branch, optional message/remote, no MR/PR fields,
+and explicit confirmation. It uses the same port 18856 preview, checks 1440×900,
+900×650 and 500×660, and cancels before starting. Review images stay in `/private/tmp`.
+
+`scripts/workflow-pickers.test.js` checks task selectors against the fixture-only preview
+on port 18856 (`KLIPRUN_PREVIEW_PORT=18856 bun docs/screenshots/preview.ts`). It supplies
+fictional model IDs, checks keyboard selection, custom IDs, agent switching, presets,
+publication settings and menus at 1440×900, 900×600, 500×500 and 900×320 in dark and light
+themes. Review images stay in `/private/tmp`; the test starts no agents and publishes nothing.
+
+All twenty-one current screenshots were captured from **KlipRun Desktop 0.0.34** on **2026-10-23**, using Graphite. The original palette is named Midnight. Session IDs, titles, project paths, models, priority markers, Git metadata, quotas, and usage totals come only from [`mock-api.json`](mock-api.json). The preview fixes the clock to the fixture’s `board.generated_at` (2026-10-14), supplies a stub desktop bridge, and disables Office motion. No live engine, user session store, credentials, quota API, or agent process is used.
 
 | File | Size | Example shown |
 | --- | --- | --- |
@@ -148,3 +159,9 @@ The 0.0.33 refresh recaptures all 21 gallery images with the same fixture-only c
 The Kanban screenshot shows the new per-card Question, Urgent, Warning and Blocked markers;
 all captures use only `mock-api.json` and make zero external requests. `scripts/priority-menu.test.js`
 checks the custom marker menu, selection, clearing and all available options.
+
+The 0.0.34 refresh recaptures all 21 gallery images from the same fictional fixture.
+Workflow shows full-width agent/model choices and Commit & Push with manual MR/PR creation.
+The capture callbacks made zero external requests; normal/narrow task menus and push settings
+were checked separately in Chromium and WebKit. Native settings and notification previews
+were verified with disposable preferences; their review images stay in `/private/tmp`.
