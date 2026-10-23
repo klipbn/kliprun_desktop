@@ -13,6 +13,10 @@ public final class NotificationPreferences {
     public func allows(_ kind: AgentNotification.Kind) -> Bool {
         enabled && (kind == .finished ? responseReady : needsInput)
     }
+    public var klopikSkin: KlopikSkin {
+        defaults.string(forKey: "notification.klopikSkin").flatMap(KlopikSkin.init(rawValue:)) ?? .default
+    }
+    public func setKlopikSkin(_ skin: KlopikSkin) { defaults.set(skin.rawValue, forKey: "notification.klopikSkin") }
     public var soundName: String? { defaults.string(forKey: "notification.soundName") }
     public func setSoundName(_ name: String?) {
         if let name { defaults.set(name, forKey: "notification.soundName") }

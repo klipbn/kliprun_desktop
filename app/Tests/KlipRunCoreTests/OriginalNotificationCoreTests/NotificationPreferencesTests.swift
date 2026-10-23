@@ -4,6 +4,22 @@ import Testing
 @testable import KlipRunCore
 
 struct NotificationPreferencesTests {
+    @Test func notificationSkinPersistsIndependentlyOfOfficeAndRejectsUnknownValues() {
+        let suite = "local.kliprun.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("wizard", forKey: "appearance.klopikSkin")
+        let preferences = NotificationPreferences(defaults: defaults)
+        #expect(preferences.klopikSkin == .default)
+        for skin in KlopikSkin.allCases {
+            preferences.setKlopikSkin(skin)
+            #expect(NotificationPreferences(defaults: defaults).klopikSkin == skin)
+            #expect(defaults.string(forKey: "appearance.klopikSkin") == "wizard")
+        }
+        defaults.set("unknown", forKey: "notification.klopikSkin")
+        #expect(NotificationPreferences(defaults: defaults).klopikSkin == .default)
+    }
+
     @Test func notificationSwitchesPersistAndFilterEachKind() {
         let suite = "local.kliprun.tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

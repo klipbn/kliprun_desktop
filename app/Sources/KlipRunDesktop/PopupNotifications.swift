@@ -9,6 +9,7 @@ final class PopupNotifications: NSObject, ObservableObject, NSWindowDelegate {
     @Published private(set) var needsInput: Bool
     @Published private(set) var displaySeconds: Double
     @Published private(set) var soundName: String?
+    @Published private(set) var klopikSkin: KlopikSkin
     static let systemSoundNames: [String] = ((try? FileManager.default.contentsOfDirectory(atPath: "/System/Library/Sounds")) ?? [])
         .filter { ($0 as NSString).pathExtension.lowercased() == "aiff" }
         .map { ($0 as NSString).deletingPathExtension }
@@ -28,6 +29,7 @@ final class PopupNotifications: NSObject, ObservableObject, NSWindowDelegate {
         needsInput = preferences.needsInput
         displaySeconds = preferences.displaySeconds
         soundName = preferences.soundName.flatMap { Self.systemSoundNames.contains($0) ? $0 : nil }
+        klopikSkin = preferences.klopikSkin
         super.init()
     }
 
@@ -76,6 +78,14 @@ final class PopupNotifications: NSObject, ObservableObject, NSWindowDelegate {
         playingSound?.play()
     }
 
+    func setKlopikSkin(_ skin: KlopikSkin) {
+        klopikSkin = skin
+        preferences.setKlopikSkin(skin)
+        if let content = panel?.contentView as? NSHostingView<NotificationView> {
+            content.rootView.klopikSkin = skin
+        }
+    }
+
     @discardableResult func setDisplaySeconds(_ value: Double) -> Bool {
         guard preferences.setDisplaySeconds(value) else { return false }
         displaySeconds = value
@@ -107,7 +117,7 @@ final class PopupNotifications: NSObject, ObservableObject, NSWindowDelegate {
         }, dismiss: { [weak self] in self?.dismiss() }, dragging: { [weak self] active in
             self?.dragging = active
             self?.scheduleExpiration()
-        }))
+        }, klopikSkin: klopikSkin))
         window.contentView = content
         window.setContentSize(content.fittingSize)
         position(window)

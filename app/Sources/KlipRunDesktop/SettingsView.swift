@@ -74,6 +74,9 @@ struct SettingsView: View {
                             SettingsCard(title: "Coworker notifications", subtitle: "Choose which events need your attention and how they appear.") {
                                 NotificationSettingsView(store: store, notifications: store.notifications)
                             }
+                            SettingsCard(title: "Klopik skins", subtitle: "Choose the characters that show your notifications. Saved separately from Office.") {
+                                NotificationSkinPicker(notifications: store.notifications)
+                            }
                         default: about
                         }
                     }
