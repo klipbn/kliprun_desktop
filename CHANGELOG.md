@@ -4,6 +4,30 @@ Notable changes to KlipRun Desktop are recorded here. Versions use [Semantic Ver
 
 ## [Unreleased]
 
+## [0.0.34] - 2026-10-23
+
+### Added
+
+- Manage Codex Hermes and OpenCode Hermes from Settings → Agents: check live watcher status, versions, heartbeats and discovery availability, restart the registered Codex watcher, open a fresh OpenCode terminal, inspect local files, and copy diagnostics without session content.
+- Choose notification Klopik skins independently of Office in Settings → Notifications, with a live popup preview and per-session character variants.
+- Run Workflow Claude Code and Codex cards in visible terminal tabs that open automatically, so permission and folder-trust prompts can be answered where the work happens and the agents show on the Kanban board. Completion comes from the CLI's own Stop hook or `notify` event; OpenCode and runs without the desktop app stay headless. Add a **Terminal** button to active agents in the Workflow Agents panel.
+
+### Fixed
+
+- Keep long-running OpenCode sessions in Running when a fresh Hermes busy/retry heartbeat matches their live terminal process. Preserve input/error states and stop trusting activity when the heartbeat expires or the process exits.
+- Keep the narrow Workflow list from covering task fields: open it explicitly from the toolbar and close it after choosing a workflow.
+- Make the full Hermes Details row clickable and retain its expansion during status refreshes. Show Restart for both integrations; OpenCode reloads its plugin in a fresh terminal.
+- Explain Codex Hermes local CLI discovery as the active fallback when its daemon connection is absent, without displaying an unnecessary daemon warning.
+- Preserve terminal colors when KlipRun is opened from a launcher that sets `NO_COLOR`.
+- Stop the visible Workflow agent's terminal process group on Pause/Stop, including tools that ignore SIGTERM, and handle cancellation during a terminal claim.
+- Recover visible Workflow completion hooks after an engine restart, and pass task-file references to the CLI so long prompts do not exceed the command-line limit.
+
+### Changed
+
+- Simplify Workflow publication to Commit & Push: choose the branch, automatically create it when missing, and optionally override the remote or commit message. Saved request-mode cards now push only; MR/PR creation and hosting-CLI requirements are removed. Preserve reviewed changes and idempotent retries.
+- Replace Workflow task selectors with themed in-app menus that fit the viewport. Give Model its own full-width row, searchable catalog and custom-ID entry, with readable long names and keyboard navigation.
+- Compact Settings → Agents with inline model/CLI fields, smaller controls, and concise Hermes rows with expandable diagnostics.
+
 ## [0.0.33] - 2026-10-22
 
 ### Added

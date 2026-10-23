@@ -23,8 +23,8 @@ async (page, base = 'http://127.0.0.1:18799') => {
   assert((await read()).definition.nodes[0].x === saved.definition.nodes[0].x, 'Card position was not persisted');
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  assert((await dialog.innerText()).includes('Target: develop'), 'Publication target was lost');
-  await dialog.getByRole('checkbox').check(); await dialog.getByRole('button', { name: 'Authorize & Start' }).click();
+  assert((await dialog.innerText()).includes('feature/empty-response') && !(await dialog.innerText()).includes('Target:'), 'Commit/push branch was lost');
+  await dialog.getByRole('checkbox').check(); await dialog.getByRole('button', { name: 'Start workflow' }).click();
   await page.getByRole('button', { name: 'Kanban', exact: true }).click();
   await page.getByRole('button', { name: 'Workflow', exact: true }).click();
   await page.getByRole('button', { name: 'Accept result', exact: true }).waitFor({ timeout: 10000 });
@@ -32,8 +32,9 @@ async (page, base = 'http://127.0.0.1:18799') => {
   assert(run.status === 'human_review', 'Did not reach human review');
   assert(run.returns['review-return'] === 1, 'Review did not return exactly once');
   assert(run.attempts.some(a => a.nodeId === 'build' && a.input.includes('Plan: add empty-response')), 'Plan was not handed off');
-  assert(run.attempts.some(a => a.nodeId === 'publish' && a.result.publication.url), 'Publication result is missing');
+  assert(run.attempts.some(a => a.nodeId === 'publish' && a.result.publication.sha && !a.result.publication.url), 'Publication result is missing');
   await page.setViewportSize({ width: 620, height: 780 });
+  await page.locator('.workflow-layout.is-narrow').waitFor();
   if (await page.getByRole('button', { name: 'Hide workflow list', exact: true }).count()) await page.getByRole('button', { name: 'Hide workflow list', exact: true }).click();
   await page.getByRole('button', { name: 'Fit view', exact: true }).click();
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Narrow layout overflows');

@@ -81,6 +81,8 @@ export interface TuiLiveness {
   directories: Set<string>;
   /** Sessions whose Hermes status is "waiting" (attention). */
   waitingIds: Set<string>;
+  /** Fresh Hermes busy/retry states tied to the exact live TUI PID and session. */
+  busyIds: Set<string>;
   /** TUI cwds without a fresh Hermes match (fallback: keep latest session). */
   fallbackDirectories: Set<string>;
   /** session id -> TUI directory. */
@@ -97,6 +99,7 @@ interface HermesMatch {
   heartbeatMs: number;
   sessionId: string;
   waiting: boolean;
+  busy: boolean;
   directory: string;
 }
 
@@ -137,6 +140,7 @@ export async function openTuiSessions(instancesDir?: string): Promise<TuiLivenes
         heartbeatMs,
         sessionId,
         waiting: data.currentSessionStatus === "waiting",
+        busy: data.statusOk !== false && (data.currentSessionStatus === "busy" || data.currentSessionStatus === "retry"),
         directory: cwds.get(pid)!,
       });
     }
@@ -145,10 +149,12 @@ export async function openTuiSessions(instancesDir?: string): Promise<TuiLivenes
   const sessionDirectories = new Map<string, string>();
   const sessionPids = new Map<string, string>();
   const waitingIds = new Set<string>();
+  const busyIds = new Set<string>();
   for (const [pid, match] of matched) {
     sessionDirectories.set(match.sessionId, match.directory);
     sessionPids.set(match.sessionId, pid);
     if (match.waiting) waitingIds.add(match.sessionId);
+    if (match.busy) busyIds.add(match.sessionId);
   }
   const fallbackDirectories = new Set<string>();
   for (const [pid, directory] of cwds) {
@@ -159,6 +165,7 @@ export async function openTuiSessions(instancesDir?: string): Promise<TuiLivenes
     sessionIds: new Set(sessionDirectories.keys()),
     directories: new Set(cwds.values()),
     waitingIds,
+    busyIds,
     fallbackDirectories,
     sessionDirectories,
     sessionPids,

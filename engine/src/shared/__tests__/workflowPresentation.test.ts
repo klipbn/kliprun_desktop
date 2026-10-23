@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { workflowTemplate, type WorkflowDocument, type WorkflowRun } from '../workflow';
-import { taskElapsed, workflowSummary, taskPreset, workflowRunSelection, formatWorkflowDuration, formatWorkflowTimestamp } from '../workflowPresentation';
+import { taskElapsed, workflowSummary, taskPreset, TASK_PRESETS, workflowRunSelection, formatWorkflowDuration, formatWorkflowTimestamp } from '../workflowPresentation';
 
 test('task duration sums attempts and runs without counting pauses or human waiting', () => {
   const flow = workflowTemplate('Example', '/tmp/example', true);
@@ -25,7 +25,8 @@ test('review presets check task-specific evidence while Git presets never guess 
   expect(taskPreset('review-text').task).toContain('unsupported claims');
   expect(taskPreset('review-files').task).toContain('open');
   expect(taskPreset('git-push')).toMatchObject({mode:'push'});
-  expect(taskPreset('git-request')).toMatchObject({mode:'request'});
+  expect(taskPreset('git-request')).toMatchObject({mode:'push'});
+  expect(TASK_PRESETS.filter(p=>p.kind==='publication').map(p=>p.id)).toEqual(['git-push']);
   expect(taskPreset('git-request')).not.toHaveProperty('targetBranch');
   expect(taskPreset('review-code')).not.toHaveProperty('agent');
 });

@@ -7,6 +7,7 @@ export interface AgentNode extends NodeBase {
   resultKind: ResultKind; outputFiles: string[]; completion: string;
 }
 export interface PublicationNode extends NodeBase {
+  /** Legacy request fields remain readable; execution always commits and pushes the branch. */
   kind: 'publication'; mode: 'push' | 'request'; remote: string;
   provider: 'auto' | 'github' | 'gitlab'; targetBranch: string; requestTitle: string; description: string;
 }
@@ -24,7 +25,7 @@ export type CardStatus = 'pending' | 'running' | 'done' | 'needs_input' | 'faile
 export interface WorkflowAttempt {
   id: string; nodeId: string; number: number; status: CardStatus; startedAt: number; finishedAt?: number;
   input: string; result?: StepResult; error?: string; pid?: number; processStamp?: string; sessionId?: string;
-  processMarker?: string; reviewBaseline?: ReviewedState | null; lastActivityAt?: number;
+  processMarker?: string; visible?: boolean; reviewBaseline?: ReviewedState | null; lastActivityAt?: number;
 }
 export interface WorkflowAgentSettings { cliPath: string; model: string; arguments: string[] }
 export interface WorkspaceState { directory: string; root?: string; branch: string; baseHead?: string; remotes: Record<string, string> }
@@ -42,6 +43,9 @@ export interface WorkflowRun {
 export interface WorkflowDocument { definition: WorkflowDefinition; runs: WorkflowRun[]; revision: number; createdAt?: number; hidden?: boolean }
 export function activeRun(doc: WorkflowDocument): WorkflowRun | undefined { return doc.runs.find(r => r.status !== 'stopped' && r.status !== 'completed'); }
 export function currentResult(run: WorkflowRun, nodeId: string): WorkflowAttempt | undefined { return run.attempts.find(a => a.id === run.latest[nodeId]); }
+export function publicationCommitMessage(flow: WorkflowDefinition, node: PublicationNode): string {
+  return node.requestTitle.trim() || `Workflow: ${flow.name.trim() || 'changes'}`;
+}
 
 const text = (v: unknown, limit = 100_000): v is string => typeof v === 'string' && v.length <= limit && !v.includes('\0');
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -82,9 +86,6 @@ export function validateWorkflow(flow: WorkflowDefinition): WorkflowIssue[] {
     if (n.kind === 'publication') {
       if (!flow.branch.trim()) add('Choose the working/source branch.', n.id);
       if (!/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/.test(n.remote)) add('Choose a valid remote.', n.id);
-      if (!n.requestTitle.trim()) add('Enter a commit / request title.', n.id);
-      if (n.mode === 'request' && !n.targetBranch.trim()) add('Choose the MR/PR target branch.', n.id);
-      if (n.mode === 'request' && n.targetBranch === flow.branch) add('Source and target branches must differ.', n.id);
     }
     const outgoing = flow.edges.filter(e => e.from === n.id);
     const normal = outgoing.filter(e => e.port !== 'changes_requested');
@@ -137,7 +138,7 @@ export function workflowTemplate(name: string, directory: string, template: bool
     { ...newAgentNode('plan', 'Plan', 60, 100), task: 'Inspect the project and write a concrete implementation plan for the requested change. Ask for missing requirements.', completion: 'A plan with scope, implementation steps and verification.' },
     { ...newAgentNode('build', 'Implement', 380, 100), resultKind: 'code', task: 'Implement the current plan in the working folder. Address the latest review findings. Verify the change. Do not commit or publish.', completion: 'The requested changes exist in the working files and checks are reported.' },
     { ...newAgentNode('review', 'Review', 700, 100), resultKind: 'review', task: 'Review the current files and actual Git diff against the plan. Check correctness and verification. Return a review verdict. Do not edit files.', completion: 'A structured review of the actual current changes.' },
-    { id: 'publish', kind: 'publication', title: 'Publish', x: 1020, y: 100, mode: 'request', remote: 'origin', provider: 'auto', targetBranch: '', requestTitle: name, description: '{{results}}' },
+    { id: 'publish', kind: 'publication', title: 'Commit & Push', x: 1020, y: 100, mode: 'push', remote: 'origin', provider: 'auto', targetBranch: '', requestTitle: '', description: '' },
     { id: 'human', kind: 'human', title: 'Human review', x: 1340, y: 100 },
   ];
   flow.edges = [

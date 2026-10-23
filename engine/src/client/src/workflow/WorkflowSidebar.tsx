@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { MoreHorizontal, Pencil, Eye, EyeOff, Trash2, Search, X } from 'lucide-react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { MoreHorizontal, Pencil, Eye, EyeOff, Trash2, Search, X, SquareTerminal } from 'lucide-react';
 import { formatWorkflowDuration, formatWorkflowTimestamp, type WorkflowSummary, type WorkflowAgentActivity, type WorkflowManagementAction } from '@shared/workflowPresentation';
 import { statusLabel } from './WorkflowCanvas';
 import { HarnessIcon } from '../components/HarnessIcon';
+import { hasDesktopBridge, notifyWorkflowAction } from '../nativeBridge';
 
 export function WorkflowSidebar({ workflows, selected, onSelect, onAction, busy }: {
   workflows:WorkflowSummary[];selected:string;onSelect:(id:string)=>void;onAction:(id:string,action:WorkflowManagementAction)=>void;busy:boolean;
@@ -50,9 +51,9 @@ export function WorkflowPaneResizer({label,width,minimum,maximum,direction,onRes
     onKeyDown={e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();onResize(e.key==='Home'?minimum:e.key==='End'?maximum:clamp(width+(e.key==='ArrowRight'?20:-20)*direction),true);}} />;
 }
 export function WorkflowAgents({agents,now,onSelect}: {agents:WorkflowAgentActivity[];now:number;onSelect:(workflow:string,node:string)=>void}) {
-  return <div className="workflow-agents" aria-label="Active workflow agents">{agents.length?agents.map(a=><button key={a.attemptId} onClick={()=>onSelect(a.workflowId,a.nodeId)}>
+  return <div className="workflow-agents" aria-label="Active workflow agents">{agents.length?agents.map(a=><Fragment key={a.attemptId}><button onClick={()=>onSelect(a.workflowId,a.nodeId)}>
     <HarnessIcon source={a.agent as 'codex'|'opencode'|'claude'} /><span><strong>{a.title}</strong><small>{a.workflowName} · {a.model||'Agent default'}</small></span>
     <span><span className={`workflow-status ${a.status}`}>{statusLabel(a.status)}</span><small>{a.status==='running'?formatWorkflowDuration(Math.max(0,now-a.startedAt)):'Check before Resume'}{a.pid?` · PID ${a.pid}`:''}</small>
     {a.lastActivityAt&&<small>Last activity {formatWorkflowDuration(Math.max(0,now-a.lastActivityAt))} ago</small>}</span>
-  </button>):<p>No active workflow agents.</p>}</div>;
+  </button>{a.terminal&&hasDesktopBridge()&&<button className="workflow-agent-terminal" title="Show this agent's terminal tab. Approve tool permissions there." onClick={()=>notifyWorkflowAction({action:'show-terminal',attemptId:a.attemptId})}><SquareTerminal />Terminal</button>}</Fragment>):<p>No active workflow agents.</p>}</div>;
 }

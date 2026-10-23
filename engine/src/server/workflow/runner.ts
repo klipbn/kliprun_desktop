@@ -58,10 +58,15 @@ export class WorkflowRunner {
       for (const a of run.attempts) {
         const node = run.snapshot.nodes.find(n => n.id === a.nodeId);
         if (node?.kind !== 'agent' || run.latest[a.nodeId] !== a.id || !['running', 'interrupted'].includes(a.status)) continue;
-        agents.push({ workflowId: doc.definition.id, workflowName: doc.definition.name, runId:run.id,attemptId:a.id,nodeId:a.nodeId,title:node.title,agent:node.agent,model:node.model || run.agentSettings?.[node.agent]?.model || '',startedAt:a.startedAt,lastActivityAt:a.lastActivityAt,pid:a.pid,sessionId:a.sessionId,status:a.status as 'running' | 'interrupted' });
+        agents.push({ workflowId: doc.definition.id, workflowName: doc.definition.name, runId:run.id,attemptId:a.id,nodeId:a.nodeId,title:node.title,agent:node.agent,model:node.model || run.agentSettings?.[node.agent]?.model || '',startedAt:a.startedAt,lastActivityAt:a.lastActivityAt,pid:a.pid,sessionId:a.sessionId,terminal:a.visible,status:a.status as 'running' | 'interrupted' });
       }
     }
-    return { workflows: [...this.documents.values()].map(workflowSummary), agents, notices };
+    // Bring terminal diagnostics forward when a card stops for attention; Resume retries with user input.
+    const attention = [...this.documents.values()].flatMap(doc => {
+      const run = doc.runs[0], attempt = run?.attempts.at(-1);
+      return run?.status === 'needs_attention' && attempt?.visible && ['failed', 'needs_input'].includes(attempt.status) ? [attempt.id] : [];
+    });
+    return { workflows: [...this.documents.values()].map(workflowSummary), agents, notices, attention };
   }
   get(id: string): WorkflowDocument { return structuredClone(this.document(id)); }
   private document(id: string) { const doc = this.documents.get(id); if (!doc) throw Error('Workflow not found.'); return doc; }

@@ -1,5 +1,20 @@
 import AppKit
 import SwiftUI
+import KlipRunCore
+
+struct NotificationSkinPicker: View {
+    @ObservedObject var notifications: PopupNotifications
+
+    var body: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+            ForEach(KlopikSkin.allCases, id: \.rawValue) { skin in
+                KlopikSkinOption(skin: skin, selected: notifications.klopikSkin == skin) {
+                    notifications.setKlopikSkin(skin)
+                }
+            }
+        }
+    }
+}
 
 struct NotificationSettingsView: View {
     @ObservedObject var store: DesktopStore

@@ -14,7 +14,7 @@ async (page, base='http://127.0.0.1:18799') => {
   });
   await page.locator(`[data-workflow-id="${other}"]`).waitFor();
   if(await page.getByRole('button',{name:'Accept result',exact:true}).count()){await page.getByRole('button',{name:'Accept result',exact:true}).click();await page.getByRole('button',{name:'Start',exact:true}).waitFor();}
-  await page.getByRole('button',{name:'Start',exact:true}).click();let dialog=page.getByRole('dialog');await dialog.getByRole('checkbox').check();await dialog.getByRole('button',{name:'Authorize & Start'}).click();
+  await page.getByRole('button',{name:'Start',exact:true}).click();let dialog=page.getByRole('dialog');await dialog.getByRole('checkbox').check();await dialog.getByRole('button',{name:'Start workflow'}).click();
   await page.getByRole('button',{name:'Accept result',exact:true}).waitFor({timeout:15000});
   await menu('demo-workflow');assert(await page.getByRole('menuitem',{name:'Delete…',exact:true}).isDisabled(),'Active workflow can be deleted');await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'Accept result',exact:true}).click();await page.getByRole('button',{name:'Start',exact:true}).waitFor();
@@ -42,6 +42,6 @@ async (page, base='http://127.0.0.1:18799') => {
   assert((await page.locator('[data-testid=workflow-card-build] .workflow-card-footer').innerText()).match(/\d{2}:\d{2}:\d{2}/),'Task duration is not precise');
   await menu(other);await page.getByRole('menuitem',{name:'Delete…',exact:true}).click();dialog=page.getByRole('dialog');await dialog.getByRole('button',{name:'Cancel',exact:true}).click();assert(await page.locator(`[data-workflow-id="${other}"]`).count()===1,'Cancel deleted a workflow');
   await menu(other);await page.getByRole('menuitem',{name:'Delete…',exact:true}).click();dialog=page.getByRole('dialog');await dialog.getByRole('button',{name:'Delete workflow',exact:true}).click();await dialog.waitFor({state:'hidden'});await page.locator(`[data-workflow-id="${other}"]`).waitFor({state:'detached'});
-  await page.setViewportSize({width:620,height:800});await page.getByRole('button',{name:'Hide workflow list',exact:true}).click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Narrow viewport overflows');
+  await page.setViewportSize({width:620,height:800});await page.locator('.workflow-layout.is-narrow').waitFor();if(await page.getByRole('button',{name:'Hide workflow list',exact:true}).count())await page.getByRole('button',{name:'Hide workflow list',exact:true}).click();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Narrow viewport overflows');
   return {passed:true,isolatedWorkflows:2,rename:true,hideRestore:true,deleteCancel:true,exactTime:true,autoLayout:true,runOrder:true};
 }

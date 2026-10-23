@@ -88,7 +88,9 @@ struct KlipRunWebView: NSViewRepresentable {
                   message.frameInfo.securityOrigin.host == "127.0.0.1",
                   message.frameInfo.securityOrigin.port == loadedBaseURL?.port else { return }
             if message.name == "workflowAction", let body = message.body as? [String: String] {
-                if body["action"] == "choose-directory" {
+                if body["action"] == "show-terminal", let attemptID = body["attemptId"] {
+                    store.showWorkflowTerminal(attemptID: attemptID)
+                } else if body["action"] == "choose-directory" {
                     let panel = NSOpenPanel()
                     panel.canChooseFiles = false; panel.canChooseDirectories = true; panel.allowsMultipleSelection = false
                     panel.prompt = "Choose working folder"

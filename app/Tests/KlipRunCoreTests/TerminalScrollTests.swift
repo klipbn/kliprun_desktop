@@ -22,6 +22,8 @@ import Testing
     let height = try #require(view.cellDimension?.height)
     let cg = try #require(CGEvent(scrollWheelEvent2Source: nil, units: .pixel,
                                  wheelCount: 1, wheel1: Int32(ceil(height * 2)), wheel2: 0, wheel3: 0))
+    // Synthetic wheel input must not inherit keys held in the user's desktop session.
+    cg.flags = []
     cg.location = CGPoint(x: 10, y: 10)
     view.scrollWheel(with: try #require(NSEvent(cgEvent: cg)))
     await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
@@ -41,6 +43,7 @@ import Testing
     view.feed(text: (0..<400).map { "line \($0)\r\n" }.joined())
     let cg = try #require(CGEvent(scrollWheelEvent2Source: nil, units: .line,
                                  wheelCount: 1, wheel1: 1, wheel2: 0, wheel3: 0))
+    cg.flags = []
     let event = try #require(NSEvent(cgEvent: cg))
     let start = view.terminal.displayBuffer.yDisp
     view.scrollSensitivity = 1
@@ -65,6 +68,7 @@ import Testing
             output.writes = []
             let cg = try #require(CGEvent(scrollWheelEvent2Source: nil, units: .line,
                                          wheelCount: 1, wheel1: direction, wheel2: 0, wheel3: 0))
+            cg.flags = []
             cg.location = CGPoint(x: 10, y: 10)
             view.scrollWheel(with: try #require(NSEvent(cgEvent: cg)))
             await withCheckedContinuation { continuation in
@@ -88,6 +92,7 @@ import Testing
             output.writes = []
             let cg = try #require(CGEvent(scrollWheelEvent2Source: nil, units: .line,
                                          wheelCount: 1, wheel1: direction * 3, wheel2: 0, wheel3: 0))
+            cg.flags = []
             view.scrollWheel(with: try #require(NSEvent(cgEvent: cg)))
             await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
             #expect(output.writes.count == speed)
@@ -109,6 +114,7 @@ import Testing
             output.writes = []
             let cg = try #require(CGEvent(scrollWheelEvent2Source: nil, units: .pixel,
                                          wheelCount: 1, wheel1: Int32(ceil(height)), wheel2: 0, wheel3: 0))
+            cg.flags = []
             cg.location = CGPoint(x: 10, y: 10)
             view.scrollWheel(with: try #require(NSEvent(cgEvent: cg)))
             await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }

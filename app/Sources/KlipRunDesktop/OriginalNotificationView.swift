@@ -7,6 +7,7 @@ struct NotificationView: View {
     let open: () -> Void
     let dismiss: () -> Void
     var dragging: (Bool) -> Void = { _ in }
+    var klopikSkin: KlopikSkin = .default
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
@@ -44,7 +45,7 @@ struct NotificationView: View {
                     .frame(width: 14, height: 18).rotationEffect(.degrees(-90)).offset(x: 11, y: -26)
             }
             .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
-            Button(action: open) { PixelCoworker(sessionID: event.sessionID) }
+            Button(action: open) { PixelCoworker(sessionID: event.sessionID, skin: klopikSkin) }
                 .buttonStyle(.plain).frame(width: 85, height: 105)
                 .accessibilityLabel("\(event.actionLabel) \(event.title)")
         }
@@ -97,14 +98,37 @@ private struct Triangle: Shape {
     }
 }
 
-/// The same stepped silhouette and per-session palette as the Office coworker.
+enum NotificationSkinArtwork {
+    static func image(skin: KlopikSkin, sessionID: String) -> NSImage? {
+        guard skin != .default,
+              let url = Bundle.main.url(forResource: skin.rawValue, withExtension: "png", subdirectory: "KlopikSkins"),
+              let image = NSImage(contentsOf: url) else { return nil }
+        return portrait(from: image, sessionID: sessionID)
+    }
+
+    static func portrait(from image: NSImage, sessionID: String) -> NSImage? {
+        guard let strip = image.cgImage(forProposedRect: nil, context: nil, hints: nil), strip.width >= 4 else { return nil }
+        let hash = sessionID.utf16.reduce(UInt32(0)) { ($0 &* 31) &+ UInt32($1) }
+        let width = strip.width / 4
+        guard let frame = strip.cropping(to: CGRect(x: Int(hash % 4) * width, y: 0, width: width, height: strip.height)) else { return nil }
+        return NSImage(cgImage: frame, size: NSSize(width: width, height: strip.height))
+    }
+}
+
+/// Default coworkers wave; the other Office skin sets keep their per-session equipment and gently bob.
 private struct PixelCoworker: View {
     let sessionID: String
+    let skin: KlopikSkin
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let sprite = NotificationSkinArtwork.image(skin: skin, sessionID: sessionID)
         TimelineView(.animation(minimumInterval: 0.1, paused: reduceMotion)) { timeline in
             let phase = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate * 4
+            if let sprite {
+                Image(nsImage: sprite).resizable().interpolation(.none).scaledToFit()
+                    .offset(y: reduceMotion ? 0 : sin(phase) * 2)
+            } else {
             Canvas { context, size in
                 context.scaleBy(x: size.width / 100, y: size.height / 100)
                 context.translateBy(x: 4, y: 28 + (reduceMotion ? 0 : sin(phase) * 2))
@@ -125,6 +149,7 @@ private struct PixelCoworker: View {
                 arm.translateBy(x: 80, y: 24)
                 arm.rotate(by: .degrees(-145 + (reduceMotion ? 0 : sin(phase * 1.6) * 20)))
                 fill(&arm, 0, 0, 8, 25, color)
+            }
             }
         }
         .accessibilityHidden(true)

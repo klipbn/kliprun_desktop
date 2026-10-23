@@ -4461,15 +4461,15 @@
         {
           "id": "publish",
           "kind": "publication",
-          "title": "Publish for review",
+          "title": "Commit & Push",
           "x": 1020,
           "y": 100,
-          "mode": "request",
+          "mode": "push",
           "remote": "origin",
-          "provider": "github",
-          "targetBranch": "develop",
-          "requestTitle": "Handle empty API responses",
-          "description": "{{results}}"
+          "provider": "auto",
+          "targetBranch": "",
+          "requestTitle": "",
+          "description": ""
         },
         {
           "id": "human",
@@ -4526,7 +4526,6 @@
     },
     "publication": {
       "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "url": "https://github.com/example/aurora/pull/42",
       "remote": "origin",
       "branch": "feature/empty-response"
     }

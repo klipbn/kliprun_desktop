@@ -27,7 +27,28 @@ public struct AgentLaunch {
             default: return nil
             }
         }
+        let environment = Self.environment(source: source, home: home, inherited: inherited)
+        let title = source == "codex" ? " -c 'tui.terminal_title=[\"session-id\"]'" : ""
+        let model = settings.model.trimmingCharacters(in: .whitespacesAndNewlines)
+        let options = (model.isEmpty ? [] : ["--model", model]) + (settings.parsedArguments ?? [])
+        let extra = options.isEmpty ? "" : " " + options.map(shellQuote).joined(separator: " ")
+        return Self(arguments: source == "terminal" ? ["-l", "-i"] : ["-lic", "exec \(shellQuote(command))\(title)\(resume)\(extra)"], environment: environment)
+    }
+
+    /// The CLI reads the task file itself, keeping long workflow histories out of exec's argument limit.
+    public static func workflow(source: String, argv: [String], promptFile: String, home: String, inherited: [String: String]) -> Self? {
+        guard source == "claude" || source == "codex", !argv.isEmpty,
+              argv.allSatisfy({ !$0.isEmpty && !$0.contains("\0") }),
+              promptFile.hasPrefix("/"), !promptFile.contains("\0") else { return nil }
+        let prompt = "Read the full Workflow task from \(promptFile). Follow all its instructions and complete the task."
+        let command = (argv + [prompt]).map(shellQuote).joined(separator: " ")
+        return Self(arguments: ["-lic", "exec \(command)"], environment: environment(source: source, home: home, inherited: inherited))
+    }
+
+    private static func environment(source: String, home: String, inherited: [String: String]) -> [String: String] {
         var environment = inherited
+        // The app launcher may disable colors for its own logs; the embedded PTY supports colors.
+        environment.removeValue(forKey: "NO_COLOR")
         if source == "claude" {
             environment.removeValue(forKey: "CLAUDECODE")
             environment.removeValue(forKey: "CLAUDE_CODE_ENTRYPOINT")
@@ -38,11 +59,7 @@ public struct AgentLaunch {
         environment["TERM"] = "xterm-256color"
         environment["COLORTERM"] = "truecolor"
         if environment["LANG"]?.isEmpty != false { environment["LANG"] = "en_US.UTF-8" }
-        let title = source == "codex" ? " -c 'tui.terminal_title=[\"session-id\"]'" : ""
-        let model = settings.model.trimmingCharacters(in: .whitespacesAndNewlines)
-        let options = (model.isEmpty ? [] : ["--model", model]) + (settings.parsedArguments ?? [])
-        let extra = options.isEmpty ? "" : " " + options.map(shellQuote).joined(separator: " ")
-        return Self(arguments: source == "terminal" ? ["-l", "-i"] : ["-lic", "exec \(shellQuote(command))\(title)\(resume)\(extra)"], environment: environment)
+        return environment
     }
 
     private static func shellQuote(_ value: String) -> String {

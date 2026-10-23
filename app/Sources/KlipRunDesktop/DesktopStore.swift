@@ -41,6 +41,9 @@ final class DesktopStore: ObservableObject {
     private var terminalSelectionPublished = false
     private var projectPanel: NSOpenPanel?
     private var resumingSessions = Set<String>()
+    private var workflowTerminals: [String: Int] = [:]
+    private var handledLaunches = Set<String>()
+    private var shownAttention = Set<String>()
 
     init(defaults: UserDefaults = .standard, updater: AppUpdater = AppUpdater()) {
         self.defaults = defaults
@@ -110,9 +113,16 @@ final class DesktopStore: ObservableObject {
         guard let baseURL = runtime.baseURL else { error = runtime.error; return }
         let api = DesktopAPI(baseURL: baseURL, token: runtime.token)
         // Workflow notifications must not depend on the visible web view or session-store health.
-        if let workflows: WorkflowStatusSnapshot = try? await api.get("api/workflows/status") {
+        if let workflows: WorkflowStatusSnapshot = try? await api.get("api/workflows/status?host=desktop") {
             for notice in workflowTracker.observe(workflows.notices) {
                 notifications.show(notice.notification) { [weak self] in self?.openWorkflowNotice(notice) }
+            }
+            for launch in workflows.launches where handledLaunches.insert(launch.attemptId).inserted {
+                await openWorkflowTerminal(launch, api: api)
+            }
+            // Bring the failed card's terminal forward once so its diagnostics can be reviewed.
+            for attemptID in workflows.attention where shownAttention.insert(attemptID).inserted {
+                showWorkflowTerminal(attemptID: attemptID, activate: false)
             }
         }
         do {
@@ -182,6 +192,40 @@ final class DesktopStore: ObservableObject {
         selectWebSession(event.sessionID)
         if let terminalID = ownedTerminals()[event.sessionID] { selectTerminalTab(terminalID) }
         openInWeb(event.sessionID)
+    }
+
+    /// Workflow agents run in visible tabs: the user sees the work and can approve tool permissions there.
+    private func openWorkflowTerminal(_ launch: WorkflowLaunch, api: DesktopAPI) async {
+        var isDirectory: ObjCBool = false
+        guard let agentLaunch = launch.agentLaunch(home: FileManager.default.homeDirectoryForCurrentUser.path, inherited: ProcessInfo.processInfo.environment) else {
+            await api.rejectWorkflowLaunch(attemptId: launch.attemptId, reason: "the agent launch request is invalid"); return
+        }
+        guard FileManager.default.fileExists(atPath: launch.directory, isDirectory: &isDirectory), isDirectory.boolValue else {
+            await api.rejectWorkflowLaunch(attemptId: launch.attemptId, reason: "the working folder no longer exists"); return
+        }
+        guard FileManager.default.fileExists(atPath: launch.promptFile) else {
+            await api.rejectWorkflowLaunch(attemptId: launch.attemptId, reason: "the prompt file is missing"); return
+        }
+        let terminal = TerminalSession(id: nextTerminalID, source: launch.source, directory: launch.directory, launch: agentLaunch,
+                                       name: launch.tabName, preferences: preferences,
+                                       onExit: { [weak self] id in self?.closeTerminal(id) })
+        nextTerminalID += 1
+        terminals.append(terminal)
+        workflowTerminals[launch.attemptId] = terminal.id
+        var dock = terminalDock
+        dock.show(terminal.id)
+        terminalDock = dock
+        // If the engine already gave up on this request, keep the app from running a stray agent.
+        if (try? await api.claimWorkflowLaunch(attemptId: launch.attemptId, pid: terminal.pid)) != true {
+            workflowTerminals[launch.attemptId] = nil
+            terminal.terminate()
+        }
+    }
+
+    func showWorkflowTerminal(attemptID: String, activate: Bool = true) {
+        guard let id = workflowTerminals[attemptID], terminal(for: id) != nil else { return }
+        if activate { NSApp.activate(ignoringOtherApps: true) }
+        selectTerminalTab(id)
     }
 
     func openWorkflowNotice(_ notice: WorkflowNotice) {

@@ -35,6 +35,31 @@ struct ResumeSessionDetail: Decodable {
         return (try JSONDecoder().decode(DesktopBoard.self, from: data), try JSONDecoder().decode(BoardSnapshot.self, from: data))
     }
 
+    /// False when the engine no longer waits for this terminal, for example after falling back to a headless run.
+    func claimWorkflowLaunch(attemptId: String, pid: Int32) async throws -> Bool {
+        guard let url = DesktopURL.make(base: baseURL, pathAndQuery: "api/workflows/visible/claim") else { throw URLError(.badURL) }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 10
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["attemptId": attemptId, "pid": pid])
+        let (_, response) = try await URLSession.shared.data(for: request)
+        return (response as? HTTPURLResponse)?.statusCode == 200
+    }
+
+    func rejectWorkflowLaunch(attemptId: String, reason: String) async {
+        guard let url = DesktopURL.make(base: baseURL, pathAndQuery: "api/workflows/visible/reject"),
+              let body = try? JSONSerialization.data(withJSONObject: ["attemptId": attemptId, "reason": reason]) else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 10
+        request.httpBody = body
+        _ = try? await URLSession.shared.data(for: request)
+    }
+
     func observeCodexSession(_ process: CodexTerminalProcess, prefix: String?) async throws -> Bool {
         guard let url = DesktopURL.make(base: baseURL, pathAndQuery: "api/codex/terminal-observation") else { throw URLError(.badURL) }
         var request = URLRequest(url: url)

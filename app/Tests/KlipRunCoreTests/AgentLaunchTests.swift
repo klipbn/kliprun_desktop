@@ -24,6 +24,22 @@ import Testing
     #expect(launch?.environment["TERM"] == "xterm-256color")
 }
 
+@Test func embeddedTerminalsDoNotInheritTheLaunchersNoColorFlag() throws {
+    let inherited = ["NO_COLOR": "1", "TERM": "dumb", "MY_SETTING": "preserved"]
+    for source in ["terminal", "codex", "claude", "opencode"] {
+        let launch = try #require(AgentLaunch.make(source: source, home: "/Users/test", inherited: inherited))
+        #expect(launch.environment["NO_COLOR"] == nil)
+        #expect(launch.environment["TERM"] == "xterm-256color")
+        #expect(launch.environment["COLORTERM"] == "truecolor")
+        #expect(launch.environment["MY_SETTING"] == "preserved")
+    }
+    for source in ["claude", "codex"] {
+        let launch = try #require(AgentLaunch.workflow(source: source, argv: [source], promptFile: "/tmp/task.md", home: "/Users/test", inherited: inherited))
+        #expect(launch.environment["NO_COLOR"] == nil)
+        #expect(launch.environment["COLORTERM"] == "truecolor")
+    }
+}
+
 @Test func resumeUsesTheOriginalHarnessAndExactSession() {
     let id = "01900000-0000-7000-8000-000000000001"
     let codex = AgentLaunch.make(source: "codex", home: "/Users/test", inherited: [:], sessionID: "codex:\(id)", isExecutable: { _ in true })

@@ -34,10 +34,9 @@ export const TASK_PRESETS = [
   { id: 'review-text', label: 'Review text', kind: 'agent' },
   { id: 'review-files', label: 'Review files / data', kind: 'agent' },
   { id: 'git-push', label: 'Commit & Push', kind: 'publication' },
-  { id: 'git-request', label: 'Create / Update MR or PR', kind: 'publication' },
 ] as const;
 export type TaskPreset = typeof TASK_PRESETS[number]['id'];
-export function taskPreset(id: TaskPreset): {
+export function taskPreset(id: TaskPreset | 'git-request'): {
   title?: string; task?: string; resultKind?: 'review'; completion?: string; mode?: 'push' | 'request'; description?: string;
 } {
   const contract = 'Do not edit files, commit or publish. Distinguish blocking findings from optional suggestions. Return approved only when the requested result is ready; changes_requested with concrete findings otherwise; needs_input when requirements or evidence are missing.';
@@ -45,14 +44,13 @@ export function taskPreset(id: TaskPreset): {
     case 'review-code': return { title:'Review code', resultKind:'review', task:`Review the actual current files and Git diff against the original task and latest plan. Include committed changes since the run base. Check correctness, edge cases, compatibility, error handling, security boundaries and focused test evidence. Verify previous findings were addressed; cite file paths and specific fixes. ${contract}`, completion:'A structured verdict based on the current code and verification evidence, with actionable blocking findings.' };
     case 'review-text': return { title:'Review text', resultKind:'review', task:`Review the latest draft against the original brief, intended audience and required format. Check factual consistency, unsupported claims, missing requirements, structure, clarity and terminology. Preserve the author’s intent. Cite specific passages and explain corrections; avoid cosmetic rewrites that do not improve the requested outcome. ${contract}`, completion:'A structured verdict on the actual draft, with specific corrections and no unsupported factual approval.' };
     case 'review-files': return { title:'Review files / data', resultKind:'review', task:`Locate and open the declared output files. Check their existence, readability, expected format, completeness and consistency with the original task. For data, check schema, missing/duplicate values, units, totals and reproducibility of calculations; for documents, check required sections and internal references. Cite file paths and observed evidence. ${contract}`, completion:'A structured verdict supported by inspection of the real output files and relevant validation.' };
-    case 'git-push': return { title:'Commit & Push', mode:'push' };
-    case 'git-request': return { title:'Publish for review', mode:'request', description:'## Outcome and verification\n{{results}}\n\n## Review\nReview the changes and verification above. Merge is handled manually.' };
+    case 'git-push': case 'git-request': return { title:'Commit & Push', mode:'push' };
   }
 }
 
 export interface WorkflowAgentActivity {
   workflowId: string; workflowName: string; runId: string; attemptId: string; nodeId: string; title: string;
-  agent: string; model: string; startedAt: number; lastActivityAt?: number; pid?: number; sessionId?: string;
+  agent: string; model: string; startedAt: number; lastActivityAt?: number; pid?: number; sessionId?: string; terminal?: boolean;
   status: 'running' | 'interrupted';
 }
 export interface WorkflowNotice { id: string; workflowId: string; runId: string; name: string; status: string; revision: number; nodeId?: string }
