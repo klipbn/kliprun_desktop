@@ -61,18 +61,21 @@ struct SettingsToggleStyle: ToggleStyle {
 struct SettingsCard<Content: View>: View {
     let title: String
     let subtitle: String
+    var compact = false
     @ViewBuilder var content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: compact ? 8 : 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 13, weight: .semibold))
-                Text(subtitle).font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                if !subtitle.isEmpty {
+                    Text(subtitle).font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
             }
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
+        .padding(compact ? 10 : 16)
         .background(SettingsStyle.surface, in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(SettingsStyle.border))
     }

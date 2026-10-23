@@ -46,6 +46,7 @@ const EMPTY_LIVENESS: TuiLiveness = {
   sessionIds: new Set(),
   directories: new Set(),
   waitingIds: new Set(),
+  busyIds: new Set(),
   fallbackDirectories: new Set(),
   sessionDirectories: new Map(),
 };
@@ -287,7 +288,8 @@ export class Engine {
       !setsEqual(liveness.sessionIds, this.liveness.sessionIds) ||
       !setsEqual(liveness.directories, this.liveness.directories) ||
       !setsEqual(liveness.fallbackDirectories, this.liveness.fallbackDirectories) ||
-      !setsEqual(liveness.waitingIds, this.liveness.waitingIds);
+      !setsEqual(liveness.waitingIds, this.liveness.waitingIds) ||
+      !setsEqual(liveness.busyIds, this.liveness.busyIds);
     this.liveness = liveness;
     return changed;
   }
@@ -488,7 +490,9 @@ export class Engine {
     const error = info.error;
     const activity = Math.max(info.lastActivityMs, 1);
     const streaming = info.lastRole === "assistant" && info.lastCompleted === null;
+    const hermesBusy = this.liveness.sessionIds.has(card.sessionId) && this.liveness.busyIds.has(card.sessionId);
     const busy =
+      hermesBusy ||
       (info.lastRole === "user" && now - activity < DEBOUNCE_MS) ||
       (streaming && now - activity < STALE_STREAM_MS);
     const stable = now - card.updatedAt >= DEBOUNCE_MS;
@@ -516,11 +520,14 @@ export class Engine {
       since = info.lastActivityMs || now;
     } else if (busy) {
       column = "running";
-      if (streaming && info.lastTool) {
+      if ((streaming || hermesBusy) && info.lastTool) {
         stage = `Tool: ${info.lastTool}`;
         reason = null;
       } else if (streaming) {
         stage = "Generating response";
+        reason = null;
+      } else if (hermesBusy) {
+        stage = "Working";
         reason = null;
       } else {
         stage = "Starting";

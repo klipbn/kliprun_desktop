@@ -273,7 +273,7 @@ test("failed Codex scan preserves cards and history until a successful scan conf
   let exited = false;
   const service = new BoardService({ engine, codex, history: new StatusHistoryStore(":memory:"),
     scanLiveness: async () => ({ directories: new Set([home]), sessionIds: new Set(["ses_test"]),
-      waitingIds: new Set(), fallbackDirectories: new Set(), sessionDirectories: new Map() }),
+      waitingIds: new Set(), busyIds: new Set(), fallbackDirectories: new Set(), sessionDirectories: new Map() }),
     scanCodex: async () => {
       if (fail) throw new Error("CLI process scan unavailable");
       return exited ? [] : [{ pid: "10", cwd: home, rollouts: [rollout] }];
@@ -348,7 +348,7 @@ test("liveness sampling records Running without browser requests and publishes r
   const observed: UsageObservation[] = [];
   const history = new StatusHistoryStore(":memory:");
   const service = new BoardService({ engine, codex, history, observe: value => observed.push(value),
-    scanLiveness: async () => ({ directories: new Set([home]), sessionIds: new Set(["ses_test"]), waitingIds: new Set(), fallbackDirectories: new Set(), sessionDirectories: new Map() }),
+    scanLiveness: async () => ({ directories: new Set([home]), sessionIds: new Set(["ses_test"]), waitingIds: new Set(), busyIds: new Set(), fallbackDirectories: new Set(), sessionDirectories: new Map() }),
     scanCodex: async () => [],
   });
   services.push(service);
